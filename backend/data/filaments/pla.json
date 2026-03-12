@@ -1,0 +1,9 @@
+{
+  "id": "pla",
+  "display_name": "PLA",
+  "nozzle_temp_c": 220,
+  "bed_temp_c": 60,
+  "fan_speed_percent": 100,
+  "fan_first_layer": false,
+  "max_speed_multiplier": 1.0
+}

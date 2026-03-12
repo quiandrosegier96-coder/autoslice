@@ -1,0 +1,522 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { isLoggedIn, getUser, clearAuth } from "@/lib/auth";
+import { apiUpload, apiAnalyze, apiConvertDownload, apiGet } from "@/lib/api";
+
+const ModelViewer = dynamic(
+  () => import("@/components/ModelViewer").then((m) => m.ModelViewer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-72 bg-surface-card rounded-xl border border-surface-border flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+      </div>
+    ),
+  }
+);
+
+type AnalysisResult = {
+  job_id: string;
+  model: { part_count: number; unit: string };
+  geometry: {
+    bounding_box: { x_mm: number; y_mm: number; z_mm: number; volume_cm3: number };
+    part_count: number;
+    mesh_is_watertight: boolean;
+    overhang: { has_overhangs: boolean; max_angle_deg: number; overhang_area_ratio: number };
+    bridge: { has_bridges: boolean; max_span_mm: number };
+    thin_wall: { has_thin_walls: boolean };
+  };
+  intent: {
+    difficulty: string;
+    needs_supports: boolean;
+    support_density_hint: string;
+    needs_brim: boolean;
+    size_class: string;
+    is_structurally_risky: boolean;
+  };
+};
+
+type Printer = { id: string; display_name: string; supported_filaments: string[] };
+
+const FILAMENT_LABELS: Record<string, string> = { pla: "PLA", petg: "PETG", tpu: "TPU" };
+
+const NOZZLE_SIZES = [
+  { value: 0.2, label: "0.2 mm — Fine detail" },
+  { value: 0.4, label: "0.4 mm — Standard" },
+  { value: 0.6, label: "0.6 mm — Fast / thick" },
+  { value: 0.8, label: "0.8 mm — Draft / vase" },
+  { value: 1.0, label: "1.0 mm — Extra thick" },
+];
+
+const NOZZLE_TYPES = [
+  { value: "brass", label: "Brass" },
+  { value: "hardened_steel", label: "Hardened Steel" },
+  { value: "stainless_steel", label: "Stainless Steel" },
+  { value: "ruby_tip", label: "Ruby Tip" },
+  { value: "ceramic", label: "Ceramic" },
+];
+
+const BUILD_PLATES = [
+  { value: "smooth", label: "Smooth PEI" },
+  { value: "textured", label: "Textured PEI (+5°C bed)" },
+  { value: "cold", label: "Cold plate (0°C bed)" },
+];
+
+const difficultyColor: Record<string, string> = {
+  easy: "text-green-400",
+  moderate: "text-yellow-400",
+  hard: "text-red-400",
+};
+
+export default function ConvertPage() {
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [user, setUser] = useState<{ username: string; email: string; is_admin: boolean } | null>(null);
+  const [printers, setPrinters] = useState<Printer[]>([]);
+  const [selectedPrinter, setSelectedPrinter] = useState("");
+  const [selectedFilament, setSelectedFilament] = useState("pla");
+  const [availableFilaments, setAvailableFilaments] = useState<string[]>(["pla"]);
+  const [nozzleSize, setNozzleSize] = useState(0.4);
+  const [nozzleType, setNozzleType] = useState("brass");
+  const [buildPlate, setBuildPlate] = useState("smooth");
+  const [flushVolume, setFlushVolume] = useState(3.0);
+
+  const [dragging, setDragging] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
+
+  const [step, setStep] = useState<"idle" | "uploading" | "analyzing" | "ready" | "converting" | "done">("idle");
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [error, setError] = useState("");
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [downloadName, setDownloadName] = useState("");
+
+  useEffect(() => {
+    if (!isLoggedIn()) { router.push("/login"); return; }
+    setUser(getUser());
+    apiGet<Printer[]>("/printers").then((ps) => {
+      setPrinters(ps);
+      if (ps.length > 0) {
+        setSelectedPrinter(ps[0].id);
+        setAvailableFilaments(ps[0].supported_filaments);
+        setSelectedFilament(ps[0].supported_filaments[0] ?? "pla");
+      }
+    });
+  }, [router]);
+
+  function handlePrinterChange(id: string) {
+    setSelectedPrinter(id);
+    const p = printers.find((x) => x.id === id);
+    if (p) {
+      setAvailableFilaments(p.supported_filaments);
+      setSelectedFilament(p.supported_filaments[0] ?? "pla");
+    }
+  }
+
+  async function handleFile(file: File) {
+    if (!file.name.endsWith(".3mf")) { setError("Please upload a .3mf file."); return; }
+    setError("");
+    setUploadedFile(file);
+    setStep("uploading");
+    setAnalysis(null);
+    setDownloadUrl(null);
+    try {
+      const up = await apiUpload(file);
+      setJobId(up.job_id);
+      setStep("analyzing");
+      const result = await apiAnalyze(up.job_id) as AnalysisResult;
+      setAnalysis(result);
+      setStep("ready");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed");
+      setStep("idle");
+    }
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  }
+
+  async function handleConvert() {
+    if (!jobId || !selectedPrinter) return;
+    setStep("converting");
+    setError("");
+    try {
+      const blob = await apiConvertDownload(jobId, selectedPrinter, selectedFilament, nozzleSize, nozzleType, 1.75, buildPlate, flushVolume);
+      const url = URL.createObjectURL(blob);
+      const name = `autoslice_${selectedPrinter}_${selectedFilament}.3mf`;
+      setDownloadUrl(url);
+      setDownloadName(name);
+      setStep("done");
+      // Auto-trigger download
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      a.click();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Conversion failed");
+      setStep("ready");
+    }
+  }
+
+  function reset() {
+    setStep("idle");
+    setUploadedFile(null);
+    setJobId(null);
+    setAnalysis(null);
+    setDownloadUrl(null);
+    setError("");
+  }
+
+  const isWorking = step === "uploading" || step === "analyzing" || step === "converting";
+  const settingsDisabled = isWorking;
+
+  return (
+    <div className="min-h-screen bg-surface">
+      {/* Navbar */}
+      <nav className="border-b border-surface-border bg-surface-elevated px-6 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-brand rounded-sm flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <span className="font-bold text-white tracking-tight">
+            Auto<span className="text-brand">Slice</span>
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-zinc-500 text-sm hidden sm:block">{user?.username}</span>
+          <Link href="/history" className="text-xs text-zinc-500 hover:text-brand transition-colors">
+            History
+          </Link>
+          {user?.is_admin && (
+            <Link href="/admin" className="text-xs text-brand hover:text-brand-light transition-colors font-medium">
+              Admin
+            </Link>
+          )}
+          <button
+            onClick={() => { clearAuth(); router.push("/login"); }}
+            className="text-xs text-zinc-500 hover:text-brand transition-colors"
+          >
+            Sign out
+          </button>
+        </div>
+      </nav>
+
+      <main className="max-w-3xl mx-auto px-4 py-10">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-white mb-1">Convert 3MF File</h1>
+          <p className="text-zinc-500 text-sm">
+            Configure your printer settings, upload your file, then hit Generate.
+          </p>
+        </div>
+
+        {error && (
+          <div className="mb-6 p-4 bg-brand/10 border border-brand/30 rounded-lg text-brand text-sm">
+            {error}
+          </div>
+        )}
+
+        {/* ── Settings panel (always visible) ── */}
+        <div className="bg-surface-card border border-surface-border rounded-xl p-5 mb-6 space-y-4">
+          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Print Settings</h2>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">Printer</label>
+              <select
+                value={selectedPrinter}
+                onChange={(e) => handlePrinterChange(e.target.value)}
+                disabled={settingsDisabled}
+              >
+                {printers.map((p) => (
+                  <option key={p.id} value={p.id}>{p.display_name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">Filament Type</label>
+              <select
+                value={selectedFilament}
+                onChange={(e) => setSelectedFilament(e.target.value)}
+                disabled={settingsDisabled}
+              >
+                {availableFilaments.map((f) => (
+                  <option key={f} value={f}>{FILAMENT_LABELS[f] ?? f.toUpperCase()}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">Nozzle Size</label>
+              <select
+                value={nozzleSize}
+                onChange={(e) => setNozzleSize(parseFloat(e.target.value))}
+                disabled={settingsDisabled}
+              >
+                {NOZZLE_SIZES.map((n) => (
+                  <option key={n.value} value={n.value}>{n.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">Nozzle Type</label>
+              <select
+                value={nozzleType}
+                onChange={(e) => setNozzleType(e.target.value)}
+                disabled={settingsDisabled}
+              >
+                {NOZZLE_TYPES.map((n) => (
+                  <option key={n.value} value={n.value}>{n.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">Filament Diameter</label>
+              <div className="w-full px-3 py-2 bg-surface-elevated border border-surface-border rounded-lg text-sm text-zinc-400 cursor-not-allowed">
+                1.75 mm
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">Build Plate</label>
+              <select
+                value={buildPlate}
+                onChange={(e) => setBuildPlate(e.target.value)}
+                disabled={settingsDisabled}
+              >
+                {BUILD_PLATES.map((b) => (
+                  <option key={b.value} value={b.value}>{b.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">Flush Volume (mm³)</label>
+              <input
+                type="number"
+                min={0}
+                max={50}
+                step={0.5}
+                value={flushVolume}
+                onChange={(e) => setFlushVolume(parseFloat(e.target.value) || 0)}
+                disabled={settingsDisabled}
+                className="w-full"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ── Upload zone ── */}
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          onClick={() => !isWorking && step !== "done" && fileInputRef.current?.click()}
+          className={`border-2 border-dashed rounded-xl p-10 text-center transition-all duration-150 mb-6
+            ${dragging ? "border-brand bg-brand/5" : "border-surface-border bg-surface-card"}
+            ${step === "idle" || step === "ready" ? "cursor-pointer hover:border-zinc-600" : ""}
+            ${isWorking ? "cursor-not-allowed opacity-70" : ""}
+            ${step === "done" ? "border-green-700/50 bg-green-950/10 cursor-default" : ""}
+          `}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".3mf"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+          />
+
+          {step === "idle" && (
+            <>
+              <div className="w-12 h-12 rounded-full bg-surface-elevated border border-surface-border flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+                </svg>
+              </div>
+              <p className="text-white font-medium mb-1">Drop your .3mf file here</p>
+              <p className="text-zinc-500 text-sm">or click to browse</p>
+            </>
+          )}
+
+          {(step === "uploading" || step === "analyzing") && (
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin"/>
+              <p className="text-white text-sm font-medium">
+                {step === "uploading" ? "Uploading…" : "Analysing geometry…"}
+              </p>
+              <p className="text-zinc-500 text-xs">{uploadedFile?.name}</p>
+            </div>
+          )}
+
+          {(step === "ready" || step === "converting") && (
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-brand/10 border border-brand/30 flex items-center justify-center">
+                <svg className="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                </svg>
+              </div>
+              <p className="text-white text-sm font-medium">{uploadedFile?.name}</p>
+              <button
+                onClick={(e) => { e.stopPropagation(); reset(); }}
+                className="text-xs text-zinc-500 hover:text-brand transition-colors mt-1"
+              >
+                Upload different file
+              </button>
+            </div>
+          )}
+
+          {step === "done" && (
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center">
+                <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                </svg>
+              </div>
+              <p className="text-green-400 text-sm font-medium">Conversion complete</p>
+            </div>
+          )}
+        </div>
+
+        {/* 3D Model Viewer */}
+        {jobId && (step === "ready" || step === "converting" || step === "done") && (
+          <div className="mb-6">
+            <ModelViewer jobId={jobId} />
+          </div>
+        )}
+
+        {/* Analysis results */}
+        {analysis && (
+          <div className="bg-surface-card border border-surface-border rounded-xl p-6 mb-6">
+            <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide mb-4">
+              Model Analysis
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-5">
+              <Stat label="Size X" value={`${analysis.geometry.bounding_box.x_mm} mm`} />
+              <Stat label="Size Y" value={`${analysis.geometry.bounding_box.y_mm} mm`} />
+              <Stat label="Size Z" value={`${analysis.geometry.bounding_box.z_mm} mm`} />
+              <Stat label="Volume" value={`${analysis.geometry.bounding_box.volume_cm3} cm³`} />
+              <Stat label="Parts" value={String(analysis.geometry.part_count)} />
+              <Stat label="Watertight" value={analysis.geometry.mesh_is_watertight ? "Yes" : "No"} />
+            </div>
+
+            <div className="border-t border-surface-border pt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <Badge
+                label="Difficulty"
+                value={analysis.intent.difficulty}
+                className={difficultyColor[analysis.intent.difficulty] ?? "text-zinc-400"}
+              />
+              <Badge label="Size" value={analysis.intent.size_class} />
+              <Badge
+                label="Supports"
+                value={analysis.intent.needs_supports ? `Yes (${analysis.intent.support_density_hint})` : "No"}
+                className={analysis.intent.needs_supports ? "text-yellow-400" : "text-green-400"}
+              />
+              <Badge
+                label="Overhangs"
+                value={analysis.geometry.overhang.has_overhangs
+                  ? `${analysis.geometry.overhang.max_angle_deg}°`
+                  : "None"}
+                className={analysis.geometry.overhang.has_overhangs ? "text-yellow-400" : "text-zinc-400"}
+              />
+              <Badge
+                label="Bridges"
+                value={analysis.geometry.bridge.has_bridges
+                  ? `${analysis.geometry.bridge.max_span_mm} mm span`
+                  : "None"}
+                className={analysis.geometry.bridge.has_bridges ? "text-yellow-400" : "text-zinc-400"}
+              />
+              <Badge
+                label="Brim"
+                value={analysis.intent.needs_brim ? "Recommended" : "Not needed"}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        {step === "ready" && (
+          <button
+            onClick={handleConvert}
+            className="w-full py-3 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg
+                       transition-colors duration-150 text-sm flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            Generate Anycubic 3MF
+          </button>
+        )}
+
+        {step === "converting" && (
+          <button disabled className="w-full py-3 bg-brand/50 text-white font-semibold rounded-lg text-sm flex items-center justify-center gap-2">
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+            Generating…
+          </button>
+        )}
+
+        {step === "done" && downloadUrl && (
+          <div className="flex flex-col gap-3">
+            <a
+              href={downloadUrl}
+              download={downloadName}
+              className="w-full py-3 bg-green-700 hover:bg-green-600 text-white font-semibold rounded-lg
+                         transition-colors duration-150 text-sm flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4 4m0 0l4-4m-4 4V4"/>
+              </svg>
+              Download {downloadName}
+            </a>
+            <button
+              onClick={reset}
+              className="w-full py-3 bg-surface-card hover:bg-surface-elevated border border-surface-border
+                         text-white font-semibold rounded-lg transition-colors duration-150 text-sm
+                         flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 4v16m8-8H4"/>
+              </svg>
+              Convert New Project
+            </button>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-zinc-500 mb-0.5">{label}</p>
+      <p className="text-sm font-mono text-white">{value}</p>
+    </div>
+  );
+}
+
+function Badge({ label, value, className = "text-zinc-400" }: { label: string; value: string; className?: string }) {
+  return (
+    <div>
+      <p className="text-xs text-zinc-600 mb-0.5">{label}</p>
+      <p className={`text-xs font-medium ${className}`}>{value}</p>
+    </div>
+  );
+}

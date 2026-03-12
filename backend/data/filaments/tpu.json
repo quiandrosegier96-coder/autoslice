@@ -1,0 +1,11 @@
+{
+  "id": "tpu",
+  "display_name": "TPU",
+  "nozzle_temp_c": 230,
+  "bed_temp_c": 40,
+  "fan_speed_percent": 30,
+  "fan_first_layer": false,
+  "max_speed_multiplier": 0.2,
+  "forced_print_speed_mm_s": 30,
+  "forced_first_layer_speed_mm_s": 15
+}
