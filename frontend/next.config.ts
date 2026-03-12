@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
       // /api/convert is handled by the Next.js route handler (src/app/api/convert/route.ts)
       {
         source: "/api/:path((?!convert$).*)",
-        destination: "http://localhost:8000/api/:path*",
+        destination: `${process.env.BACKEND_URL ?? "http://localhost:8000"}/api/:path*`,
       },
     ];
   },

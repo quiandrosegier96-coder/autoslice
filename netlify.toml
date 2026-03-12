@@ -1,0 +1,10 @@
+[build]
+  base    = "frontend"
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  BACKEND_URL = "http://178.117.208.226:8000"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
