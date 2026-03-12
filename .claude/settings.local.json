@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find . -type d -not -path */node_modules/*)",
+      "Bash(wc -l /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/app/**/*.py)"
+    ]
+  }
+}
