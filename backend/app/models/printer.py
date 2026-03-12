@@ -22,3 +22,4 @@ class PrinterProfile:
     max_speed_mm_s: int
     nozzle_diameter_mm: float
     supported_filaments: list[FilamentType] = field(default_factory=list)
+    max_colors: int = 1

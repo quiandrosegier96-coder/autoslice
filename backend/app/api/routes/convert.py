@@ -35,6 +35,9 @@ class ConvertRequest(BaseModel):
     filament_diameter_mm: float = 1.75
     build_plate: str = "smooth"
     flush_volume_mm3: float = 3.0
+    color_count: int = 1
+    filament_colors: list[str] = []
+    filament_types: list[str] = []
 
 
 @router.post("/convert")
@@ -88,6 +91,9 @@ async def convert(
     print_settings.filament_diameter_mm = req.filament_diameter_mm
     print_settings.build_plate = req.build_plate
     print_settings.flush_volume_mm3 = req.flush_volume_mm3
+    print_settings.color_count = min(req.color_count, printer.max_colors)
+    print_settings.filament_colors = req.filament_colors
+    print_settings.filament_types = req.filament_types
 
     # Adjust bed temperature based on build plate type
     if req.build_plate == "textured":

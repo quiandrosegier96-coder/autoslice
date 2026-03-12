@@ -3,7 +3,7 @@ AutoSlice — PrintSettings data model.
 The full set of slicer parameters produced by the Rules Engine.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -50,3 +50,8 @@ class PrintSettings:
     filament_diameter_mm: float = 1.75
     build_plate: str = "smooth"
     flush_volume_mm3: float = 3.0
+
+    # --- Multi-color (ACE Pro / ACE Pro 2) ---
+    color_count: int = 1
+    filament_colors: list = field(default_factory=list)   # hex e.g. ["#FF0000", "#00FF00"]
+    filament_types: list = field(default_factory=list)    # per-slot e.g. ["pla", "pla"]

@@ -10,6 +10,19 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+async function parseResponse<T>(res: Response): Promise<T> {
+  const contentType = res.headers.get("content-type") ?? "";
+  const isJson = contentType.includes("application/json");
+  if (!res.ok) {
+    if (isJson) {
+      const data = await res.json();
+      throw new Error(data.detail || `Request failed (${res.status})`);
+    }
+    throw new Error(`Request failed (${res.status})`);
+  }
+  return res.json() as Promise<T>;
+}
+
 export async function apiPost<T>(path: string, body: unknown, auth = false): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
@@ -19,18 +32,14 @@ export async function apiPost<T>(path: string, body: unknown, auth = false): Pro
     },
     body: JSON.stringify(body),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || "Request failed");
-  return data as T;
+  return parseResponse<T>(res);
 }
 
 export async function apiGet<T>(path: string, auth = false): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: auth ? authHeaders() : {},
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || "Request failed");
-  return data as T;
+  return parseResponse<T>(res);
 }
 
 export async function apiUpload(file: File): Promise<{ job_id: string; filename: string; has_model_file: boolean; archive_file_count: number }> {
@@ -41,9 +50,15 @@ export async function apiUpload(file: File): Promise<{ job_id: string; filename:
     headers: authHeaders(),
     body: form,
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.detail || "Upload failed");
-  return data;
+  if (!res.ok) {
+    const contentType = res.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      const data = await res.json();
+      throw new Error(data.detail || `Upload failed (${res.status})`);
+    }
+    throw new Error(`Upload failed (${res.status})`);
+  }
+  return res.json();
 }
 
 export async function apiAnalyze(jobId: string) {
@@ -59,6 +74,9 @@ export async function apiConvertDownload(
   filamentDiameterMm: number,
   buildPlate: string,
   flushVolume: number,
+  colorCount = 1,
+  filamentColors: string[] = [],
+  filamentTypes: string[] = [],
 ): Promise<Blob> {
   const res = await fetch(`${BASE}/convert`, {
     method: "POST",
@@ -75,15 +93,18 @@ export async function apiConvertDownload(
       filament_diameter_mm: filamentDiameterMm,
       build_plate: buildPlate,
       flush_volume_mm3: flushVolume,
+      color_count: colorCount,
+      filament_colors: filamentColors,
+      filament_types: filamentTypes,
     }),
   });
   if (!res.ok) {
-    try {
+    const contentType = res.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
       const data = await res.json();
       throw new Error(data.detail || `Conversion failed (${res.status})`);
-    } catch {
-      throw new Error(`Conversion failed (${res.status})`);
     }
+    throw new Error(`Conversion failed (${res.status})`);
   }
   return res.blob();
 }

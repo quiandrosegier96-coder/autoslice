@@ -21,4 +21,5 @@ def load_printer_profile(printer_id: str) -> PrinterProfile:
         max_speed_mm_s=data["max_speed_mm_s"],
         nozzle_diameter_mm=data["nozzle_diameter_mm"],
         supported_filaments=[FilamentType(f) for f in data["supported_filaments"]],
+        max_colors=data.get("max_colors", 1),
     )

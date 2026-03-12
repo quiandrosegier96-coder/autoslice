@@ -2,7 +2,29 @@
   "permissions": {
     "allow": [
       "Bash(find . -type d -not -path */node_modules/*)",
-      "Bash(wc -l /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/app/**/*.py)"
+      "Bash(wc -l /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/app/**/*.py)",
+      "Bash(npm install:*)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Read(//c/Users/QUANT/.nvm/**)",
+      "Bash(cmd.exe /c \"where python 2>nul & where node 2>nul & where npm 2>nul & where uvicorn 2>nul\")",
+      "Bash(cmd.exe /c \"python --version 2>&1 & node --version 2>&1 & py --version 2>&1\")",
+      "Bash(powershell.exe -Command \"python --version; node --version; npm --version\")",
+      "Bash(powershell.exe -Command \"winget --version\")",
+      "Bash(powershell.exe -Command \"winget install Python.Python.3.12 --silent --accept-package-agreements --accept-source-agreements\")",
+      "Bash(powershell.exe -Command \"winget install OpenJS.NodeJS.LTS --silent --accept-package-agreements --accept-source-agreements\")",
+      "Bash(powershell.exe -Command \"cd ''C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\backend''; python -m pip install -r requirements.txt 2>&1\")",
+      "Bash(powershell.exe -Command \"& ''C:\\\\Users\\\\QUANT\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python312\\\\python.exe'' -m pip install -r ''C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\backend\\\\requirements.txt'' 2>&1\")",
+      "Bash(powershell.exe -Command \"netstat -ano | findstr '':3000 :8000''\")",
+      "Bash(powershell.exe -Command \"& ''C:\\\\Program Files\\\\nodejs\\\\npm.cmd'' --prefix ''C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\frontend'' install 2>&1\")",
+      "Bash(powershell.exe -Command \"Start-Sleep 15; netstat -ano | findstr '':3000''\")",
+      "Bash(powershell.exe -Command \"Start-Sleep 20; netstat -ano | findstr '':3000''\")",
+      "Bash(powershell.exe -Command \"Start-Sleep 25; netstat -ano | findstr '':3000''\")",
+      "Bash(powershell.exe -Command \"Start-Process ''C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\start.bat''\")",
+      "Bash(powershell.exe -Command \"Start-Sleep 30; netstat -ano | findstr '':3000 :8000''\")",
+      "Bash(powershell.exe -Command \":*)",
+      "Bash(powershell.exe -Command \"Invoke-RestMethod -Uri ''https://api.ipify.org'' -ErrorAction SilentlyContinue\")",
+      "Bash(powershell.exe -Command \"Stop-Process -Name ''node'' -ErrorAction SilentlyContinue; Stop-Process -Name ''uvicorn'' -ErrorAction SilentlyContinue; Start-Sleep 1; Start-Process ''C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\start.bat''\")"
     ]
   }
 }

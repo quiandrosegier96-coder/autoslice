@@ -18,6 +18,7 @@ class PrinterOut(BaseModel):
     build_volume_y_mm: int
     build_volume_z_mm: int
     supported_filaments: list[str]
+    max_colors: int = 1
 
 
 @router.get("/printers", response_model=list[PrinterOut])
@@ -32,5 +33,6 @@ def list_printers() -> list[PrinterOut]:
             build_volume_y_mm=data["build_volume_y_mm"],
             build_volume_z_mm=data["build_volume_z_mm"],
             supported_filaments=data["supported_filaments"],
+            max_colors=data.get("max_colors", 1),
         ))
     return printers

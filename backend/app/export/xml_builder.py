@@ -184,6 +184,12 @@ def _make_machine_config(settings: PrintSettings, printer: PrinterProfile) -> di
     }
 
 
+_DEFAULT_COLORS = [
+    "#FF0000", "#00AA00", "#0000FF", "#FF8800",
+    "#AA00AA", "#00AAAA", "#FFFFFF", "#111111",
+]
+
+
 def build_settings_configs(
     settings: PrintSettings,
     printer: PrinterProfile,
@@ -193,26 +199,60 @@ def build_settings_configs(
     Returns a dict of {zip_path: json_string} for the config files that
     Anycubic Slicer Next (OrcaSlicer-based) needs to fully restore print settings.
 
-    Machine config is intentionally omitted: including an unknown printer_settings_id
-    causes a "wrong machine" popup. Without it, Anycubic Slicer uses whatever printer
-    the user currently has selected — no popup, process + filament settings still load.
+    For multi-color printers (ACE Pro / ACE Pro 2) a filament config is generated
+    for each active color slot.
     """
     process = _make_process_config(settings)
-    fil = _make_filament_config(settings, filament)
     machine = _make_machine_config(settings, printer)
 
-    # Merged flat object: machine → filament → process (process wins on conflict)
+    color_count = max(1, settings.color_count)
+    configs: dict[str, str] = {}
+
+    filament_configs = []
+    for slot in range(color_count):
+        slot_type_str = (
+            settings.filament_types[slot]
+            if settings.filament_types and slot < len(settings.filament_types)
+            else filament.value
+        )
+        try:
+            slot_filament = FilamentType(slot_type_str)
+        except ValueError:
+            slot_filament = filament
+
+        fil = _make_filament_config(settings, slot_filament)
+        color = (
+            settings.filament_colors[slot]
+            if settings.filament_colors and slot < len(settings.filament_colors)
+            else _DEFAULT_COLORS[slot % len(_DEFAULT_COLORS)]
+        )
+        fil["filament_colour"] = [color]
+        filament_configs.append(fil)
+        configs[f"Metadata/filament_settings_{slot + 1}.config"] = json.dumps(fil, indent=2)
+
     merged: dict = {}
     merged.update(machine)
-    merged.update(fil)
+    merged.update(filament_configs[0])
     merged.update(process)
+    if color_count > 1:
+        merged["filament_colour"] = [
+            (settings.filament_colors[i] if settings.filament_colors and i < len(settings.filament_colors)
+             else _DEFAULT_COLORS[i % len(_DEFAULT_COLORS)])
+            for i in range(color_count)
+        ]
+        merged["filament_type"] = [
+            _FILAMENT_TYPE_DISPLAY.get(
+                settings.filament_types[i] if settings.filament_types and i < len(settings.filament_types)
+                else filament.value,
+                filament.value.upper()
+            )
+            for i in range(color_count)
+        ]
 
-    return {
-        "Metadata/project_settings.config": json.dumps(merged, indent=2),
-        "Metadata/process_settings_1.config": json.dumps(process, indent=2),
-        "Metadata/filament_settings_1.config": json.dumps(fil, indent=2),
-        "Metadata/machine_settings_1.config": json.dumps(machine, indent=2),
-    }
+    configs["Metadata/project_settings.config"] = json.dumps(merged, indent=2)
+    configs["Metadata/process_settings_1.config"] = json.dumps(process, indent=2)
+    configs["Metadata/machine_settings_1.config"] = json.dumps(machine, indent=2)
+    return configs
 
 
 # Keep old name as alias so nothing else breaks

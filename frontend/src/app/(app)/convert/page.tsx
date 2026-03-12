@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { isLoggedIn, getUser, clearAuth } from "@/lib/auth";
+import { isLoggedIn, getUser } from "@/lib/auth";
 import { apiUpload, apiAnalyze, apiConvertDownload, apiGet } from "@/lib/api";
+import { Navbar } from "@/components/Navbar";
 
 const ModelViewer = dynamic(
   () => import("@/components/ModelViewer").then((m) => m.ModelViewer),
@@ -40,7 +40,7 @@ type AnalysisResult = {
   };
 };
 
-type Printer = { id: string; display_name: string; supported_filaments: string[] };
+type Printer = { id: string; display_name: string; supported_filaments: string[]; max_colors: number };
 
 const FILAMENT_LABELS: Record<string, string> = { pla: "PLA", petg: "PETG", tpu: "TPU" };
 
@@ -85,6 +85,10 @@ export default function ConvertPage() {
   const [nozzleType, setNozzleType] = useState("brass");
   const [buildPlate, setBuildPlate] = useState("smooth");
   const [flushVolume, setFlushVolume] = useState(3.0);
+  const [maxColors, setMaxColors] = useState(1);
+  const [colorCount, setColorCount] = useState(1);
+  const [slotColors, setSlotColors] = useState<string[]>(["#FF0000", "#00AA00", "#0000FF", "#FF8800", "#AA00AA", "#00AAAA", "#FFFFFF", "#111111"]);
+  const [slotFilaments, setSlotFilaments] = useState<string[]>(Array(8).fill("pla"));
 
   const [dragging, setDragging] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -105,6 +109,7 @@ export default function ConvertPage() {
         setSelectedPrinter(ps[0].id);
         setAvailableFilaments(ps[0].supported_filaments);
         setSelectedFilament(ps[0].supported_filaments[0] ?? "pla");
+        setMaxColors(ps[0].max_colors ?? 1);
       }
     });
   }, [router]);
@@ -115,6 +120,8 @@ export default function ConvertPage() {
     if (p) {
       setAvailableFilaments(p.supported_filaments);
       setSelectedFilament(p.supported_filaments[0] ?? "pla");
+      setMaxColors(p.max_colors ?? 1);
+      setColorCount(1);
     }
   }
 
@@ -150,7 +157,12 @@ export default function ConvertPage() {
     setStep("converting");
     setError("");
     try {
-      const blob = await apiConvertDownload(jobId, selectedPrinter, selectedFilament, nozzleSize, nozzleType, 1.75, buildPlate, flushVolume);
+      const blob = await apiConvertDownload(
+        jobId, selectedPrinter, selectedFilament, nozzleSize, nozzleType, 1.75, buildPlate, flushVolume,
+        colorCount,
+        slotColors.slice(0, colorCount),
+        slotFilaments.slice(0, colorCount),
+      );
       const url = URL.createObjectURL(blob);
       const name = `autoslice_${selectedPrinter}_${selectedFilament}.3mf`;
       setDownloadUrl(url);
@@ -181,36 +193,7 @@ export default function ConvertPage() {
 
   return (
     <div className="min-h-screen bg-surface">
-      {/* Navbar */}
-      <nav className="border-b border-surface-border bg-surface-elevated px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-brand rounded-sm flex items-center justify-center">
-            <svg viewBox="0 0 24 24" fill="white" className="w-4 h-4">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-          </div>
-          <span className="font-bold text-white tracking-tight">
-            Auto<span className="text-brand">Slice</span>
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-zinc-500 text-sm hidden sm:block">{user?.username}</span>
-          <Link href="/history" className="text-xs text-zinc-500 hover:text-brand transition-colors">
-            History
-          </Link>
-          {user?.is_admin && (
-            <Link href="/admin" className="text-xs text-brand hover:text-brand-light transition-colors font-medium">
-              Admin
-            </Link>
-          )}
-          <button
-            onClick={() => { clearAuth(); router.push("/login"); }}
-            className="text-xs text-zinc-500 hover:text-brand transition-colors"
-          >
-            Sign out
-          </button>
-        </div>
-      </nav>
+      <Navbar showAdmin={user?.is_admin} />
 
       <main className="max-w-3xl mx-auto px-4 py-10">
         <div className="mb-8">
@@ -318,6 +301,82 @@ export default function ConvertPage() {
             </div>
           </div>
         </div>
+
+        {/* ── Multi-color panel (ACE Pro / ACE Pro 2 only) ── */}
+        {maxColors > 1 && (
+          <div className="bg-surface-card border border-surface-border rounded-xl p-5 mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-5 h-5 rounded-sm bg-brand/20 flex items-center justify-center">
+                <svg className="w-3 h-3 text-brand" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="6" cy="6" r="4"/><circle cx="18" cy="6" r="4"/><circle cx="6" cy="18" r="4"/><circle cx="18" cy="18" r="4"/>
+                </svg>
+              </div>
+              <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
+                Multi-Color — ACE Pro ({maxColors} slots)
+              </h2>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
+                Active Colors
+              </label>
+              <div className="flex gap-2">
+                {Array.from({ length: maxColors }, (_, i) => i + 1).map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => setColorCount(n)}
+                    disabled={settingsDisabled}
+                    className={`w-8 h-8 rounded-lg text-sm font-bold transition-colors border ${
+                      colorCount === n
+                        ? "bg-brand border-brand text-white"
+                        : "bg-surface-elevated border-surface-border text-zinc-400 hover:border-zinc-500"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {Array.from({ length: colorCount }, (_, i) => (
+                <div key={i} className={`rounded-lg border p-3 transition-opacity ${i < colorCount ? "" : "opacity-30"}`}
+                  style={{ borderColor: slotColors[i] + "66", backgroundColor: slotColors[i] + "11" }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-4 h-4 rounded-full border border-white/20 shrink-0"
+                      style={{ backgroundColor: slotColors[i] }} />
+                    <span className="text-xs font-medium text-zinc-400">Slot {i + 1}</span>
+                  </div>
+                  <input
+                    type="color"
+                    value={slotColors[i]}
+                    onChange={(e) => {
+                      const next = [...slotColors];
+                      next[i] = e.target.value;
+                      setSlotColors(next);
+                    }}
+                    disabled={settingsDisabled}
+                    className="w-full h-7 rounded cursor-pointer border-0 bg-transparent mb-2"
+                  />
+                  <select
+                    value={slotFilaments[i]}
+                    onChange={(e) => {
+                      const next = [...slotFilaments];
+                      next[i] = e.target.value;
+                      setSlotFilaments(next);
+                    }}
+                    disabled={settingsDisabled}
+                    className="text-xs py-1"
+                  >
+                    {availableFilaments.map((f) => (
+                      <option key={f} value={f}>{FILAMENT_LABELS[f] ?? f.toUpperCase()}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Upload zone ── */}
         <div
