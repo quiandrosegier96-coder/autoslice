@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { isLoggedIn, getUser } from "@/lib/auth";
+import { isLoggedIn, getUser, isAdmin } from "@/lib/auth";
 import { apiUpload, apiAnalyze, apiConvertDownload, apiGet, apiPost } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
 
@@ -221,7 +221,7 @@ export default function ConvertPage() {
 
   return (
     <div className="min-h-screen bg-surface">
-      <Navbar showAdmin={user?.is_admin} />
+      <Navbar showAdmin={isAdmin()} />
 
       <main className="max-w-3xl mx-auto px-4 py-10">
         <div className="mb-8">

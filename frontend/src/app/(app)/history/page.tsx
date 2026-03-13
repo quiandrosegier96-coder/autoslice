@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { isLoggedIn, getUser } from "@/lib/auth";
+import { isLoggedIn, getUser, isAdmin } from "@/lib/auth";
 import { apiGet } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
 
@@ -71,7 +71,7 @@ export default function HistoryPage() {
 
   return (
     <div className="min-h-screen bg-surface">
-      <Navbar showAdmin={user?.is_admin} />
+      <Navbar showAdmin={isAdmin()} />
 
       <main className="max-w-3xl mx-auto px-4 py-10">
         <div className="mb-8">
