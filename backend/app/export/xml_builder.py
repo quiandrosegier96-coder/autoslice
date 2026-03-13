@@ -100,7 +100,16 @@ def _make_process_config(settings: PrintSettings) -> dict:
     support_enabled = "1" if settings.supports_enabled else "0"
     support_type = "tree(auto)" if settings.support_type == "tree" else "normal"
     brim_type = "outer_brim" if settings.brim_enabled else "no_brim"
-    travel_speed = str(min(settings.print_speed_mm_s * 2, 500))
+    spd = settings.print_speed_mm_s
+    travel_speed = str(min(spd * 2, 500))
+    # Differentiated speeds: outer wall is quality-critical (slowest),
+    # infill is hidden (fastest), top surface is most visible (very slow)
+    outer_wall_speed  = str(max(20, int(spd * 0.50)))   # 50% — quality first
+    inner_wall_speed  = str(max(25, int(spd * 0.80)))   # 80%
+    infill_speed      = str(spd)                         # 100% — hidden, go fast
+    solid_infill_speed= str(max(30, int(spd * 0.80)))   # 80% — top/bottom layers
+    top_surface_speed = str(max(20, int(spd * 0.40)))   # 40% — most visible surface
+    support_speed     = str(max(30, int(spd * 0.60)))   # 60% — support stability
     return {
         "from": "project",
         "inherits": "",
@@ -118,11 +127,12 @@ def _make_process_config(settings: PrintSettings) -> dict:
         "brim_type": brim_type,
         "brim_width": str(settings.brim_width_mm if settings.brim_enabled else 0),
         "skirt_loops": str(settings.skirt_loops),
-        "outer_wall_speed": str(settings.print_speed_mm_s),
-        "inner_wall_speed": str(settings.print_speed_mm_s),
-        "sparse_infill_speed": str(settings.print_speed_mm_s),
-        "internal_solid_infill_speed": str(settings.print_speed_mm_s),
-        "top_surface_speed": str(max(30, settings.print_speed_mm_s // 2)),
+        "outer_wall_speed": outer_wall_speed,
+        "inner_wall_speed": inner_wall_speed,
+        "sparse_infill_speed": infill_speed,
+        "internal_solid_infill_speed": solid_infill_speed,
+        "top_surface_speed": top_surface_speed,
+        "support_speed": support_speed,
         "initial_layer_speed": str(settings.first_layer_speed_mm_s),
         "initial_layer_infill_speed": str(settings.first_layer_speed_mm_s),
         "travel_speed": travel_speed,
@@ -144,6 +154,11 @@ def _make_process_config(settings: PrintSettings) -> dict:
         "top_surface_pattern": settings.top_surface_pattern,
         # Seam
         "seam_position": settings.seam_position,
+        # Retraction
+        "retraction_length": [str(settings.retract_length_mm)],
+        "retraction_speed": [str(settings.retract_speed_mm_s)],
+        "z_hop": [str(settings.z_hop_mm)],
+        "z_hop_types": ["normal"],
     }
 
 

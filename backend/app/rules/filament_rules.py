@@ -11,19 +11,23 @@ _FILAMENT_OVERRIDES: dict[FilamentType, dict] = {
         "nozzle_temp_c": 220,
         "bed_temp_c": 60,
         "fan_first_layer": False,
-        # PLA wants max fan — raise floor to 100%
         "_fan_min": 100,
+        # PLA direct drive: short fast retract, small z-hop
+        "retract_length_mm": 0.8,
+        "retract_speed_mm_s": 45,
+        "z_hop_mm": 0.2,
     },
     FilamentType.PETG: {
         "nozzle_temp_c": 240,
         "bed_temp_c": 80,
         "fan_first_layer": False,
-        # PETG max safe fan is 50%; geometry rules may push higher for bridges,
-        # but we cap it at 70% to avoid warping (bridges still get more than base)
         "_fan_min": 30,
         "_fan_max": 70,
-        # PETG warps — always use brim
         "_force_brim": True,
+        # PETG is stringy — slightly longer retract, slower to avoid blobs
+        "retract_length_mm": 1.2,
+        "retract_speed_mm_s": 35,
+        "z_hop_mm": 0.2,
     },
     FilamentType.TPU: {
         "nozzle_temp_c": 230,
@@ -31,10 +35,14 @@ _FILAMENT_OVERRIDES: dict[FilamentType, dict] = {
         "fan_first_layer": False,
         "_fan_min": 20,
         "_fan_max": 40,
-        # TPU is flexible — supports usually cause more harm than good
         "_suppress_supports": True,
         "print_speed_mm_s": 30,
         "first_layer_speed_mm_s": 15,
+        # TPU: minimal retract (flexible filament can't be yanked back),
+        # no z-hop (Z movement can cause blobs with TPU)
+        "retract_length_mm": 0.5,
+        "retract_speed_mm_s": 20,
+        "z_hop_mm": 0.0,
     },
 }
 

@@ -40,6 +40,11 @@ class PrintSettings:
     print_speed_mm_s: int
     first_layer_speed_mm_s: int
 
+    # --- Retraction ---
+    retract_length_mm: float = 0.8    # direct drive default
+    retract_speed_mm_s: int = 45
+    z_hop_mm: float = 0.2
+
     # --- Cooling ---
     fan_speed_percent: int
     fan_first_layer: bool
