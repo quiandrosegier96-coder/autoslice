@@ -20,7 +20,6 @@ from app.geometry.analyzer import analyze as run_geometry
 from app.normalization.intent import normalize
 from app.rules.engine import generate_settings
 from app.rules.printer_loader import load_printer_profile
-from app.rules.nozzle_profiles import apply_nozzle_profile
 from app.export.anycubic_exporter import export as do_export
 from app.models.printer import FilamentType
 
@@ -84,8 +83,7 @@ async def convert(
     printer.nozzle_diameter_mm = req.nozzle_size_mm
 
     intent = normalize(geometry)
-    print_settings = generate_settings(intent, printer, req.filament_type)
-    print_settings = apply_nozzle_profile(print_settings, req.nozzle_size_mm)
+    print_settings = generate_settings(intent, printer, req.filament_type, req.nozzle_size_mm)
 
     # Store hardware selections in settings for export
     print_settings.nozzle_size_mm = req.nozzle_size_mm

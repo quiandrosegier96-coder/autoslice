@@ -99,4 +99,32 @@ def apply_geometry_rules(settings: PrintSettings, intent: ModelIntent) -> PrintS
         settings.wall_count = max(settings.wall_count, 4)
         settings.layer_height_mm = min(settings.layer_height_mm, 0.15)
 
+    # ------------------------------------------------------------------ #
+    # INFILL PATTERN
+    # Priority: structural > organic/detail > default
+    # ------------------------------------------------------------------ #
+    settings.infill_pattern = _select_infill_pattern(intent)
+
     return settings
+
+
+def _select_infill_pattern(intent: ModelIntent) -> str:
+    geo = intent.raw_geometry
+
+    # Structural / load-bearing → cubic (strongest in all 3 axes)
+    if intent.stability_risk >= 50 or intent.is_structurally_risky:
+        return "cubic"
+
+    # Organic / fine detail with overhangs → gyroid (isotropic, smooth finish)
+    if intent.detail_risk >= 30 and geo.overhang.overhang_area_ratio > 0.05:
+        return "gyroid"
+
+    # Thin-walled models → gyroid (distributes stress evenly, reduces print artifacts)
+    if geo.thin_wall.has_thin_walls and intent.detail_risk >= 15:
+        return "gyroid"
+
+    # Moderate structural concern → grid (predictable strength, fast)
+    if intent.stability_risk >= 25 or intent.difficulty == "moderate":
+        return "grid"
+
+    return "grid"
