@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/api";
 import { saveAuth } from "@/lib/auth";
+
+const NOTICE_KEY = "autoslice_reset_notice_dismissed";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,6 +14,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showNotice, setShowNotice] = useState(false);
+
+  useEffect(() => {
+    if (!localStorage.getItem(NOTICE_KEY)) setShowNotice(true);
+  }, []);
+
+  function dismissNotice() {
+    localStorage.setItem(NOTICE_KEY, "1");
+    setShowNotice(false);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -33,6 +45,38 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center px-4">
+
+      {/* Reset notice modal */}
+      {showNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-surface-card border border-surface-border rounded-xl p-7 shadow-xl">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-8 h-8 rounded-full bg-brand/15 border border-brand/30 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z"/>
+                </svg>
+              </div>
+              <h2 className="text-base font-semibold text-white">Mededeling</h2>
+            </div>
+            <p className="text-sm text-zinc-300 leading-relaxed mb-1">Beste gebruiker,</p>
+            <p className="text-sm text-zinc-400 leading-relaxed mb-5">
+              Na een volledige reset van de app die nodig was om een beter eindresultaat te verkrijgen,
+              is het nodig om jullie opnieuw te registreren.
+              <br /><br />
+              Onze excuses voor dit ongemak.
+            </p>
+            <p className="text-xs text-zinc-500 mb-5 font-medium">— Team AutoSlice</p>
+            <button
+              onClick={dismissNotice}
+              className="w-full py-2.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg
+                         transition-colors duration-150 text-sm"
+            >
+              Begrepen
+            </button>
+          </div>
+        </div>
+      )}
       {/* Logo */}
       <div className="mb-8 text-center">
         <div className="flex items-center justify-center gap-2 mb-2">
