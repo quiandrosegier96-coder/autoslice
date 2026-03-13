@@ -90,6 +90,7 @@ export default function ConvertPage() {
   const [buildPlate, setBuildPlate] = useState("smooth");
   const [flushVolume, setFlushVolume] = useState(3.0);
   const [multiColorMode, setMultiColorMode] = useState<"none" | "ace_pro" | "ace_pro2">("none");
+  const [dualUnit, setDualUnit] = useState(false);
   const [colorCount, setColorCount] = useState(1);
   const [slotColors, setSlotColors] = useState<string[]>(["#FF0000", "#00AA00", "#0000FF", "#FF8800", "#AA00AA", "#00AAAA", "#FFFFFF", "#111111"]);
   const [slotFilaments, setSlotFilaments] = useState<string[]>(Array(8).fill("pla"));
@@ -130,9 +131,13 @@ export default function ConvertPage() {
 
   function handleMultiColorMode(mode: "none" | "ace_pro" | "ace_pro2") {
     setMultiColorMode(mode);
-    if (mode === "none") setColorCount(1);
-    else if (mode === "ace_pro") setColorCount(4);
-    else setColorCount(4);
+    if (mode === "none") { setColorCount(1); setDualUnit(false); }
+    else setColorCount(dualUnit ? 8 : 4);
+  }
+
+  function handleDualUnit(checked: boolean) {
+    setDualUnit(checked);
+    if (multiColorMode !== "none") setColorCount(checked ? 8 : 4);
   }
 
   async function handleFile(file: File) {
@@ -360,45 +365,47 @@ export default function ConvertPage() {
             ))}
           </div>
 
+          {/* Dual unit toggle */}
+          {multiColorMode !== "none" && (
+            <label className="flex items-center gap-2 mb-4 cursor-pointer w-fit select-none">
+              <input
+                type="checkbox"
+                checked={dualUnit}
+                onChange={(e) => handleDualUnit(e.target.checked)}
+                disabled={settingsDisabled}
+                className="w-3.5 h-3.5 accent-brand cursor-pointer"
+              />
+              <span className="text-xs text-zinc-500">
+                Add second {multiColorMode === "ace_pro" ? "ACE Pro" : "ACE Pro 2"}
+                <span className="ml-1.5 text-zinc-600">(8 slots)</span>
+              </span>
+            </label>
+          )}
+
           {/* Color slots */}
           {multiColorMode !== "none" ? (
+            {dualUnit && (
+              <p className="text-xs text-zinc-600 mb-1.5 -mt-1">Unit 1</p>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {Array.from({ length: colorCount }, (_, i) => (
-                <div key={i} className="rounded-lg border p-3"
-                  style={{ borderColor: slotColors[i] + "66", backgroundColor: slotColors[i] + "11" }}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-4 h-4 rounded-full border border-white/20 shrink-0"
-                      style={{ backgroundColor: slotColors[i] }} />
-                    <span className="text-xs font-medium text-zinc-400">Slot {i + 1}</span>
-                  </div>
-                  <input
-                    type="color"
-                    value={slotColors[i]}
-                    onChange={(e) => {
-                      const next = [...slotColors];
-                      next[i] = e.target.value;
-                      setSlotColors(next);
-                    }}
-                    disabled={settingsDisabled}
-                    className="w-full h-7 rounded cursor-pointer border-0 bg-transparent mb-2"
-                  />
-                  <select
-                    value={slotFilaments[i]}
-                    onChange={(e) => {
-                      const next = [...slotFilaments];
-                      next[i] = e.target.value;
-                      setSlotFilaments(next);
-                    }}
-                    disabled={settingsDisabled}
-                    className="text-xs py-1"
-                  >
-                    {availableFilaments.map((f) => (
-                      <option key={f} value={f}>{FILAMENT_LABELS[f] ?? f.toUpperCase()}</option>
-                    ))}
-                  </select>
-                </div>
+              {Array.from({ length: Math.min(colorCount, 4) }, (_, i) => (
+                <ColorSlot key={i} index={i} slotColors={slotColors} setSlotColors={setSlotColors}
+                  slotFilaments={slotFilaments} setSlotFilaments={setSlotFilaments}
+                  availableFilaments={availableFilaments} disabled={settingsDisabled} />
               ))}
             </div>
+            {dualUnit && colorCount === 8 && (
+              <>
+                <p className="text-xs text-zinc-600 mt-4 mb-1.5">Unit 2</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {Array.from({ length: 4 }, (_, i) => (
+                    <ColorSlot key={i + 4} index={i + 4} slotColors={slotColors} setSlotColors={setSlotColors}
+                      slotFilaments={slotFilaments} setSlotFilaments={setSlotFilaments}
+                      availableFilaments={availableFilaments} disabled={settingsDisabled} />
+                  ))}
+                </div>
+              </>
+            )}
           ) : (
             <p className="text-xs text-zinc-600 italic">
               Kies ACE Pro of ACE Pro 2 om multi-color printen in te schakelen.
@@ -643,6 +650,54 @@ function Badge({ label, value, className = "text-zinc-400" }: { label: string; v
     <div>
       <p className="text-xs text-zinc-600 mb-0.5">{label}</p>
       <p className={`text-xs font-medium ${className}`}>{value}</p>
+    </div>
+  );
+}
+
+function ColorSlot({
+  index, slotColors, setSlotColors, slotFilaments, setSlotFilaments, availableFilaments, disabled,
+}: {
+  index: number;
+  slotColors: string[];
+  setSlotColors: (v: string[]) => void;
+  slotFilaments: string[];
+  setSlotFilaments: (v: string[]) => void;
+  availableFilaments: string[];
+  disabled: boolean;
+}) {
+  return (
+    <div className="rounded-lg border p-3"
+      style={{ borderColor: slotColors[index] + "66", backgroundColor: slotColors[index] + "11" }}>
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-4 h-4 rounded-full border border-white/20 shrink-0"
+          style={{ backgroundColor: slotColors[index] }} />
+        <span className="text-xs font-medium text-zinc-400">Slot {index + 1}</span>
+      </div>
+      <input
+        type="color"
+        value={slotColors[index]}
+        onChange={(e) => {
+          const next = [...slotColors];
+          next[index] = e.target.value;
+          setSlotColors(next);
+        }}
+        disabled={disabled}
+        className="w-full h-7 rounded cursor-pointer border-0 bg-transparent mb-2"
+      />
+      <select
+        value={slotFilaments[index]}
+        onChange={(e) => {
+          const next = [...slotFilaments];
+          next[index] = e.target.value;
+          setSlotFilaments(next);
+        }}
+        disabled={disabled}
+        className="text-xs py-1"
+      >
+        {availableFilaments.map((f) => (
+          <option key={f} value={f}>{FILAMENT_LABELS[f] ?? f.toUpperCase()}</option>
+        ))}
+      </select>
     </div>
   );
 }
