@@ -1,0 +1,406 @@
+"""
+AutoSlice — Rule-based settings decision module.
+
+compute_settings_decisions(features, scores, base) → SettingsDecisions
+
+Pure functions. No side effects. No I/O.
+Takes geometry features + risk scores and returns structured per-domain
+decisions, each with an ordered list of reasons.
+
+Base values (layer height, speed, etc.) are passed in from the caller
+so this module works with any printer profile — it only applies geometry
+and risk-driven adjustments on top of whatever base was loaded.
+"""
+
+from typing import Literal
+
+from app.scoring.models import (
+    BrimDecision,
+    GeometryFeatures,
+    InfillDecision,
+    LayerDecision,
+    QualityDecision,
+    RiskScores,
+    SettingsDecisions,
+    SpeedDecision,
+    SupportDecision,
+    WallDecision,
+)
+
+
+def compute_settings_decisions(
+    features:              GeometryFeatures,
+    scores:                RiskScores,
+    base_speed_mm_s:       int   = 200,
+    base_layer_height_mm:  float = 0.2,
+    base_fan_percent:      int   = 100,
+    base_wall_count:       int   = 3,
+    base_infill_percent:   int   = 15,
+    base_top_layers:       int   = 5,
+    base_bottom_layers:    int   = 4,
+) -> SettingsDecisions:
+    return SettingsDecisions(
+        support = _decide_support(features, scores),
+        brim    = _decide_brim(features, scores),
+        layer   = _decide_layer(features, scores, base_layer_height_mm),
+        walls   = _decide_walls(features, scores, base_wall_count, base_top_layers, base_bottom_layers),
+        infill  = _decide_infill(features, scores, base_infill_percent),
+        speed   = _decide_speed(features, scores, base_speed_mm_s, base_fan_percent),
+        quality = _decide_quality(features, scores),
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Support
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _decide_support(f: GeometryFeatures, s: RiskScores) -> SupportDecision:
+    reasons: list[str] = []
+    ov = f.overhang
+
+    needs_supports = (
+        ov.overhang_area_ratio > 0.04 or
+        ov.max_angle_deg > 55 or
+        s.support.value >= 35
+    )
+
+    if not needs_supports:
+        return SupportDecision(
+            enabled=False, type="none",
+            density_percent=0, angle_threshold_deg=50,
+            interface_enabled=False, interface_layers=0,
+            top_z_distance_mm=0.2, xy_distance_mm=0.35,
+            reasons=["No significant overhangs — supports not needed"],
+        )
+
+    reasons.append(f"support_risk={s.support.value}")
+
+    # Support type: tree for organic overhangs, normal for mechanical
+    if s.support.value >= 60 or ov.overhang_area_ratio > 0.10:
+        stype: Literal["normal", "tree", "none"] = "tree"
+        reasons.append(
+            f"Tree supports: overhang_ratio={ov.overhang_area_ratio:.1%}"
+            f" or support_risk={s.support.value} >= 60"
+        )
+    else:
+        stype = "normal"
+        reasons.append("Normal supports: moderate overhang geometry")
+
+    # Density
+    if s.support.value >= 70:
+        density = 25
+        reasons.append("Heavy density 25%: support_risk >= 70")
+    elif s.support.value >= 35:
+        density = 15
+        reasons.append("Normal density 15%: support_risk >= 35")
+    else:
+        density = 10
+        reasons.append("Light density 10%: low support_risk")
+
+    # Angle threshold
+    if f.bridge.max_span_mm > 15:
+        angle = 40
+        reasons.append(f"Tighter angle 40°: bridge_span={f.bridge.max_span_mm:.1f}mm > 15mm")
+    else:
+        angle = 50
+
+    # Interface layers
+    iface_layers = 3 if s.support.value >= 50 else 2
+    reasons.append(f"Interface: {iface_layers} concentric layers for clean removal")
+
+    # Z gap: tighter for complex geometry (better surface), wider for trivial overhangs
+    if s.support.value >= 60:
+        top_z = 0.2
+        reasons.append("Z gap 0.2mm: high support_risk — tight for better surface quality")
+    elif s.support.value <= 20:
+        top_z = 0.25
+        reasons.append("Z gap 0.25mm: low support_risk — relaxed for easy removal")
+    else:
+        top_z = 0.2
+
+    return SupportDecision(
+        enabled=True, type=stype,
+        density_percent=density,
+        angle_threshold_deg=angle,
+        interface_enabled=True,
+        interface_layers=iface_layers,
+        top_z_distance_mm=top_z,
+        xy_distance_mm=0.35,
+        reasons=reasons,
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Brim
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _decide_brim(f: GeometryFeatures, s: RiskScores) -> BrimDecision:
+    reasons: list[str] = []
+    bb  = f.bounding_box
+    hbr = f.height_to_base_ratio
+
+    needs_brim = (
+        s.adhesion.value >= 25 or
+        (f.contact_area_mm2 > 0 and f.contact_area_mm2 < 200) or
+        hbr > 2.5 or
+        max(bb.x_mm, bb.y_mm) > 150
+    )
+
+    if not needs_brim:
+        return BrimDecision(
+            enabled=False, width_mm=0.0,
+            reasons=["Adhesion risk low — brim not needed"],
+        )
+
+    reasons.append(f"adhesion_risk={s.adhesion.value}")
+
+    if s.adhesion.value >= 50:
+        width = 8.0
+        reasons.append("Wide brim 8mm: adhesion_risk >= 50")
+    elif s.adhesion.value >= 25:
+        width = 5.0
+        reasons.append("Standard brim 5mm: adhesion_risk >= 25")
+    else:
+        width = 5.0
+        reasons.append("Minimum brim 5mm: geometry risk (small contact area or tall model)")
+
+    return BrimDecision(enabled=True, width_mm=width, reasons=reasons)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Layer height
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _decide_layer(
+    f: GeometryFeatures,
+    s: RiskScores,
+    base: float,
+) -> LayerDecision:
+    reasons: list[str] = []
+    height = base
+
+    if s.detail.value >= 60:
+        height = min(height, 0.12)
+        reasons.append(f"Fine layer 0.12mm: detail_risk={s.detail.value} >= 60")
+    elif s.detail.value >= 30:
+        height = min(height, 0.15)
+        reasons.append(f"Medium layer 0.15mm: detail_risk={s.detail.value} >= 30")
+
+    tw = f.thin_wall
+    if tw.has_thin_walls and tw.min_thickness_mm < 2.0:
+        height = min(height, 0.15)
+        reasons.append(
+            f"Layer cap 0.15mm: thin wall {tw.min_thickness_mm:.2f}mm < 2.0mm"
+        )
+
+    if not reasons:
+        reasons.append(f"Base layer height {base}mm — no adjustment needed")
+
+    return LayerDecision(height_mm=round(height, 3), reasons=reasons)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Walls
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _decide_walls(
+    f: GeometryFeatures,
+    s: RiskScores,
+    base_count:   int,
+    base_top:     int,
+    base_bottom:  int,
+) -> WallDecision:
+    reasons: list[str] = []
+    count   = base_count
+    top     = base_top
+    bottom  = base_bottom
+
+    if s.detail.value >= 60:
+        count = max(count, 5)
+        reasons.append(f"5 walls: detail_risk={s.detail.value} >= 60")
+    elif s.detail.value >= 30:
+        count = max(count, 4)
+        reasons.append(f"4 walls: detail_risk={s.detail.value} >= 30")
+
+    if s.stability.value >= 35:
+        count = max(count, 4)
+        reasons.append(f"4 walls: stability_risk={s.stability.value} >= 35")
+
+    if s.difficulty == "hard":
+        count   = max(count, 4)
+        top     = max(top, 6)
+        bottom  = max(bottom, 5)
+        reasons.append("Extra shells: hard difficulty (max risk score >= 60)")
+    elif s.difficulty == "moderate":
+        count = max(count, 3)
+        top   = max(top, 5)
+        reasons.append("Extra top layers: moderate difficulty (max risk score >= 35)")
+
+    if not reasons:
+        reasons.append(f"Base wall count {base_count} — no adjustment needed")
+
+    return WallDecision(
+        count=count, top_layers=top, bottom_layers=bottom, reasons=reasons,
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Infill
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _decide_infill(
+    f: GeometryFeatures,
+    s: RiskScores,
+    base: int,
+) -> InfillDecision:
+    reasons: list[str] = []
+    percent = base
+
+    if s.difficulty == "hard":
+        percent = max(percent, 25)
+        reasons.append(f"25% infill: hard difficulty (max risk={s.max_value})")
+    elif s.difficulty == "moderate":
+        percent = max(percent, 20)
+        reasons.append(f"20% infill: moderate difficulty (max risk={s.max_value})")
+
+    pattern, pat_reason = _select_infill_pattern(f, s)
+    reasons.append(pat_reason)
+
+    if not reasons:
+        reasons.append(f"Base infill {base}% — no adjustment needed")
+
+    return InfillDecision(percent=percent, pattern=pattern, reasons=reasons)
+
+
+def _select_infill_pattern(
+    f: GeometryFeatures,
+    s: RiskScores,
+) -> tuple[str, str]:
+    """Returns (pattern_name, reason_string)."""
+
+    if s.stability.value >= 50:
+        return (
+            "cubic",
+            f"Cubic: structural model — strongest in all 3 axes (stability_risk={s.stability.value})",
+        )
+
+    if s.detail.value >= 30 and f.overhang.overhang_area_ratio > 0.05:
+        return (
+            "gyroid",
+            f"Gyroid: organic/detailed geometry — isotropic, good surface finish "
+            f"(detail_risk={s.detail.value}, overhang_ratio={f.overhang.overhang_area_ratio:.1%})",
+        )
+
+    if f.thin_wall.has_thin_walls and s.detail.value >= 15:
+        return (
+            "gyroid",
+            f"Gyroid: thin-walled model — distributes stress evenly "
+            f"(detail_risk={s.detail.value})",
+        )
+
+    return (
+        "grid",
+        f"Grid: standard balanced choice (stability_risk={s.stability.value}, "
+        f"difficulty={s.difficulty!r})",
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Speed and cooling
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _decide_speed(
+    f:          GeometryFeatures,
+    s:          RiskScores,
+    base_speed: int,
+    base_fan:   int,
+) -> SpeedDecision:
+    reasons: list[str] = []
+    speed          = base_speed
+    fan            = base_fan
+    min_layer_time = 8
+
+    if s.stability.value >= 60:
+        speed = min(speed, 60)
+        reasons.append(f"Max 60mm/s: stability_risk={s.stability.value} >= 60")
+    elif s.stability.value >= 35:
+        speed = min(speed, 100)
+        reasons.append(f"Max 100mm/s: stability_risk={s.stability.value} >= 35")
+
+    if f.bridge.max_span_mm > 5:
+        fan = max(fan, 80)
+        reasons.append(f"Fan >= 80%: bridge_span={f.bridge.max_span_mm:.1f}mm > 5mm")
+
+    if f.bridge.max_span_mm > 15:
+        speed = min(speed, 80)
+        reasons.append(f"Max 80mm/s: bridge_span={f.bridge.max_span_mm:.1f}mm > 15mm")
+
+    if s.detail.value >= 50:
+        min_layer_time = max(min_layer_time, 15)
+        reasons.append(f"Min layer time 15s: detail_risk={s.detail.value} >= 50")
+    elif s.detail.value >= 30:
+        min_layer_time = max(min_layer_time, 12)
+        reasons.append(f"Min layer time 12s: detail_risk={s.detail.value} >= 30")
+
+    if not reasons:
+        reasons.append("Base speed — no geometry risk adjustments")
+
+    return SpeedDecision(
+        print_mm_s=speed,
+        fan_percent=fan,
+        min_layer_time_s=min_layer_time,
+        reasons=reasons,
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Quality: ironing, top surface, seam
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _decide_quality(f: GeometryFeatures, s: RiskScores) -> QualityDecision:
+    reasons: list[str] = []
+
+    # Ironing — only useful on flat-top visual models
+    ironing = False
+    if s.detail.value >= 40 and not f.overhang.has_overhangs:
+        ironing = True
+        reasons.append(
+            f"Ironing on: detail_risk={s.detail.value} >= 40, no overhangs (flat-top model)"
+        )
+    elif s.detail.value >= 25 and f.thin_wall.has_thin_walls:
+        ironing = True
+        reasons.append(f"Ironing on: fine detail + thin walls (detail_risk={s.detail.value})")
+
+    # Top surface pattern
+    top_surface: Literal["monotonic", "concentric"]
+    if f.overhang.overhang_area_ratio > 0.10:
+        top_surface = "concentric"
+        reasons.append(
+            f"Concentric top: organic shape "
+            f"(overhang_ratio={f.overhang.overhang_area_ratio:.1%} > 10%)"
+        )
+    else:
+        top_surface = "monotonic"
+        reasons.append("Monotonic top: eliminates visible line seams (default for flat tops)")
+
+    # Seam
+    seam: Literal["aligned", "nearest"]
+    if s.detail.value >= 20 or f.thin_wall.has_thin_walls:
+        seam = "aligned"
+        reasons.append("Aligned seam: visual/detailed model — seam hidden at back")
+    elif s.stability.value >= 35:
+        seam = "nearest"
+        reasons.append(
+            f"Nearest seam: structural model — minimise travel "
+            f"(stability_risk={s.stability.value} >= 35)"
+        )
+    else:
+        seam = "aligned"
+        reasons.append("Aligned seam (default)")
+
+    return QualityDecision(
+        ironing_enabled=ironing,
+        top_surface_pattern=top_surface,
+        seam_position=seam,
+        reasons=reasons,
+    )
