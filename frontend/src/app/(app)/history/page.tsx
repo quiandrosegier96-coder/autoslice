@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { isLoggedIn, getUser, isAdmin } from "@/lib/auth";
+import { useLang } from "@/contexts/LangContext";
 import { apiGet } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
 
@@ -35,6 +36,7 @@ function ConvertIcon() {
 
 export default function HistoryPage() {
   const router = useRouter();
+  const { t } = useLang();
   const [user, setUser] = useState<{ username: string; email: string; is_admin: boolean } | null>(null);
   const [jobs, setJobs] = useState<HistoryJob[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,11 +61,11 @@ export default function HistoryPage() {
   function timeAgo(iso: string) {
     const diff = Date.now() - new Date(iso).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "just now";
-    if (mins < 60) return `${mins}m ago`;
+    if (mins < 1) return t("hist_ago_now");
+    if (mins < 60) return `${mins}${t("hist_ago_m")}`;
     const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    return `${Math.floor(hrs / 24)}d ago`;
+    if (hrs < 24) return `${hrs}${t("hist_ago_h")}`;
+    return `${Math.floor(hrs / 24)}${t("hist_ago_d")}`;
   }
 
   const uploads = jobs.filter(j => j.action === "upload");
@@ -75,7 +77,7 @@ export default function HistoryPage() {
 
       <main className="max-w-3xl mx-auto px-4 py-10">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white mb-1">History</h1>
+          <h1 className="text-2xl font-bold text-white mb-1">{t("hist_title")}</h1>
           <p className="text-zinc-500 text-sm">Your recent uploads and conversions.</p>
         </div>
 
@@ -130,7 +132,7 @@ export default function HistoryPage() {
             <div className="bg-surface-card border border-surface-border rounded-xl overflow-hidden">
               <div className="px-5 py-3 border-b border-surface-border flex items-center justify-between">
                 <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
-                  Activity — {jobs.length} {jobs.length === 1 ? "event" : "events"}
+                  {t("hist_activity")} — {jobs.length} {jobs.length === 1 ? t("hist_event") : t("hist_events")}
                 </span>
               </div>
               <div className="divide-y divide-surface-border">

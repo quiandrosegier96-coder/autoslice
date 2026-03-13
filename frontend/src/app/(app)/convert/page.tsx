@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { isLoggedIn, getUser, isAdmin } from "@/lib/auth";
+import { useLang } from "@/contexts/LangContext";
 import { apiUpload, apiAnalyze, apiConvertDownload, apiGet, apiPost } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
 
@@ -78,6 +79,7 @@ const difficultyColor: Record<string, string> = {
 
 export default function ConvertPage() {
   const router = useRouter();
+  const { t } = useLang();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [user, setUser] = useState<{ username: string; email: string; is_admin: boolean } | null>(null);
@@ -225,9 +227,9 @@ export default function ConvertPage() {
 
       <main className="max-w-3xl mx-auto px-4 py-10">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white mb-1">Convert 3MF File</h1>
+          <h1 className="text-2xl font-bold text-white mb-1">{t("conv_title")}</h1>
           <p className="text-zinc-500 text-sm">
-            Configure your printer settings, upload your file, then hit Generate.
+            {t("conv_subtitle")}
           </p>
         </div>
 
@@ -239,11 +241,11 @@ export default function ConvertPage() {
 
         {/* ── Settings panel (always visible) ── */}
         <div className="bg-surface-card border border-surface-border rounded-xl p-5 mb-6 space-y-4">
-          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Print Settings</h2>
+          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">{t("conv_settings")}</h2>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">Printer</label>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">{t("conv_printer")}</label>
               <select
                 value={selectedPrinter}
                 onChange={(e) => handlePrinterChange(e.target.value)}
@@ -255,7 +257,7 @@ export default function ConvertPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">Filament Type</label>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">{t("conv_filament")}</label>
               <select
                 value={selectedFilament}
                 onChange={(e) => setSelectedFilament(e.target.value)}
@@ -270,7 +272,7 @@ export default function ConvertPage() {
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">Nozzle Size</label>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">{t("conv_nozzle_size")}</label>
               <select
                 value={nozzleSize}
                 onChange={(e) => setNozzleSize(parseFloat(e.target.value))}
@@ -282,7 +284,7 @@ export default function ConvertPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">Nozzle Type</label>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">{t("conv_nozzle_type")}</label>
               <select
                 value={nozzleType}
                 onChange={(e) => setNozzleType(e.target.value)}
@@ -294,7 +296,7 @@ export default function ConvertPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">Filament Diameter</label>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">{t("conv_diameter")}</label>
               <div className="w-full px-3 py-2 bg-surface-elevated border border-surface-border rounded-lg text-sm text-zinc-400 cursor-not-allowed">
                 1.75 mm
               </div>
@@ -303,7 +305,7 @@ export default function ConvertPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">Build Plate</label>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">{t("conv_plate")}</label>
               <select
                 value={buildPlate}
                 onChange={(e) => setBuildPlate(e.target.value)}
@@ -315,7 +317,7 @@ export default function ConvertPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">Flush Volume (mm³)</label>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">{t("conv_flush")}</label>
               <input
                 type="number"
                 min={0}
@@ -339,15 +341,15 @@ export default function ConvertPage() {
                 <circle cx="6" cy="18" r="4"/><circle cx="18" cy="18" r="4"/>
               </svg>
             </div>
-            <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Multi-Color Setup</h2>
+            <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">{t("conv_multicolor")}</h2>
           </div>
 
           {/* Mode buttons */}
           <div className="flex gap-2 mb-5">
             {([
-              { id: "none",     label: "None",       sub: "Single color",  slots: 0 },
-              { id: "ace_pro",  label: "ACE Pro",    sub: "4 color slots", slots: 4 },
-              { id: "ace_pro2", label: "ACE Pro 2",  sub: "4 color slots", slots: 4 },
+              { id: "none",     label: t("conv_single"),  sub: t("conv_single_sub"), slots: 0 },
+              { id: "ace_pro",  label: "ACE Pro",         sub: t("conv_slots_sub"),  slots: 4 },
+              { id: "ace_pro2", label: "ACE Pro 2",       sub: t("conv_slots_sub"),  slots: 4 },
             ] as const).map(({ id, label, sub }) => (
               <button
                 key={id}
@@ -376,8 +378,8 @@ export default function ConvertPage() {
                 className="w-3.5 h-3.5 accent-brand cursor-pointer"
               />
               <span className="text-xs text-zinc-500">
-                Add second {multiColorMode === "ace_pro" ? "ACE Pro" : "ACE Pro 2"}
-                <span className="ml-1.5 text-zinc-600">(8 slots)</span>
+                {t("conv_add_second")} {multiColorMode === "ace_pro" ? "ACE Pro" : "ACE Pro 2"}
+                <span className="ml-1.5 text-zinc-600">{t("conv_8slots")}</span>
               </span>
             </label>
           )}
@@ -410,7 +412,7 @@ export default function ConvertPage() {
             </>
           ) : (
             <p className="text-xs text-zinc-600 italic">
-              Kies ACE Pro of ACE Pro 2 om multi-color printen in te schakelen.
+              {t("conv_multicolor_hint")}
             </p>
           )}
         </div>
@@ -444,7 +446,7 @@ export default function ConvertPage() {
                     d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
                 </svg>
               </div>
-              <p className="text-white font-medium mb-1">Drop your .3mf file here</p>
+              <p className="text-white font-medium mb-1">{t("conv_drop")}</p>
               <p className="text-zinc-500 text-sm">or click to browse</p>
             </>
           )}
@@ -453,7 +455,7 @@ export default function ConvertPage() {
             <div className="flex flex-col items-center gap-3">
               <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin"/>
               <p className="text-white text-sm font-medium">
-                {step === "uploading" ? "Uploading…" : "Analysing geometry…"}
+                {step === "uploading" ? t("conv_uploading") : t("conv_analyzing")}
               </p>
               <p className="text-zinc-500 text-xs">{uploadedFile?.name}</p>
             </div>
@@ -502,53 +504,53 @@ export default function ConvertPage() {
               Model Analysis
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-5">
-              <Stat label="Size X" value={`${analysis.geometry.bounding_box.x_mm} mm`} />
-              <Stat label="Size Y" value={`${analysis.geometry.bounding_box.y_mm} mm`} />
-              <Stat label="Size Z" value={`${analysis.geometry.bounding_box.z_mm} mm`} />
+              <Stat label={t("conv_size") + " X"} value={`${analysis.geometry.bounding_box.x_mm} mm`} />
+              <Stat label={t("conv_size") + " Y"} value={`${analysis.geometry.bounding_box.y_mm} mm`} />
+              <Stat label={t("conv_size") + " Z"} value={`${analysis.geometry.bounding_box.z_mm} mm`} />
               <Stat label="Volume" value={`${analysis.geometry.bounding_box.volume_cm3} cm³`} />
               <Stat label="Parts" value={String(analysis.geometry.part_count)} />
-              <Stat label="Watertight" value={analysis.geometry.mesh_is_watertight ? "Yes" : "No"} />
+              <Stat label={t("conv_watertight")} value={analysis.geometry.mesh_is_watertight ? t("conv_yes") : t("conv_no")} />
             </div>
 
             <div className="border-t border-surface-border pt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
               <Badge
-                label="Difficulty"
+                label={t("conv_difficulty")}
                 value={analysis.intent.difficulty}
                 className={difficultyColor[analysis.intent.difficulty] ?? "text-zinc-400"}
               />
-              <Badge label="Size" value={analysis.intent.size_class} />
+              <Badge label={t("conv_size")} value={analysis.intent.size_class} />
               <Badge
-                label="Supports"
-                value={analysis.intent.needs_supports ? `Yes (${analysis.intent.support_density_hint})` : "No"}
+                label={t("conv_supports")}
+                value={analysis.intent.needs_supports ? `Yes (${analysis.intent.support_density_hint})` : t("conv_no")}
                 className={analysis.intent.needs_supports ? "text-yellow-400" : "text-green-400"}
               />
               <Badge
-                label="Overhangs"
+                label={t("conv_overhangs")}
                 value={analysis.geometry.overhang.has_overhangs
                   ? `${analysis.geometry.overhang.max_angle_deg}°`
                   : "None"}
                 className={analysis.geometry.overhang.has_overhangs ? "text-yellow-400" : "text-zinc-400"}
               />
               <Badge
-                label="Bridges"
+                label={t("conv_bridges")}
                 value={analysis.geometry.bridge.has_bridges
                   ? `${analysis.geometry.bridge.max_span_mm} mm span`
                   : "None"}
                 className={analysis.geometry.bridge.has_bridges ? "text-yellow-400" : "text-zinc-400"}
               />
               <Badge
-                label="Brim"
-                value={analysis.intent.needs_brim ? "Recommended" : "Not needed"}
+                label={t("conv_brim")}
+                value={analysis.intent.needs_brim ? t("conv_brim_rec") : t("conv_brim_no")}
               />
             </div>
 
             {/* Risk score bars */}
             <div className="border-t border-surface-border pt-4 mt-4 space-y-2.5">
-              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">Risk Assessment</p>
-              <RiskBar label="Support risk"   value={analysis.intent.support_risk}   />
-              <RiskBar label="Adhesion risk"  value={analysis.intent.adhesion_risk}  />
-              <RiskBar label="Stability risk" value={analysis.intent.stability_risk} />
-              <RiskBar label="Detail risk"    value={analysis.intent.detail_risk}    />
+              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">{t("conv_risk")}</p>
+              <RiskBar label={t("conv_risk_support")}   value={analysis.intent.support_risk}   />
+              <RiskBar label={t("conv_risk_adhesion")}  value={analysis.intent.adhesion_risk}  />
+              <RiskBar label={t("conv_risk_stability")} value={analysis.intent.stability_risk} />
+              <RiskBar label={t("conv_risk_detail")}    value={analysis.intent.detail_risk}    />
             </div>
           </div>
         )}
@@ -611,12 +613,12 @@ export default function ConvertPage() {
                   <p className="text-xs text-zinc-500 mb-3 text-center">How did your print turn out?</p>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { outcome: "printed_ok",         label: "Printed well",      color: "text-green-400 border-green-500/30 hover:bg-green-500/10" },
-                      { outcome: "supports_unneeded",  label: "Supports excess",   color: "text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/10" },
-                      { outcome: "supports_missing",   label: "Supports missing",  color: "text-orange-400 border-orange-500/30 hover:bg-orange-500/10" },
-                      { outcome: "detached_from_bed",  label: "Detached",          color: "text-red-400 border-red-500/30 hover:bg-red-500/10" },
-                      { outcome: "weak_part",          label: "Too weak",          color: "text-orange-400 border-orange-500/30 hover:bg-orange-500/10" },
-                      { outcome: "details_lost",       label: "Details lost",      color: "text-blue-400 border-blue-500/30 hover:bg-blue-500/10" },
+                      { outcome: "printed_ok",         label: t("conv_fb_ok"),      color: "text-green-400 border-green-500/30 hover:bg-green-500/10" },
+                      { outcome: "supports_unneeded",  label: t("conv_fb_sup_excess"),   color: "text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/10" },
+                      { outcome: "supports_missing",   label: t("conv_fb_sup_miss"),  color: "text-orange-400 border-orange-500/30 hover:bg-orange-500/10" },
+                      { outcome: "detached_from_bed",  label: t("conv_fb_detach"),          color: "text-red-400 border-red-500/30 hover:bg-red-500/10" },
+                      { outcome: "weak_part",          label: t("conv_fb_weak"),          color: "text-orange-400 border-orange-500/30 hover:bg-orange-500/10" },
+                      { outcome: "details_lost",       label: t("conv_fb_detail"),      color: "text-blue-400 border-blue-500/30 hover:bg-blue-500/10" },
                     ].map(({ outcome, label, color }) => (
                       <button
                         key={outcome}
