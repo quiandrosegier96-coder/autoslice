@@ -384,28 +384,30 @@ export default function ConvertPage() {
 
           {/* Color slots */}
           {multiColorMode !== "none" ? (
-            {dualUnit && (
-              <p className="text-xs text-zinc-600 mb-1.5 -mt-1">Unit 1</p>
-            )}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {Array.from({ length: Math.min(colorCount, 4) }, (_, i) => (
-                <ColorSlot key={i} index={i} slotColors={slotColors} setSlotColors={setSlotColors}
-                  slotFilaments={slotFilaments} setSlotFilaments={setSlotFilaments}
-                  availableFilaments={availableFilaments} disabled={settingsDisabled} />
-              ))}
-            </div>
-            {dualUnit && colorCount === 8 && (
-              <>
-                <p className="text-xs text-zinc-600 mt-4 mb-1.5">Unit 2</p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {Array.from({ length: 4 }, (_, i) => (
-                    <ColorSlot key={i + 4} index={i + 4} slotColors={slotColors} setSlotColors={setSlotColors}
-                      slotFilaments={slotFilaments} setSlotFilaments={setSlotFilaments}
-                      availableFilaments={availableFilaments} disabled={settingsDisabled} />
-                  ))}
-                </div>
-              </>
-            )}
+            <>
+              {dualUnit && (
+                <p className="text-xs text-zinc-600 mb-1.5 -mt-1">Unit 1</p>
+              )}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {Array.from({ length: Math.min(colorCount, 4) }, (_, i) => (
+                  <ColorSlot key={i} index={i} slotColors={slotColors} setSlotColors={setSlotColors}
+                    slotFilaments={slotFilaments} setSlotFilaments={setSlotFilaments}
+                    availableFilaments={availableFilaments} disabled={settingsDisabled} />
+                ))}
+              </div>
+              {dualUnit && colorCount === 8 && (
+                <>
+                  <p className="text-xs text-zinc-600 mt-4 mb-1.5">Unit 2</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {Array.from({ length: 4 }, (_, i) => (
+                      <ColorSlot key={i + 4} index={i + 4} slotColors={slotColors} setSlotColors={setSlotColors}
+                        slotFilaments={slotFilaments} setSlotFilaments={setSlotFilaments}
+                        availableFilaments={availableFilaments} disabled={settingsDisabled} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
           ) : (
             <p className="text-xs text-zinc-600 italic">
               Kies ACE Pro of ACE Pro 2 om multi-color printen in te schakelen.
