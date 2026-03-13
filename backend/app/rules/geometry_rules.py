@@ -105,6 +105,47 @@ def apply_geometry_rules(settings: PrintSettings, intent: ModelIntent) -> PrintS
     # ------------------------------------------------------------------ #
     settings.infill_pattern = _select_infill_pattern(intent)
 
+    # ------------------------------------------------------------------ #
+    # SUPPORT INTERFACE — improves detachability and under-surface quality
+    # Enable whenever supports are on; use more layers for higher support_risk
+    # ------------------------------------------------------------------ #
+    if settings.supports_enabled:
+        settings.support_interface_enabled = True
+        settings.support_interface_layers = 3 if intent.support_risk >= 50 else 2
+        settings.support_interface_pattern = "concentric"
+
+    # ------------------------------------------------------------------ #
+    # IRONING — re-traces flat top layers for mirror-smooth finish
+    # Only worthwhile for high-detail models without heavy overhangs
+    # (overhang-heavy models rarely have flat tops worth ironing)
+    # ------------------------------------------------------------------ #
+    if intent.detail_risk >= 40 and not geo.overhang.has_overhangs:
+        settings.ironing_enabled = True
+    elif intent.has_fine_detail and intent.detail_risk >= 25:
+        settings.ironing_enabled = True
+
+    # ------------------------------------------------------------------ #
+    # TOP SURFACE PATTERN
+    # Monotonic is always better than default lines (no visible seams)
+    # Concentric for organic/round models
+    # ------------------------------------------------------------------ #
+    if geo.overhang.overhang_area_ratio > 0.10:
+        settings.top_surface_pattern = "concentric"
+    else:
+        settings.top_surface_pattern = "monotonic"
+
+    # ------------------------------------------------------------------ #
+    # SEAM POSITION
+    # Aligned: seam hidden at back — best for visual models
+    # Nearest: minimal travel — best for structural/speed
+    # ------------------------------------------------------------------ #
+    if intent.detail_risk >= 20 or intent.has_fine_detail:
+        settings.seam_position = "aligned"
+    elif intent.difficulty == "hard" and intent.stability_risk >= 35:
+        settings.seam_position = "nearest"
+    else:
+        settings.seam_position = "aligned"
+
     return settings
 
 

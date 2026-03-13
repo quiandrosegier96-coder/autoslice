@@ -44,6 +44,18 @@ class PrintSettings:
     fan_speed_percent: int
     fan_first_layer: bool
 
+    # --- Support interface ---
+    support_interface_enabled: bool = False
+    support_interface_layers: int = 2        # top + bottom interface layers
+    support_interface_pattern: str = "concentric"  # concentric | rectilinear
+
+    # --- Top surface quality ---
+    ironing_enabled: bool = False            # smooth flat tops by re-tracing
+    top_surface_pattern: str = "monotonic"  # monotonic | concentric | default
+
+    # --- Seam ---
+    seam_position: str = "aligned"          # aligned | rear | random | nearest
+
     # --- Hardware selection ---
     nozzle_size_mm: float = 0.4
     nozzle_type: str = "brass"

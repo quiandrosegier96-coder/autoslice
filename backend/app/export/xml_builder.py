@@ -133,6 +133,17 @@ def _make_process_config(settings: PrintSettings) -> dict:
         "infill_line_width": str(round(settings.nozzle_size_mm * 1.1, 3)),
         "top_surface_line_width": str(settings.nozzle_size_mm),
         "support_line_width": str(settings.nozzle_size_mm),
+        # Support interface
+        "support_interface_top_layers": str(settings.support_interface_layers) if settings.support_interface_enabled else "0",
+        "support_interface_bottom_layers": str(settings.support_interface_layers) if settings.support_interface_enabled else "0",
+        "support_interface_pattern": settings.support_interface_pattern if settings.support_interface_enabled else "concentric",
+        "support_bottom_interface_spacing": "0.2",
+        # Top surface quality
+        "ironing_type": "top_surface" if settings.ironing_enabled else "no_ironing",
+        "ironing_speed": str(max(15, settings.print_speed_mm_s // 5)),
+        "top_surface_pattern": settings.top_surface_pattern,
+        # Seam
+        "seam_position": settings.seam_position,
     }
 
 
