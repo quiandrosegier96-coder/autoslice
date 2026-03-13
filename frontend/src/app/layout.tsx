@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Footer } from "@/components/Footer";
+import { LangProvider } from "@/contexts/LangContext";
 
 export const metadata: Metadata = {
   title: "AutoSlice — 3MF Converter",
@@ -11,8 +12,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        {children}
-        <Footer />
+        <LangProvider>
+          {children}
+          <Footer />
+        </LangProvider>
       </body>
     </html>
   );

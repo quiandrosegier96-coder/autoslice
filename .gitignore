@@ -22,3 +22,5 @@ frontend/.next/
 .DS_Store
 Thumbs.db
 users 
+# Local Netlify folder
+.netlify

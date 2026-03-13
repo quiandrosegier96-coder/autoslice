@@ -5,11 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/api";
 import { saveAuth } from "@/lib/auth";
+import { useLang } from "@/contexts/LangContext";
+import { LANGS, type Lang } from "@/lib/i18n";
 
 const NOTICE_KEY = "autoslice_reset_notice_dismissed";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { lang, setLang, t } = useLang();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -67,17 +70,16 @@ export default function LoginPage() {
               Onze excuses voor dit ongemak.
             </p>
             <p className="text-xs text-zinc-500 mb-5 font-medium">— Team AutoSlice</p>
-            <button
-              onClick={dismissNotice}
+            <button onClick={dismissNotice}
               className="w-full py-2.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg
-                         transition-colors duration-150 text-sm"
-            >
+                         transition-colors duration-150 text-sm">
               Begrepen
             </button>
           </div>
         </div>
       )}
-      {/* Logo */}
+
+      {/* Logo + lang switcher */}
       <div className="mb-8 text-center">
         <div className="flex items-center justify-center gap-2 mb-2">
           <div className="w-8 h-8 bg-brand rounded-sm flex items-center justify-center">
@@ -89,12 +91,22 @@ export default function LoginPage() {
             Auto<span className="text-brand">Slice</span>
           </span>
         </div>
-        <p className="text-zinc-500 text-sm">Sign in to continue</p>
+        <p className="text-zinc-500 text-sm mb-3">{t("login_subtitle")}</p>
+        <div className="flex items-center justify-center gap-1">
+          {LANGS.map(({ code, label }) => (
+            <button key={code} onClick={() => setLang(code as Lang)}
+              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                lang === code ? "text-brand" : "text-zinc-600 hover:text-zinc-400"
+              }`}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Card */}
       <div className="w-full max-w-sm bg-surface-card border border-surface-border rounded-xl p-8">
-        <h1 className="text-xl font-semibold text-white mb-6">Welcome back</h1>
+        <h1 className="text-xl font-semibold text-white mb-6">{t("login_welcome")}</h1>
 
         {error && (
           <div className="mb-4 p-3 bg-brand/10 border border-brand/30 rounded-lg text-brand text-sm">
@@ -105,52 +117,35 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
-              Email
+              {t("login_email")}
             </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              autoComplete="email"
-            />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com" required autoComplete="email" />
           </div>
-
           <div>
             <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
-              Password
+              {t("login_password")}
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              autoComplete="current-password"
-            />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••" required autoComplete="current-password" />
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
+          <button type="submit" disabled={loading}
             className="w-full mt-2 py-2.5 px-4 bg-brand hover:bg-brand-dark disabled:opacity-50
                        disabled:cursor-not-allowed text-white font-semibold rounded-lg
-                       transition-colors duration-150 text-sm"
-          >
-            {loading ? "Signing in…" : "Sign in"}
+                       transition-colors duration-150 text-sm">
+            {loading ? t("login_submitting") : t("login_submit")}
           </button>
         </form>
 
         <div className="mt-6 flex flex-col gap-2 text-center">
           <p className="text-sm text-zinc-500">
-            Don&apos;t have an account?{" "}
+            {t("login_no_account")}{" "}
             <Link href="/register" className="text-brand hover:text-brand-light transition-colors">
-              Create one
+              {t("login_create")}
             </Link>
           </p>
           <Link href="/forgot-password" className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
-            Forgot password?
+            {t("login_forgot")}
           </Link>
         </div>
       </div>
