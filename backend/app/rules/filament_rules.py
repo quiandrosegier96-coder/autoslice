@@ -12,10 +12,16 @@ _FILAMENT_OVERRIDES: dict[FilamentType, dict] = {
         "bed_temp_c": 60,
         "fan_first_layer": False,
         "_fan_min": 100,
-        # PLA direct drive: short fast retract, small z-hop
         "retract_length_mm": 0.8,
         "retract_speed_mm_s": 45,
         "z_hop_mm": 0.2,
+        "wipe_on_retract": False,
+        "coast_at_end_mm": 0.0,
+        "pressure_advance": 0.04,
+        "min_layer_time_s": 8,
+        "support_top_z_distance_mm": 0.2,
+        "support_bottom_z_distance_mm": 0.2,
+        "support_xy_distance_mm": 0.35,
     },
     FilamentType.PETG: {
         "nozzle_temp_c": 240,
@@ -24,10 +30,18 @@ _FILAMENT_OVERRIDES: dict[FilamentType, dict] = {
         "_fan_min": 30,
         "_fan_max": 70,
         "_force_brim": True,
-        # PETG is stringy — slightly longer retract, slower to avoid blobs
+        # PETG is stringy — longer retract, wipe + coast to prevent ooze blobs
         "retract_length_mm": 1.2,
         "retract_speed_mm_s": 35,
         "z_hop_mm": 0.2,
+        "wipe_on_retract": True,
+        "coast_at_end_mm": 0.4,
+        "pressure_advance": 0.06,
+        "min_layer_time_s": 10,
+        # PETG bonds to supports — larger gaps for easier removal
+        "support_top_z_distance_mm": 0.25,
+        "support_bottom_z_distance_mm": 0.25,
+        "support_xy_distance_mm": 0.45,
     },
     FilamentType.TPU: {
         "nozzle_temp_c": 230,
@@ -38,11 +52,17 @@ _FILAMENT_OVERRIDES: dict[FilamentType, dict] = {
         "_suppress_supports": True,
         "print_speed_mm_s": 30,
         "first_layer_speed_mm_s": 15,
-        # TPU: minimal retract (flexible filament can't be yanked back),
-        # no z-hop (Z movement can cause blobs with TPU)
+        # TPU: minimal retract, no z-hop, PA disabled (flexible material)
         "retract_length_mm": 0.5,
         "retract_speed_mm_s": 20,
         "z_hop_mm": 0.0,
+        "wipe_on_retract": False,
+        "coast_at_end_mm": 0.0,
+        "pressure_advance": 0.0,
+        "min_layer_time_s": 12,
+        "support_top_z_distance_mm": 0.3,
+        "support_bottom_z_distance_mm": 0.3,
+        "support_xy_distance_mm": 0.5,
     },
 }
 

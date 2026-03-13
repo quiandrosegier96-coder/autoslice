@@ -44,6 +44,19 @@ class PrintSettings:
     retract_length_mm: float = 0.8    # direct drive default
     retract_speed_mm_s: int = 45
     z_hop_mm: float = 0.2
+    wipe_on_retract: bool = False     # wipe nozzle before retract (reduces blobs)
+    coast_at_end_mm: float = 0.0      # stop extruding N mm before end (reduces ooze)
+
+    # --- Pressure advance ---
+    pressure_advance: float = 0.04   # per-filament PA value; 0.0 = disabled
+
+    # --- Support gaps ---
+    support_top_z_distance_mm: float = 0.2    # gap above support (smaller = better surface but harder to remove)
+    support_bottom_z_distance_mm: float = 0.2
+    support_xy_distance_mm: float = 0.35      # horizontal gap (smaller = more coverage, harder to remove)
+
+    # --- Cooling ---
+    min_layer_time_s: int = 8         # slow down if layer prints faster than this
 
     # --- Cooling ---
     fan_speed_percent: int

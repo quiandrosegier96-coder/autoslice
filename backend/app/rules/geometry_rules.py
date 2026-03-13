@@ -146,6 +146,26 @@ def apply_geometry_rules(settings: PrintSettings, intent: ModelIntent) -> PrintS
     else:
         settings.seam_position = "aligned"
 
+    # ------------------------------------------------------------------ #
+    # MINIMUM LAYER TIME — detailed/thin models need more cooling time
+    # per layer to prevent sagging, blurring, and layer delamination
+    # ------------------------------------------------------------------ #
+    if intent.detail_risk >= 50:
+        settings.min_layer_time_s = max(settings.min_layer_time_s, 15)
+    elif intent.detail_risk >= 30:
+        settings.min_layer_time_s = max(settings.min_layer_time_s, 12)
+
+    # ------------------------------------------------------------------ #
+    # SUPPORT GAPS — geometry-based Z gap tuning
+    # High support_risk = complex geometry = tighter gap for better surface
+    # Low support_risk = simple overhang = wider gap for trivial removal
+    # ------------------------------------------------------------------ #
+    if settings.supports_enabled:
+        if intent.support_risk >= 60:
+            settings.support_top_z_distance_mm = min(settings.support_top_z_distance_mm, 0.2)
+        elif intent.support_risk <= 20:
+            settings.support_top_z_distance_mm = max(settings.support_top_z_distance_mm, 0.25)
+
     return settings
 
 

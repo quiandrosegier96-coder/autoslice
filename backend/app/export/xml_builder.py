@@ -143,6 +143,10 @@ def _make_process_config(settings: PrintSettings) -> dict:
         "infill_line_width": str(round(settings.nozzle_size_mm * 1.1, 3)),
         "top_surface_line_width": str(settings.nozzle_size_mm),
         "support_line_width": str(settings.nozzle_size_mm),
+        # Support gaps
+        "support_top_z_distance": str(settings.support_top_z_distance_mm),
+        "support_bottom_z_distance": str(settings.support_bottom_z_distance_mm),
+        "support_object_xy_distance": str(settings.support_xy_distance_mm),
         # Support interface
         "support_interface_top_layers": str(settings.support_interface_layers) if settings.support_interface_enabled else "0",
         "support_interface_bottom_layers": str(settings.support_interface_layers) if settings.support_interface_enabled else "0",
@@ -185,7 +189,10 @@ def _make_filament_config(settings: PrintSettings, filament: FilamentType) -> di
         "fan_max_speed": [str(settings.fan_speed_percent)],
         "fan_min_speed": [str(max(0, settings.fan_speed_percent - 20))],
         "close_fan_the_first_x_layers": ["0" if settings.fan_first_layer else "1"],
-        "slow_down_layer_time": ["5"],
+        "slow_down_layer_time": [str(settings.min_layer_time_s)],
+        "pressure_advance": [str(settings.pressure_advance)],
+        "wipe_before_change": ["1" if settings.wipe_on_retract else "0"],
+        "coast_at_end_distance": [str(settings.coast_at_end_mm)],
     }
 
 
