@@ -42,3 +42,7 @@ class GeometryAnalysis:
     overhang: OverhangReport = field(default_factory=lambda: OverhangReport(False, 0.0, 0.0))
     bridge: BridgeReport = field(default_factory=lambda: BridgeReport(False, 0.0))
     thin_wall: ThinWallReport = field(default_factory=lambda: ThinWallReport(False, 999.0))
+    # Extended fields — computed by analyzer
+    surface_area_mm2: float = 0.0       # total mesh surface area
+    contact_area_mm2: float = 0.0       # XY-projected area touching the build plate
+    height_to_base_ratio: float = 0.0   # z / sqrt(contact_area) — stability indicator

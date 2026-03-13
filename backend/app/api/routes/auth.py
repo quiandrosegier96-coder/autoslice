@@ -5,7 +5,7 @@ AutoSlice — Auth routes: /register and /login.
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 
-from app.auth.service import register_user, login_user, create_access_token
+from app.auth.service import register_user, login_user, create_access_token, create_reset_token, reset_password
 from app.auth.dependencies import get_current_user
 from app.database import ADMIN_EMAILS, get_connection
 
@@ -53,6 +53,33 @@ def login(req: LoginRequest) -> AuthResponse:
     token = create_access_token(user["id"], user["email"])
     return AuthResponse(access_token=token, username=user["username"], email=user["email"],
                         is_admin=user["email"] in ADMIN_EMAILS)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/auth/forgot-password")
+def forgot_password(req: ForgotPasswordRequest) -> dict:
+    # Always return the same message for security (don't reveal if email exists)
+    create_reset_token(req.email)
+    return {"message": "If this email is registered, a reset code has been generated. Contact your admin to retrieve it."}
+
+
+@router.post("/auth/reset-password")
+def do_reset_password(req: ResetPasswordRequest) -> dict:
+    if len(req.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
+    try:
+        reset_password(req.token, req.new_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"message": "Password reset successful. You can now log in."}
 
 
 class HistoryJob(BaseModel):

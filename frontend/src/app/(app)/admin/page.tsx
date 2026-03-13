@@ -32,6 +32,42 @@ type RecentJob = {
   created_at: string;
 };
 
+type ResetTokenRow = {
+  id: number;
+  email: string;
+  token: string;
+  created_at: string;
+  used: boolean;
+};
+
+type GenerationLogRow = {
+  id: number;
+  job_id: string;
+  printer_id: string | null;
+  filament_type: string | null;
+  nozzle_size_mm: number | null;
+  bbox_x: number | null; bbox_y: number | null; bbox_z: number | null;
+  volume_cm3: number | null;
+  contact_area_mm2: number | null;
+  height_to_base_ratio: number | null;
+  overhang_ratio: number | null;
+  bridge_span_mm: number | null;
+  support_risk: number | null;
+  adhesion_risk: number | null;
+  stability_risk: number | null;
+  detail_risk: number | null;
+  created_at: string;
+};
+
+type FeedbackRow = {
+  id: number;
+  job_id: string;
+  username: string | null;
+  outcome: string;
+  notes: string | null;
+  created_at: string;
+};
+
 function StatCard({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) {
   return (
     <div className="bg-surface-card border border-surface-border rounded-xl p-5 flex items-center gap-4">
@@ -48,12 +84,16 @@ function StatCard({ label, value, icon }: { label: string; value: number; icon: 
 
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"users" | "recent">("users");
+  const [tab, setTab] = useState<"users" | "recent" | "resets" | "engine" | "feedback">("users");
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [recent, setRecent] = useState<RecentJob[]>([]);
+  const [resets, setResets] = useState<ResetTokenRow[]>([]);
+  const [engineLog, setEngineLog] = useState<GenerationLogRow[]>([]);
+  const [feedbackLog, setFeedbackLog] = useState<FeedbackRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAdmin()) { router.push("/convert"); return; }
@@ -61,11 +101,20 @@ export default function AdminPage() {
       apiGet<StatsResponse>("/admin/stats", true),
       apiGet<UserRow[]>("/admin/users", true),
       apiGet<RecentJob[]>("/admin/recent", true),
+      apiGet<ResetTokenRow[]>("/admin/reset-tokens", true),
+      apiGet<GenerationLogRow[]>("/admin/engine-log", true),
+      apiGet<FeedbackRow[]>("/admin/feedback", true),
     ])
-      .then(([s, u, r]) => { setStats(s); setUsers(u); setRecent(r); })
+      .then(([s, u, r, rt, el, fb]) => { setStats(s); setUsers(u); setRecent(r); setResets(rt); setEngineLog(el); setFeedbackLog(fb); })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to load admin data"))
       .finally(() => setLoading(false));
   }, [router]);
+
+  function copyToken(token: string) {
+    navigator.clipboard.writeText(token);
+    setCopied(token);
+    setTimeout(() => setCopied(null), 2000);
+  }
 
   function formatDate(iso: string) {
     return new Date(iso).toLocaleString("en-BE", {
@@ -147,16 +196,22 @@ export default function AdminPage() {
 
             {/* Tabs */}
             <div className="flex border-b border-surface-border mb-6">
-              {(["users", "recent"] as const).map((t) => (
+              {([
+                { id: "users", label: "Users" },
+                { id: "recent", label: "Recent Activity" },
+                { id: "resets", label: `Reset Codes${resets.filter(r => !r.used).length > 0 ? ` (${resets.filter(r => !r.used).length})` : ""}` },
+              { id: "engine", label: `Engine Log${engineLog.length > 0 ? ` (${engineLog.length})` : ""}` },
+              { id: "feedback", label: `Feedback${feedbackLog.length > 0 ? ` (${feedbackLog.length})` : ""}` },
+              ] as const).map(({ id, label }) => (
                 <button
-                  key={t}
-                  onClick={() => setTab(t)}
+                  key={id}
+                  onClick={() => setTab(id)}
                   className={`px-5 py-2.5 text-sm font-medium transition-colors relative ${
-                    tab === t ? "text-white" : "text-zinc-500 hover:text-zinc-300"
+                    tab === id ? "text-white" : "text-zinc-500 hover:text-zinc-300"
                   }`}
                 >
-                  {t === "users" ? "Users" : "Recent Activity"}
-                  {tab === t && (
+                  {label}
+                  {tab === id && (
                     <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand rounded-t-full" />
                   )}
                 </button>
@@ -207,6 +262,155 @@ export default function AdminPage() {
                       <tr>
                         <td colSpan={6} className="px-4 py-10 text-center text-zinc-500">No users yet.</td>
                       </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Reset codes */}
+            {tab === "resets" && (
+              <div className="bg-surface-card border border-surface-border rounded-xl overflow-hidden">
+                <div className="px-5 py-3 border-b border-surface-border">
+                  <p className="text-xs text-zinc-500">
+                    When a user requests a password reset, the code appears here. Copy it and share it with them.
+                    Codes expire after 24 hours.
+                  </p>
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-surface-border bg-surface/30">
+                      <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Email</th>
+                      <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Reset Code</th>
+                      <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Requested</th>
+                      <th className="text-center px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-border">
+                    {resets.map((r) => (
+                      <tr key={r.id} className="hover:bg-surface/40 transition-colors">
+                        <td className="px-4 py-3 text-zinc-300 text-xs">{r.email}</td>
+                        <td className="px-4 py-3">
+                          {r.used ? (
+                            <span className="font-mono text-xs text-zinc-600">••••••••••••</span>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs text-zinc-300 bg-surface-elevated border border-surface-border rounded px-2 py-0.5 max-w-[200px] truncate">
+                                {r.token}
+                              </span>
+                              <button
+                                onClick={() => copyToken(r.token)}
+                                className="text-xs text-brand hover:text-brand-light transition-colors shrink-0"
+                              >
+                                {copied === r.token ? "Copied!" : "Copy"}
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-zinc-500 text-xs">{formatDate(r.created_at)}</td>
+                        <td className="px-4 py-3 text-center">
+                          {r.used ? (
+                            <span className="text-xs text-zinc-600">Used</span>
+                          ) : (
+                            <span className="text-xs bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-full px-2 py-0.5">
+                              Pending
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {resets.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-10 text-center text-zinc-500">No reset requests yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Engine log */}
+            {tab === "engine" && (
+              <div className="space-y-3">
+                <p className="text-xs text-zinc-500 mb-4">
+                  Every conversion is logged here with geometry features and risk scores. Use this to debug the engine.
+                </p>
+                {engineLog.length === 0 ? (
+                  <div className="bg-surface-card border border-surface-border rounded-xl p-10 text-center text-zinc-500 text-sm">No conversions logged yet.</div>
+                ) : engineLog.map((row) => (
+                  <div key={row.id} className="bg-surface-card border border-surface-border rounded-xl p-4 text-xs">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-zinc-400 text-[10px]">{row.job_id.slice(0, 8)}…</span>
+                        <span className="text-zinc-300">{row.printer_id ?? "—"}</span>
+                        <span className="text-zinc-500">{row.filament_type?.toUpperCase() ?? "—"}</span>
+                        <span className="text-zinc-500">{row.nozzle_size_mm}mm nozzle</span>
+                      </div>
+                      <span className="text-zinc-600">{timeAgo(row.created_at)}</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 mb-3 text-zinc-400">
+                      <div>Size: {row.bbox_x?.toFixed(0)}×{row.bbox_y?.toFixed(0)}×{row.bbox_z?.toFixed(0)}mm</div>
+                      <div>Vol: {row.volume_cm3?.toFixed(1)} cm³</div>
+                      <div>Contact: {row.contact_area_mm2?.toFixed(0)} mm²</div>
+                      <div>HBR: {row.height_to_base_ratio?.toFixed(2)}</div>
+                      <div>Overhang: {((row.overhang_ratio ?? 0) * 100).toFixed(1)}%</div>
+                      <div>Bridge: {row.bridge_span_mm?.toFixed(1)} mm</div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { label: "Support", value: row.support_risk ?? 0, color: "bg-orange-500" },
+                        { label: "Adhesion", value: row.adhesion_risk ?? 0, color: "bg-yellow-500" },
+                        { label: "Stability", value: row.stability_risk ?? 0, color: "bg-red-500" },
+                        { label: "Detail", value: row.detail_risk ?? 0, color: "bg-blue-500" },
+                      ].map(({ label, value, color }) => (
+                        <div key={label}>
+                          <div className="flex justify-between text-[10px] text-zinc-500 mb-1">
+                            <span>{label}</span><span>{value}</span>
+                          </div>
+                          <div className="h-1.5 bg-surface-elevated rounded-full overflow-hidden">
+                            <div className={`h-full ${color} rounded-full`} style={{ width: `${value}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Feedback */}
+            {tab === "feedback" && (
+              <div className="bg-surface-card border border-surface-border rounded-xl overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-surface-border bg-surface/30">
+                      <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Time</th>
+                      <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">User</th>
+                      <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Job</th>
+                      <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Outcome</th>
+                      <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-border">
+                    {feedbackLog.map((f) => (
+                      <tr key={f.id} className="hover:bg-surface/40 transition-colors">
+                        <td className="px-4 py-3 text-zinc-500 text-xs whitespace-nowrap">{timeAgo(f.created_at)}</td>
+                        <td className="px-4 py-3 text-zinc-400 text-xs">{f.username ?? <span className="italic text-zinc-600">guest</span>}</td>
+                        <td className="px-4 py-3 font-mono text-zinc-600 text-[10px]">{f.job_id.slice(0, 8)}…</td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
+                            f.outcome === "printed_ok" ? "bg-green-500/10 text-green-400 border-green-500/20" :
+                            f.outcome.includes("missing") || f.outcome.includes("detached") || f.outcome.includes("collapsed") ? "bg-red-500/10 text-red-400 border-red-500/20" :
+                            "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+                          }`}>
+                            {f.outcome.replace(/_/g, " ")}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-zinc-500 text-xs">{f.notes ?? "—"}</td>
+                      </tr>
+                    ))}
+                    {feedbackLog.length === 0 && (
+                      <tr><td colSpan={5} className="px-4 py-10 text-center text-zinc-500">No feedback yet.</td></tr>
                     )}
                   </tbody>
                 </table>

@@ -70,6 +70,43 @@ def register_user(username: str, email: str, password: str) -> dict:
             raise
 
 
+def create_reset_token(email: str) -> str | None:
+    """Create a 24h reset token for the given email. Returns token or None if email unknown."""
+    from datetime import datetime, timezone
+    with get_connection() as conn:
+        user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+        if not user:
+            return None
+        token = secrets.token_urlsafe(24)
+        created_at = datetime.now(timezone.utc).isoformat()
+        conn.execute(
+            "INSERT INTO reset_tokens (email, token, created_at) VALUES (?,?,?)",
+            (email, token, created_at),
+        )
+        conn.commit()
+    return token
+
+
+def reset_password(token: str, new_password: str) -> None:
+    """Apply password reset. Raises ValueError on invalid/expired/used token."""
+    from datetime import datetime, timedelta, timezone
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT email, created_at, used FROM reset_tokens WHERE token = ?", (token,)
+        ).fetchone()
+        if not row:
+            raise ValueError("Invalid or expired reset code.")
+        if row["used"]:
+            raise ValueError("This reset code has already been used.")
+        created = datetime.fromisoformat(row["created_at"])
+        if datetime.now(timezone.utc) - created > timedelta(hours=24):
+            raise ValueError("Reset code has expired (valid for 24 hours).")
+        new_hash = hash_password(new_password)
+        conn.execute("UPDATE users SET password_hash = ? WHERE email = ?", (new_hash, row["email"]))
+        conn.execute("UPDATE reset_tokens SET used = 1 WHERE token = ?", (token,))
+        conn.commit()
+
+
 def login_user(email: str, password: str) -> dict:
     with get_connection() as conn:
         row = conn.execute(

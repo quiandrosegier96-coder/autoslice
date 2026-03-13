@@ -4,28 +4,26 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/api";
-import { saveAuth } from "@/lib/auth";
 
-export default function LoginPage() {
+export default function ResetPasswordPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [token, setToken] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (password !== confirm) { setError("Passwords do not match."); return; }
+    if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
     setError("");
     setLoading(true);
     try {
-      const res = await apiPost<{ access_token: string; username: string; email: string; is_admin: boolean }>(
-        "/auth/login",
-        { email, password }
-      );
-      saveAuth({ token: res.access_token, username: res.username, email: res.email, is_admin: res.is_admin });
-      router.push("/convert");
+      await apiPost("/auth/reset-password", { token: token.trim(), new_password: password });
+      router.push("/login?reset=1");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : "Reset failed");
     } finally {
       setLoading(false);
     }
@@ -33,7 +31,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center px-4">
-      {/* Logo */}
       <div className="mb-8 text-center">
         <div className="flex items-center justify-center gap-2 mb-2">
           <div className="w-8 h-8 bg-brand rounded-sm flex items-center justify-center">
@@ -45,12 +42,12 @@ export default function LoginPage() {
             Auto<span className="text-brand">Slice</span>
           </span>
         </div>
-        <p className="text-zinc-500 text-sm">Sign in to continue</p>
+        <p className="text-zinc-500 text-sm">Set a new password</p>
       </div>
 
-      {/* Card */}
       <div className="w-full max-w-sm bg-surface-card border border-surface-border rounded-xl p-8">
-        <h1 className="text-xl font-semibold text-white mb-6">Welcome back</h1>
+        <h1 className="text-xl font-semibold text-white mb-2">Reset password</h1>
+        <p className="text-zinc-500 text-sm mb-6">Enter the reset code your admin provided.</p>
 
         {error && (
           <div className="mb-4 p-3 bg-brand/10 border border-brand/30 rounded-lg text-brand text-sm">
@@ -61,21 +58,20 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
-              Email
+              Reset Code
             </label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              type="text"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder="Paste your reset code here"
               required
-              autoComplete="email"
+              className="font-mono text-sm"
             />
           </div>
-
           <div>
             <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
-              Password
+              New Password
             </label>
             <input
               type="password"
@@ -83,10 +79,22 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              autoComplete="current-password"
+              autoComplete="new-password"
             />
           </div>
-
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
+              Confirm Password
+            </label>
+            <input
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="••••••••"
+              required
+              autoComplete="new-password"
+            />
+          </div>
           <button
             type="submit"
             disabled={loading}
@@ -94,26 +102,16 @@ export default function LoginPage() {
                        disabled:cursor-not-allowed text-white font-semibold rounded-lg
                        transition-colors duration-150 text-sm"
           >
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? "Resetting…" : "Set new password"}
           </button>
         </form>
 
-        <div className="mt-6 flex flex-col gap-2 text-center">
-          <p className="text-sm text-zinc-500">
-            Don&apos;t have an account?{" "}
-            <Link href="/register" className="text-brand hover:text-brand-light transition-colors">
-              Create one
-            </Link>
-          </p>
-          <Link href="/forgot-password" className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
-            Forgot password?
+        <p className="mt-6 text-center text-xs text-zinc-600">
+          <Link href="/login" className="hover:text-zinc-400 transition-colors">
+            ← Back to login
           </Link>
-        </div>
+        </p>
       </div>
-
-      <p className="mt-8 text-xs text-zinc-700">
-        AutoSlice © {new Date().getFullYear()} — Bambu to Anycubic converter
-      </p>
     </div>
   );
 }

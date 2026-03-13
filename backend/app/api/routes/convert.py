@@ -15,11 +15,12 @@ from app.ingestion.handler import find_job
 from app.ingestion.unpacker import unpack
 from app.parser.model_parser import parse_model_files
 from app.auth.dependencies import get_optional_user
-from app.database import log_job
+from app.database import log_job, log_generation
 from app.geometry.analyzer import analyze as run_geometry
 from app.normalization.intent import normalize
 from app.rules.engine import generate_settings
 from app.rules.printer_loader import load_printer_profile
+from app.rules.nozzle_profiles import apply_nozzle_profile
 from app.export.anycubic_exporter import export as do_export
 from app.models.printer import FilamentType
 
@@ -84,6 +85,7 @@ async def convert(
 
     intent = normalize(geometry)
     print_settings = generate_settings(intent, printer, req.filament_type)
+    print_settings = apply_nozzle_profile(print_settings, req.nozzle_size_mm)
 
     # Store hardware selections in settings for export
     print_settings.nozzle_size_mm = req.nozzle_size_mm
@@ -114,6 +116,21 @@ async def convert(
     user_id = int(current_user["sub"]) if current_user else None
     log_job(req.job_id, user_id, "convert",
             filename=job.original_filename, printer_id=req.printer_id)
+
+    import json as _json
+    import dataclasses as _dc
+    try:
+        log_generation(
+            job_id=req.job_id,
+            printer_id=req.printer_id,
+            filament_type=req.filament_type.value,
+            nozzle_size_mm=req.nozzle_size_mm,
+            geometry=geometry,
+            intent=intent,
+            settings_json=_json.dumps(_dc.asdict(print_settings)),
+        )
+    except Exception:
+        pass  # logging failure must never break the response
 
     return FileResponse(
         path=str(output_path),

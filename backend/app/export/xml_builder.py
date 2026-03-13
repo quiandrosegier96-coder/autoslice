@@ -163,11 +163,11 @@ def _make_filament_config(settings: PrintSettings, filament: FilamentType) -> di
     }
 
 
-def _make_machine_config(settings: PrintSettings, printer: PrinterProfile) -> dict:
+def _make_machine_config(settings: PrintSettings, printer: PrinterProfile, color_count: int = 1) -> dict:
     # Anycubic Slicer Next (OrcaSlicer) uses "<Display Name> <nozzle> nozzle" as the profile ID
     nozzle_str = str(settings.nozzle_size_mm).rstrip("0").rstrip(".")
     printer_settings_id = f"{printer.display_name} {nozzle_str} nozzle"
-    return {
+    cfg = {
         "from": "project",
         "inherits": "",
         "printer_settings_id": printer_settings_id,
@@ -182,6 +182,11 @@ def _make_machine_config(settings: PrintSettings, printer: PrinterProfile) -> di
         ],
         "printable_height": str(printer.build_volume_z_mm),
     }
+    if color_count > 1:
+        cfg["single_extruder_multi_material"] = "1"
+        cfg["single_extruder_multi_material_priming"] = "0"
+        cfg["extruders_count"] = str(color_count)
+    return cfg
 
 
 _DEFAULT_COLORS = [
@@ -202,13 +207,17 @@ def build_settings_configs(
     For multi-color printers (ACE Pro / ACE Pro 2) a filament config is generated
     for each active color slot.
     """
-    process = _make_process_config(settings)
-    machine = _make_machine_config(settings, printer)
-
     color_count = max(1, settings.color_count)
+    process = _make_process_config(settings)
+    machine = _make_machine_config(settings, printer, color_count)
+
     configs: dict[str, str] = {}
 
     filament_configs = []
+    slot_colors = []
+    slot_types_display = []
+    slot_types_id = []
+
     for slot in range(color_count):
         slot_type_str = (
             settings.filament_types[slot]
@@ -220,34 +229,29 @@ def build_settings_configs(
         except ValueError:
             slot_filament = filament
 
-        fil = _make_filament_config(settings, slot_filament)
         color = (
             settings.filament_colors[slot]
             if settings.filament_colors and slot < len(settings.filament_colors)
             else _DEFAULT_COLORS[slot % len(_DEFAULT_COLORS)]
         )
+        fil = _make_filament_config(settings, slot_filament)
         fil["filament_colour"] = [color]
         filament_configs.append(fil)
+        slot_colors.append(color)
+        display = _FILAMENT_TYPE_DISPLAY.get(slot_filament.value, slot_filament.value.upper())
+        slot_types_display.append(display)
+        slot_types_id.append(f"Generic {display}")
         configs[f"Metadata/filament_settings_{slot + 1}.config"] = json.dumps(fil, indent=2)
 
     merged: dict = {}
     merged.update(machine)
     merged.update(filament_configs[0])
     merged.update(process)
-    if color_count > 1:
-        merged["filament_colour"] = [
-            (settings.filament_colors[i] if settings.filament_colors and i < len(settings.filament_colors)
-             else _DEFAULT_COLORS[i % len(_DEFAULT_COLORS)])
-            for i in range(color_count)
-        ]
-        merged["filament_type"] = [
-            _FILAMENT_TYPE_DISPLAY.get(
-                settings.filament_types[i] if settings.filament_types and i < len(settings.filament_types)
-                else filament.value,
-                filament.value.upper()
-            )
-            for i in range(color_count)
-        ]
+    # Always write arrays — Anycubic Slicer counts filament slots from these
+    merged["filament_colour"] = slot_colors
+    merged["filament_type"] = slot_types_display
+    merged["filament_settings_id"] = slot_types_id
+    merged["filament_diameter"] = [str(settings.filament_diameter_mm)] * color_count
 
     configs["Metadata/project_settings.config"] = json.dumps(merged, indent=2)
     configs["Metadata/process_settings_1.config"] = json.dumps(process, indent=2)

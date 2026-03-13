@@ -19,3 +19,8 @@ class ModelIntent:
     has_fine_detail: bool
     is_structurally_risky: bool
     raw_geometry: GeometryAnalysis
+    # Risk scores 0–100
+    support_risk: int = 0     # likelihood supports are needed
+    adhesion_risk: int = 0    # likelihood of bed detachment
+    stability_risk: int = 0   # likelihood of shift/collapse mid-print
+    detail_risk: int = 0      # likelihood of detail loss

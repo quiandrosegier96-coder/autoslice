@@ -1,5 +1,7 @@
 """
 AutoSlice — Geometry-driven print setting adjustments.
+Uses risk scores from ModelIntent to make gradated decisions
+instead of binary flags.
 """
 
 from app.models.intent import ModelIntent
@@ -7,7 +9,13 @@ from app.models.print_settings import PrintSettings
 
 
 def apply_geometry_rules(settings: PrintSettings, intent: ModelIntent) -> PrintSettings:
-    # --- Supports ---
+    geo = intent.raw_geometry
+    bridge_span = geo.bridge.max_span_mm
+    thin_mm = geo.thin_wall.min_thickness_mm
+
+    # ------------------------------------------------------------------ #
+    # SUPPORTS — type and density driven by support_risk
+    # ------------------------------------------------------------------ #
     if intent.needs_supports:
         settings.supports_enabled = True
         if intent.support_density_hint == "heavy":
@@ -15,39 +23,80 @@ def apply_geometry_rules(settings: PrintSettings, intent: ModelIntent) -> PrintS
             settings.support_type = "tree"
         elif intent.support_density_hint == "normal":
             settings.support_density_percent = 15
-            settings.support_type = "normal"
+            settings.support_type = (
+                "tree" if geo.overhang.overhang_area_ratio > 0.10 else "normal"
+            )
         else:
             settings.support_density_percent = 10
             settings.support_type = "normal"
 
-    # --- Difficulty ---
-    if intent.difficulty == "hard":
+        if bridge_span > 15:
+            settings.support_angle_threshold_deg = min(settings.support_angle_threshold_deg, 40)
+
+    # ------------------------------------------------------------------ #
+    # BRIM — width driven by adhesion_risk
+    # ------------------------------------------------------------------ #
+    if intent.needs_brim:
+        settings.brim_enabled = True
+        if intent.adhesion_risk >= 50:
+            settings.brim_width_mm = 8.0
+        elif intent.adhesion_risk >= 25:
+            settings.brim_width_mm = 5.0
+        else:
+            settings.brim_width_mm = max(settings.brim_width_mm, 5.0)
+
+    # ------------------------------------------------------------------ #
+    # WALLS
+    # ------------------------------------------------------------------ #
+    if intent.detail_risk >= 60:
+        settings.wall_count = max(settings.wall_count, 5)
+    elif intent.detail_risk >= 30:
         settings.wall_count = max(settings.wall_count, 4)
+    elif intent.difficulty == "hard":
+        settings.wall_count = max(settings.wall_count, 4)
+    elif intent.difficulty == "moderate":
+        settings.wall_count = max(settings.wall_count, 3)
+
+    if intent.stability_risk >= 35:
+        settings.wall_count = max(settings.wall_count, 4)
+
+    # ------------------------------------------------------------------ #
+    # INFILL
+    # ------------------------------------------------------------------ #
+    if intent.difficulty == "hard":
         settings.infill_percent = max(settings.infill_percent, 25)
         settings.top_layers = max(settings.top_layers, 6)
         settings.bottom_layers = max(settings.bottom_layers, 5)
     elif intent.difficulty == "moderate":
-        settings.wall_count = max(settings.wall_count, 3)
         settings.infill_percent = max(settings.infill_percent, 20)
+        settings.top_layers = max(settings.top_layers, 5)
 
-    # --- Bridge: maximize fan cooling ---
-    if intent.raw_geometry.bridge.has_bridges and intent.raw_geometry.bridge.max_span_mm > 10:
-        settings.fan_speed_percent = max(settings.fan_speed_percent, 80)
-
-    # --- Fine detail: finer layers + more walls ---
-    if intent.has_fine_detail:
+    # ------------------------------------------------------------------ #
+    # LAYER HEIGHT — driven by detail_risk
+    # ------------------------------------------------------------------ #
+    if intent.detail_risk >= 60:
+        settings.layer_height_mm = min(settings.layer_height_mm, 0.12)
+    elif intent.detail_risk >= 30:
         settings.layer_height_mm = min(settings.layer_height_mm, 0.15)
-        settings.wall_count = max(settings.wall_count, 4)
 
-    # --- Brim ---
-    if intent.needs_brim:
-        settings.brim_enabled = True
-        settings.brim_width_mm = max(settings.brim_width_mm, 8.0)
+    # ------------------------------------------------------------------ #
+    # SPEED — driven by stability_risk + bridge span
+    # ------------------------------------------------------------------ #
+    if intent.stability_risk >= 60:
+        settings.print_speed_mm_s = min(settings.print_speed_mm_s, 60)
+    elif intent.stability_risk >= 35:
+        settings.print_speed_mm_s = min(settings.print_speed_mm_s, 100)
 
-    # --- Structural risk: slow down, reinforce ---
-    if intent.is_structurally_risky:
+    if bridge_span > 5:
+        settings.fan_speed_percent = max(settings.fan_speed_percent, 80)
+    if bridge_span > 15:
         settings.print_speed_mm_s = min(settings.print_speed_mm_s, 80)
-        settings.wall_count = max(settings.wall_count, 5)
-        settings.infill_percent = max(settings.infill_percent, 20)
+
+    # ------------------------------------------------------------------ #
+    # THIN WALLS
+    # ------------------------------------------------------------------ #
+    if thin_mm < 999.0 and thin_mm < settings.nozzle_size_mm * 2.5:
+        settings.wall_count = max(settings.wall_count, 4)
+        settings.layer_height_mm = min(settings.layer_height_mm, 0.15)
 
     return settings

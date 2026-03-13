@@ -51,6 +51,9 @@ class GeometrySchema(BaseModel):
     part_count: int
     mesh_is_watertight: bool
     estimated_volume_cm3: float
+    surface_area_mm2: float
+    contact_area_mm2: float
+    height_to_base_ratio: float
     overhang: OverhangSchema
     bridge: BridgeSchema
     thin_wall: ThinWallSchema
@@ -64,6 +67,10 @@ class IntentSchema(BaseModel):
     size_class: str
     has_fine_detail: bool
     is_structurally_risky: bool
+    support_risk: int
+    adhesion_risk: int
+    stability_risk: int
+    detail_risk: int
 
 
 class ModelInfoSchema(BaseModel):
@@ -169,6 +176,9 @@ async def analyze(job_id: str) -> AnalyzeResponse:
             part_count=geometry.part_count,
             mesh_is_watertight=geometry.mesh_is_watertight,
             estimated_volume_cm3=geometry.estimated_volume_cm3,
+            surface_area_mm2=geometry.surface_area_mm2,
+            contact_area_mm2=geometry.contact_area_mm2,
+            height_to_base_ratio=geometry.height_to_base_ratio,
             overhang=OverhangSchema(**dataclasses.asdict(geometry.overhang)),
             bridge=BridgeSchema(**dataclasses.asdict(geometry.bridge)),
             thin_wall=ThinWallSchema(**dataclasses.asdict(geometry.thin_wall)),
@@ -181,5 +191,9 @@ async def analyze(job_id: str) -> AnalyzeResponse:
             size_class=intent.size_class,
             has_fine_detail=intent.has_fine_detail,
             is_structurally_risky=intent.is_structurally_risky,
+            support_risk=intent.support_risk,
+            adhesion_risk=intent.adhesion_risk,
+            stability_risk=intent.stability_risk,
+            detail_risk=intent.detail_risk,
         ),
     )

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { isLoggedIn, getUser } from "@/lib/auth";
-import { apiUpload, apiAnalyze, apiConvertDownload, apiGet } from "@/lib/api";
+import { apiUpload, apiAnalyze, apiConvertDownload, apiGet, apiPost } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
 
 const ModelViewer = dynamic(
@@ -37,6 +37,10 @@ type AnalysisResult = {
     needs_brim: boolean;
     size_class: string;
     is_structurally_risky: boolean;
+    support_risk: number;
+    adhesion_risk: number;
+    stability_risk: number;
+    detail_risk: number;
   };
 };
 
@@ -85,7 +89,7 @@ export default function ConvertPage() {
   const [nozzleType, setNozzleType] = useState("brass");
   const [buildPlate, setBuildPlate] = useState("smooth");
   const [flushVolume, setFlushVolume] = useState(3.0);
-  const [maxColors, setMaxColors] = useState(1);
+  const [multiColorMode, setMultiColorMode] = useState<"none" | "ace_pro" | "ace_pro2">("none");
   const [colorCount, setColorCount] = useState(1);
   const [slotColors, setSlotColors] = useState<string[]>(["#FF0000", "#00AA00", "#0000FF", "#FF8800", "#AA00AA", "#00AAAA", "#FFFFFF", "#111111"]);
   const [slotFilaments, setSlotFilaments] = useState<string[]>(Array(8).fill("pla"));
@@ -98,6 +102,8 @@ export default function ConvertPage() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState("");
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [downloadName, setDownloadName] = useState("");
 
   useEffect(() => {
@@ -109,7 +115,6 @@ export default function ConvertPage() {
         setSelectedPrinter(ps[0].id);
         setAvailableFilaments(ps[0].supported_filaments);
         setSelectedFilament(ps[0].supported_filaments[0] ?? "pla");
-        setMaxColors(ps[0].max_colors ?? 1);
       }
     });
   }, [router]);
@@ -120,9 +125,14 @@ export default function ConvertPage() {
     if (p) {
       setAvailableFilaments(p.supported_filaments);
       setSelectedFilament(p.supported_filaments[0] ?? "pla");
-      setMaxColors(p.max_colors ?? 1);
-      setColorCount(1);
     }
+  }
+
+  function handleMultiColorMode(mode: "none" | "ace_pro" | "ace_pro2") {
+    setMultiColorMode(mode);
+    if (mode === "none") setColorCount(1);
+    else if (mode === "ace_pro") setColorCount(4);
+    else setColorCount(4);
   }
 
   async function handleFile(file: File) {
@@ -186,6 +196,19 @@ export default function ConvertPage() {
     setAnalysis(null);
     setDownloadUrl(null);
     setError("");
+  }
+
+  async function sendFeedback(outcome: string) {
+    if (!jobId || feedbackSent) return;
+    setFeedbackLoading(true);
+    try {
+      await apiPost("/feedback", { job_id: jobId, outcome }, true);
+      setFeedbackSent(true);
+    } catch {
+      setFeedbackSent(true); // hide on any error
+    } finally {
+      setFeedbackLoading(false);
+    }
   }
 
   const isWorking = step === "uploading" || step === "analyzing" || step === "converting";
@@ -302,45 +325,46 @@ export default function ConvertPage() {
           </div>
         </div>
 
-        {/* ── Multi-color panel (ACE Pro / ACE Pro 2 only) ── */}
-        {maxColors > 1 && (
-          <div className="bg-surface-card border border-surface-border rounded-xl p-5 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-5 h-5 rounded-sm bg-brand/20 flex items-center justify-center">
-                <svg className="w-3 h-3 text-brand" viewBox="0 0 24 24" fill="currentColor">
-                  <circle cx="6" cy="6" r="4"/><circle cx="18" cy="6" r="4"/><circle cx="6" cy="18" r="4"/><circle cx="18" cy="18" r="4"/>
-                </svg>
-              </div>
-              <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
-                Multi-Color — ACE Pro ({maxColors} slots)
-              </h2>
+        {/* ── Multi-Color Setup ── */}
+        <div className="bg-surface-card border border-surface-border rounded-xl p-5 mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-5 h-5 rounded-sm bg-brand/20 flex items-center justify-center">
+              <svg className="w-3 h-3 text-brand" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="6" cy="6" r="4"/><circle cx="18" cy="6" r="4"/>
+                <circle cx="6" cy="18" r="4"/><circle cx="18" cy="18" r="4"/>
+              </svg>
             </div>
+            <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">Multi-Color Setup</h2>
+          </div>
 
-            <div className="mb-4">
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
-                Active Colors
-              </label>
-              <div className="flex gap-2">
-                {Array.from({ length: maxColors }, (_, i) => i + 1).map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => setColorCount(n)}
-                    disabled={settingsDisabled}
-                    className={`w-8 h-8 rounded-lg text-sm font-bold transition-colors border ${
-                      colorCount === n
-                        ? "bg-brand border-brand text-white"
-                        : "bg-surface-elevated border-surface-border text-zinc-400 hover:border-zinc-500"
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* Mode buttons */}
+          <div className="flex gap-2 mb-5">
+            {([
+              { id: "none",     label: "None",       sub: "Single color",  slots: 0 },
+              { id: "ace_pro",  label: "ACE Pro",    sub: "4 color slots", slots: 4 },
+              { id: "ace_pro2", label: "ACE Pro 2",  sub: "4 color slots", slots: 4 },
+            ] as const).map(({ id, label, sub }) => (
+              <button
+                key={id}
+                onClick={() => handleMultiColorMode(id)}
+                disabled={settingsDisabled}
+                className={`flex-1 py-2.5 px-3 rounded-lg border text-left transition-colors ${
+                  multiColorMode === id
+                    ? "bg-brand/15 border-brand text-white"
+                    : "bg-surface-elevated border-surface-border text-zinc-400 hover:border-zinc-500"
+                }`}
+              >
+                <p className={`text-sm font-semibold ${multiColorMode === id ? "text-brand" : ""}`}>{label}</p>
+                <p className="text-xs text-zinc-500 mt-0.5">{sub}</p>
+              </button>
+            ))}
+          </div>
 
+          {/* Color slots */}
+          {multiColorMode !== "none" ? (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {Array.from({ length: colorCount }, (_, i) => (
-                <div key={i} className={`rounded-lg border p-3 transition-opacity ${i < colorCount ? "" : "opacity-30"}`}
+                <div key={i} className="rounded-lg border p-3"
                   style={{ borderColor: slotColors[i] + "66", backgroundColor: slotColors[i] + "11" }}>
                   <div className="flex items-center gap-2 mb-2">
                     <div className="w-4 h-4 rounded-full border border-white/20 shrink-0"
@@ -375,8 +399,12 @@ export default function ConvertPage() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <p className="text-xs text-zinc-600 italic">
+              Kies ACE Pro of ACE Pro 2 om multi-color printen in te schakelen.
+            </p>
+          )}
+        </div>
 
         {/* ── Upload zone ── */}
         <div
@@ -504,6 +532,15 @@ export default function ConvertPage() {
                 value={analysis.intent.needs_brim ? "Recommended" : "Not needed"}
               />
             </div>
+
+            {/* Risk score bars */}
+            <div className="border-t border-surface-border pt-4 mt-4 space-y-2.5">
+              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">Risk Assessment</p>
+              <RiskBar label="Support risk"   value={analysis.intent.support_risk}   />
+              <RiskBar label="Adhesion risk"  value={analysis.intent.adhesion_risk}  />
+              <RiskBar label="Stability risk" value={analysis.intent.stability_risk} />
+              <RiskBar label="Detail risk"    value={analysis.intent.detail_risk}    />
+            </div>
           </div>
         )}
 
@@ -555,6 +592,36 @@ export default function ConvertPage() {
               </svg>
               Convert New Project
             </button>
+
+            {/* Feedback card */}
+            <div className="mt-2 p-4 bg-surface-card border border-surface-border rounded-xl">
+              {feedbackSent ? (
+                <p className="text-center text-sm text-green-400">Thanks for your feedback!</p>
+              ) : (
+                <>
+                  <p className="text-xs text-zinc-500 mb-3 text-center">How did your print turn out?</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { outcome: "printed_ok",         label: "Printed well",      color: "text-green-400 border-green-500/30 hover:bg-green-500/10" },
+                      { outcome: "supports_unneeded",  label: "Supports excess",   color: "text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/10" },
+                      { outcome: "supports_missing",   label: "Supports missing",  color: "text-orange-400 border-orange-500/30 hover:bg-orange-500/10" },
+                      { outcome: "detached_from_bed",  label: "Detached",          color: "text-red-400 border-red-500/30 hover:bg-red-500/10" },
+                      { outcome: "weak_part",          label: "Too weak",          color: "text-orange-400 border-orange-500/30 hover:bg-orange-500/10" },
+                      { outcome: "details_lost",       label: "Details lost",      color: "text-blue-400 border-blue-500/30 hover:bg-blue-500/10" },
+                    ].map(({ outcome, label, color }) => (
+                      <button
+                        key={outcome}
+                        onClick={() => sendFeedback(outcome)}
+                        disabled={feedbackLoading}
+                        className={`py-1.5 px-2 rounded-lg border text-xs font-medium transition-colors disabled:opacity-50 ${color} bg-transparent`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )}
       </main>
@@ -576,6 +643,37 @@ function Badge({ label, value, className = "text-zinc-400" }: { label: string; v
     <div>
       <p className="text-xs text-zinc-600 mb-0.5">{label}</p>
       <p className={`text-xs font-medium ${className}`}>{value}</p>
+    </div>
+  );
+}
+
+function RiskBar({ label, value }: { label: string; value: number }) {
+  const color =
+    value >= 60 ? "bg-red-500" :
+    value >= 35 ? "bg-yellow-500" :
+    value >= 15 ? "bg-blue-400" :
+    "bg-green-500";
+  const textColor =
+    value >= 60 ? "text-red-400" :
+    value >= 35 ? "text-yellow-400" :
+    value >= 15 ? "text-blue-400" :
+    "text-green-400";
+  const riskLabel =
+    value >= 60 ? "High" :
+    value >= 35 ? "Medium" :
+    value >= 15 ? "Low" :
+    "None";
+
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-xs text-zinc-500 w-28 shrink-0">{label}</span>
+      <div className="flex-1 h-1.5 bg-surface-elevated rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${color}`}
+          style={{ width: `${Math.min(value, 100)}%` }}
+        />
+      </div>
+      <span className={`text-xs font-mono w-12 text-right ${textColor}`}>{riskLabel}</span>
     </div>
   );
 }
