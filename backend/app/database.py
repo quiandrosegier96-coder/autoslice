@@ -1,7 +1,8 @@
 """
-AutoSlice — SQLite database setup for user authentication.
+AutoSlice — SQLite database setup for user authentication and generation logging.
 """
 
+import json
 import sqlite3
 from pathlib import Path
 
@@ -17,6 +18,12 @@ def get_connection() -> sqlite3.Connection:
 
 
 ADMIN_EMAILS = {"admin2@autoslice.be"}
+
+
+def _add_column_if_missing(conn: sqlite3.Connection, table: str, column: str, col_type: str) -> None:
+    existing = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+    if column not in existing:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
 
 
 def init_db() -> None:
@@ -85,6 +92,9 @@ def init_db() -> None:
                 created_at  TEXT NOT NULL
             )
         """)
+        # Schema migrations — add new columns to existing tables without data loss
+        _add_column_if_missing(conn, "generation_log", "decision_trace_json", "TEXT")
+        _add_column_if_missing(conn, "generation_log", "settings_delta_json",  "TEXT")
         conn.commit()
 
 
@@ -159,6 +169,84 @@ def log_generation(
         conn.commit()
 
 
+def log_generation_v2(
+    job_id: str,
+    printer_id: str,
+    filament_type: str,
+    nozzle_size_mm: float,
+    geometry,           # GeometryAnalysis
+    intent,             # ModelIntent
+    settings_json: str,
+    base_settings_json: str,
+    trace,              # DecisionTrace
+) -> None:
+    """
+    Extended generation log that also stores the decision trace
+    and a settings delta (diff from base profile to final settings).
+    """
+    from datetime import datetime, timezone
+    created_at = datetime.now(timezone.utc).isoformat()
+    bb = geometry.bounding_box
+    delta = _diff_settings(base_settings_json, settings_json)
+    with get_connection() as conn:
+        conn.execute(
+            """INSERT INTO generation_log (
+                job_id, printer_id, filament_type, nozzle_size_mm,
+                bbox_x, bbox_y, bbox_z, volume_cm3, surface_area_mm2,
+                contact_area_mm2, height_to_base_ratio,
+                overhang_ratio, bridge_span_mm, thin_wall_mm,
+                support_risk, adhesion_risk, stability_risk, detail_risk,
+                settings_json, decision_trace_json, settings_delta_json,
+                created_at
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                job_id, printer_id, filament_type, nozzle_size_mm,
+                bb.x_mm, bb.y_mm, bb.z_mm, bb.volume_cm3,
+                geometry.surface_area_mm2, geometry.contact_area_mm2,
+                geometry.height_to_base_ratio,
+                geometry.overhang.overhang_area_ratio,
+                geometry.bridge.max_span_mm,
+                geometry.thin_wall.min_thickness_mm,
+                intent.support_risk, intent.adhesion_risk,
+                intent.stability_risk, intent.detail_risk,
+                settings_json,
+                json.dumps(trace.to_list()),
+                json.dumps(delta),
+                created_at,
+            ),
+        )
+        conn.commit()
+
+
+def get_generation_trace(job_id: str) -> dict | None:
+    """Return the latest decision trace + settings delta for a job_id."""
+    with get_connection() as conn:
+        row = conn.execute(
+            """SELECT decision_trace_json, settings_delta_json, settings_json,
+                      support_risk, adhesion_risk, stability_risk, detail_risk,
+                      filament_type, nozzle_size_mm, printer_id, created_at
+               FROM generation_log
+               WHERE job_id = ? AND decision_trace_json IS NOT NULL
+               ORDER BY id DESC LIMIT 1""",
+            (job_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        return {
+            "job_id":            job_id,
+            "printer_id":        row["printer_id"],
+            "filament_type":     row["filament_type"],
+            "nozzle_size_mm":    row["nozzle_size_mm"],
+            "support_risk":      row["support_risk"],
+            "adhesion_risk":     row["adhesion_risk"],
+            "stability_risk":    row["stability_risk"],
+            "detail_risk":       row["detail_risk"],
+            "created_at":        row["created_at"],
+            "decision_trace":    json.loads(row["decision_trace_json"] or "[]"),
+            "settings_delta":    json.loads(row["settings_delta_json"] or "{}"),
+        }
+
+
 def log_feedback(job_id: str, user_id: int | None, outcome: str, notes: str | None = None) -> None:
     from datetime import datetime, timezone
     created_at = datetime.now(timezone.utc).isoformat()
@@ -168,3 +256,10 @@ def log_feedback(job_id: str, user_id: int | None, outcome: str, notes: str | No
             (job_id, user_id, outcome, notes, created_at),
         )
         conn.commit()
+
+
+def _diff_settings(base_json: str, final_json: str) -> dict:
+    base  = json.loads(base_json)
+    final = json.loads(final_json)
+    return {k: {"from": base.get(k), "to": v}
+            for k, v in final.items() if v != base.get(k)}

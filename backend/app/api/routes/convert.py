@@ -5,7 +5,8 @@ POST /api/convert
 """
 
 import asyncio
-from pathlib import Path
+import dataclasses
+import json
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
@@ -15,9 +16,11 @@ from app.ingestion.handler import find_job
 from app.ingestion.unpacker import unpack
 from app.parser.model_parser import parse_model_files
 from app.auth.dependencies import get_optional_user
-from app.database import log_job, log_generation
+from app.database import log_job, log_generation_v2
+from app.diagnostics.models import DecisionTrace
 from app.geometry.analyzer import analyze as run_geometry
 from app.normalization.intent import normalize
+from app.rules.base_profiles import load_base_profile
 from app.rules.engine import generate_settings
 from app.rules.printer_loader import load_printer_profile
 from app.export.anycubic_exporter import export as do_export
@@ -83,17 +86,28 @@ async def convert(
     printer.nozzle_diameter_mm = req.nozzle_size_mm
 
     intent = normalize(geometry)
-    print_settings = generate_settings(intent, printer, req.filament_type, req.nozzle_size_mm)
+
+    # Capture base settings for delta calculation
+    base_settings_json = json.dumps(dataclasses.asdict(load_base_profile(printer)))
+
+    # Run engine with decision trace
+    trace = DecisionTrace(
+        job_id     = req.job_id,
+        printer_id = req.printer_id,
+        filament   = req.filament_type.value,
+        nozzle_mm  = req.nozzle_size_mm,
+    )
+    print_settings = generate_settings(intent, printer, req.filament_type, req.nozzle_size_mm, trace)
 
     # Store hardware selections in settings for export
-    print_settings.nozzle_size_mm = req.nozzle_size_mm
-    print_settings.nozzle_type = req.nozzle_type
+    print_settings.nozzle_size_mm      = req.nozzle_size_mm
+    print_settings.nozzle_type         = req.nozzle_type
     print_settings.filament_diameter_mm = req.filament_diameter_mm
-    print_settings.build_plate = req.build_plate
-    print_settings.flush_volume_mm3 = req.flush_volume_mm3
-    print_settings.color_count = min(req.color_count, printer.max_colors)
-    print_settings.filament_colors = req.filament_colors
-    print_settings.filament_types = req.filament_types
+    print_settings.build_plate         = req.build_plate
+    print_settings.flush_volume_mm3    = req.flush_volume_mm3
+    print_settings.color_count         = min(req.color_count, printer.max_colors)
+    print_settings.filament_colors     = req.filament_colors
+    print_settings.filament_types      = req.filament_types
 
     # Adjust bed temperature based on build plate type
     if req.build_plate == "textured":
@@ -115,17 +129,17 @@ async def convert(
     log_job(req.job_id, user_id, "convert",
             filename=job.original_filename, printer_id=req.printer_id)
 
-    import json as _json
-    import dataclasses as _dc
     try:
-        log_generation(
-            job_id=req.job_id,
-            printer_id=req.printer_id,
-            filament_type=req.filament_type.value,
-            nozzle_size_mm=req.nozzle_size_mm,
-            geometry=geometry,
-            intent=intent,
-            settings_json=_json.dumps(_dc.asdict(print_settings)),
+        log_generation_v2(
+            job_id             = req.job_id,
+            printer_id         = req.printer_id,
+            filament_type      = req.filament_type.value,
+            nozzle_size_mm     = req.nozzle_size_mm,
+            geometry           = geometry,
+            intent             = intent,
+            settings_json      = json.dumps(dataclasses.asdict(print_settings)),
+            base_settings_json = base_settings_json,
+            trace              = trace,
         )
     except Exception:
         pass  # logging failure must never break the response

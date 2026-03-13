@@ -3,6 +3,7 @@ AutoSlice — Rules engine entry point.
 Generates PrintSettings from ModelIntent + printer + filament.
 """
 
+from app.diagnostics.models import DecisionTrace
 from app.models.intent import ModelIntent
 from app.models.print_settings import PrintSettings
 from app.models.printer import PrinterProfile, FilamentType
@@ -18,18 +19,22 @@ def generate_settings(
     printer: PrinterProfile,
     filament: FilamentType,
     nozzle_size_mm: float = 0.4,
+    trace: DecisionTrace | None = None,
 ) -> PrintSettings:
     """
     Rules engine pipeline:
       Pass 1 — Load base profile for selected printer
-      Pass 2 — Apply geometry-driven adjustments (overhangs, bridges, thin walls, infill pattern)
-      Pass 3 — Apply filament-specific adjustments (temps, cooling, forced brim/no-supports)
-      Pass 4 — Apply nozzle-size profile (layer height, speed, wall count for fine nozzles)
+      Pass 2 — Geometry-driven adjustments (overhangs, bridges, thin walls, infill pattern)
+      Pass 3 — Filament-specific adjustments (temps, cooling, forced brim/no-supports)
+      Pass 4 — Nozzle-size profile (layer height, speed, wall count for fine nozzles)
       Pass 5 — Safety clamp: enforce all values within printer rated specs
+
+    Pass an optional DecisionTrace to capture which rules fired and why.
+    The trace is mutated in-place; each pass appends RuleFiring entries.
     """
     settings = load_base_profile(printer)
-    settings = apply_geometry_rules(settings, intent)
-    settings = apply_filament_rules(settings, filament)
-    settings = apply_nozzle_profile(settings, nozzle_size_mm)
+    settings = apply_geometry_rules(settings, intent, trace)
+    settings = apply_filament_rules(settings, filament, trace)
+    settings = apply_nozzle_profile(settings, nozzle_size_mm, trace)
     settings = clamp_to_printer_limits(settings, printer)
     return settings

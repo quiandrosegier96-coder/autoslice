@@ -2,6 +2,7 @@
 AutoSlice — Filament-specific print setting adjustments.
 """
 
+from app.diagnostics.models import DecisionTrace
 from app.models.printer import FilamentType
 from app.models.print_settings import PrintSettings
 
@@ -67,19 +68,55 @@ _FILAMENT_OVERRIDES: dict[FilamentType, dict] = {
 }
 
 
-def apply_filament_rules(settings: PrintSettings, filament: FilamentType) -> PrintSettings:
+def apply_filament_rules(
+    settings: PrintSettings,
+    filament: FilamentType,
+    trace: DecisionTrace | None = None,
+) -> PrintSettings:
     overrides = _FILAMENT_OVERRIDES.get(filament, {})
+    fil = filament.value
+
     for key, value in overrides.items():
         if key == "_fan_min":
+            before = settings.fan_speed_percent
             settings.fan_speed_percent = max(settings.fan_speed_percent, value)
+            if trace:
+                trace.record(f"filament.fan_min.{fil}",
+                             f"{fil}: fan_min={value}% → raise floor",
+                             "fan_speed_percent", before, settings.fan_speed_percent)
         elif key == "_fan_max":
+            before = settings.fan_speed_percent
             settings.fan_speed_percent = min(settings.fan_speed_percent, value)
+            if trace:
+                trace.record(f"filament.fan_max.{fil}",
+                             f"{fil}: fan_max={value}% → cap ceiling",
+                             "fan_speed_percent", before, settings.fan_speed_percent)
         elif key == "_force_brim":
+            before_en = settings.brim_enabled
+            before_w  = settings.brim_width_mm
             settings.brim_enabled = True
             if settings.brim_width_mm < 5.0:
                 settings.brim_width_mm = 5.0
+            if trace:
+                trace.record(f"filament.brim.{fil}",
+                             f"{fil} warps → force brim",
+                             "brim_enabled", before_en, True)
+                trace.record(f"filament.brim_width.{fil}",
+                             f"{fil} warps → min 5mm brim",
+                             "brim_width_mm", before_w, settings.brim_width_mm)
         elif key == "_suppress_supports":
+            before = settings.supports_enabled
             settings.supports_enabled = False
+            if trace:
+                trace.record(f"filament.suppress_supports.{fil}",
+                             f"{fil} is flexible — supports cause more harm than good",
+                             "supports_enabled", before, False)
         elif not key.startswith("_"):
+            before = getattr(settings, key)
             setattr(settings, key, value)
+            if trace:
+                trace.record(f"filament.{key}.{fil}",
+                             f"{fil}: {key}={value}",
+                             key, before, value)
+
     return settings
