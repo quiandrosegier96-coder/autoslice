@@ -2,6 +2,7 @@
 AutoSlice — Application configuration.
 """
 
+import os
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,7 +14,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     # Upload
-    upload_dir: Path = BASE_DIR / "temp"
+    upload_dir: Path = Path(os.environ.get("UPLOAD_DIR", str(BASE_DIR / "temp")))
     max_upload_size_mb: int = 200
 
     # CORS

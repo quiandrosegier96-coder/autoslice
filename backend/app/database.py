@@ -3,12 +3,13 @@ AutoSlice — SQLite database setup for user authentication and generation loggi
 """
 
 import json
+import os
 import sqlite3
 from pathlib import Path
 
 from app.config import settings
 
-DB_PATH = settings.upload_dir.parent / "autoslice.db"
+DB_PATH = Path(os.environ.get("DB_PATH", str(settings.upload_dir.parent / "autoslice.db")))
 
 
 def get_connection() -> sqlite3.Connection:
