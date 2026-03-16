@@ -3,6 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      no_cache: true
     environment:
       - ALLOWED_ORIGINS=["https://${COOLIFY_FQDN:-localhost}"]
       - MAX_UPLOAD_SIZE_MB=200
@@ -28,7 +29,7 @@ services:
       - BACKEND_URL=http://backend:8000
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
 
 volumes:
   db-data:
