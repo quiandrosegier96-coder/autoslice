@@ -7,3 +7,6 @@ __pycache__/
 temp/
 dist/
 *.egg-info/
+*.db
+*.db-shm
+*.db-wal

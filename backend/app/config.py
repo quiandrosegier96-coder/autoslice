@@ -15,6 +15,9 @@ class Settings(BaseSettings):
 
     # Upload
     upload_dir: Path = Path(os.environ.get("UPLOAD_DIR", str(BASE_DIR / "temp")))
+
+    # Database — explicit path so it never moves on restart
+    db_path: Path = Path(os.environ.get("DB_PATH", str(BASE_DIR / "autoslice.db")))
     max_upload_size_mb: int = 200
 
     # CORS
