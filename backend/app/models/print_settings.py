@@ -59,8 +59,8 @@ class PrintSettings:
     min_layer_time_s: int = 8         # slow down if layer prints faster than this
 
     # --- Cooling ---
-    fan_speed_percent: int
-    fan_first_layer: bool
+    fan_speed_percent: int = 100
+    fan_first_layer: bool = False
 
     # --- Support interface ---
     support_interface_enabled: bool = False
