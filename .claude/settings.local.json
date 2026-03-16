@@ -75,7 +75,8 @@
       "Bash(powershell -Command \"cd ''C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\frontend''; netlify deploy --prod\")",
       "Bash(powershell -Command \"Get-Command netlify-cli -ErrorAction SilentlyContinue; npm list -g netlify-cli 2>&1 | head -3; npx netlify --version 2>&1\")",
       "Bash(powershell -Command \"& { $env:PATH += '';C:\\\\Program Files\\\\nodejs''; npm --version }\")",
-      "Bash(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@178.117.208.226 \"echo connected\")"
+      "Bash(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@178.117.208.226 \"echo connected\")",
+      "Bash(python -c \":*)"
     ]
   }
 }
