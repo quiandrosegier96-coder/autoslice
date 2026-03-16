@@ -8,7 +8,7 @@ import { saveAuth } from "@/lib/auth";
 import { useLang } from "@/contexts/LangContext";
 import { LANGS, type Lang } from "@/lib/i18n";
 
-const NOTICE_KEY = "autoslice_reset_notice_dismissed";
+const NOTICE_KEY = "autoslice_notice_v2_dismissed";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -64,12 +64,14 @@ export default function LoginPage() {
             </div>
             <p className="text-sm text-zinc-300 leading-relaxed mb-1">Beste gebruiker,</p>
             <p className="text-sm text-zinc-400 leading-relaxed mb-5">
-              Na een volledige reset van de app die nodig was om een beter eindresultaat te verkrijgen,
-              is het nodig om jullie opnieuw te registreren.
+              Deze webapp is momenteel volop in ontwikkeling. Hierdoor kan het zijn dat uw account opnieuw werd gereset.
+              Onze excuses voor het ongemak.
               <br /><br />
-              Onze excuses voor dit ongemak.
+              Team AutoSlice doet er alles aan om dit probleem zo snel mogelijk op te sporen en op te lossen.
+              <br /><br />
+              Bedankt voor uw begrip en vertrouwen.
             </p>
-            <p className="text-xs text-zinc-500 mb-5 font-medium">— Team AutoSlice</p>
+            <p className="text-xs text-zinc-500 mb-5 font-medium">— Team AutoSlice —</p>
             <button onClick={dismissNotice}
               className="w-full py-2.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg
                          transition-colors duration-150 text-sm">
