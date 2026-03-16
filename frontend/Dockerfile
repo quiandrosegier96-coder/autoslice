@@ -15,7 +15,7 @@ COPY . .
 ARG BACKEND_URL=http://backend:8000
 ENV BACKEND_URL=${BACKEND_URL}
 
-RUN npm run build
+RUN mkdir -p public && npm run build
 
 # --- Production ---
 FROM base AS runner
@@ -26,6 +26,7 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
+# public may be empty but Next.js standalone expects it
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
