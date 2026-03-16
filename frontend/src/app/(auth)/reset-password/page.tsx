@@ -4,9 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/api";
+import { useLang } from "@/contexts/LangContext";
+import { LANGS, type Lang } from "@/lib/i18n";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const { lang, setLang, t } = useLang();
   const [token, setToken] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -15,8 +18,8 @@ export default function ResetPasswordPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (password !== confirm) { setError("Passwords do not match."); return; }
-    if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
+    if (password !== confirm) { setError(t("reg_err_match")); return; }
+    if (password.length < 8) { setError(t("reg_err_length")); return; }
     setError("");
     setLoading(true);
     try {
@@ -42,12 +45,22 @@ export default function ResetPasswordPage() {
             Auto<span className="text-brand">Slice</span>
           </span>
         </div>
-        <p className="text-zinc-500 text-sm">Set a new password</p>
+        <p className="text-zinc-500 text-sm mb-3">{t("rp_subtitle")}</p>
+        <div className="flex items-center justify-center gap-1">
+          {LANGS.map(({ code, label }) => (
+            <button key={code} onClick={() => setLang(code as Lang)}
+              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                lang === code ? "text-brand" : "text-zinc-600 hover:text-zinc-400"
+              }`}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="w-full max-w-sm bg-surface-card border border-surface-border rounded-xl p-8">
-        <h1 className="text-xl font-semibold text-white mb-2">Reset password</h1>
-        <p className="text-zinc-500 text-sm mb-6">Enter the reset code your admin provided.</p>
+        <h1 className="text-xl font-semibold text-white mb-2">{t("rp_heading")}</h1>
+        <p className="text-zinc-500 text-sm mb-6">{t("rp_body")}</p>
 
         {error && (
           <div className="mb-4 p-3 bg-brand/10 border border-brand/30 rounded-lg text-brand text-sm">
@@ -58,20 +71,20 @@ export default function ResetPasswordPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
-              Reset Code
+              {t("rp_code")}
             </label>
             <input
               type="text"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="Paste your reset code here"
+              placeholder={t("rp_code_ph")}
               required
               className="font-mono text-sm"
             />
           </div>
           <div>
             <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
-              New Password
+              {t("rp_new_pw")}
             </label>
             <input
               type="password"
@@ -84,7 +97,7 @@ export default function ResetPasswordPage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
-              Confirm Password
+              {t("rp_confirm_pw")}
             </label>
             <input
               type="password"
@@ -102,13 +115,13 @@ export default function ResetPasswordPage() {
                        disabled:cursor-not-allowed text-white font-semibold rounded-lg
                        transition-colors duration-150 text-sm"
           >
-            {loading ? "Resetting…" : "Set new password"}
+            {loading ? t("rp_submitting") : t("rp_submit")}
           </button>
         </form>
 
         <p className="mt-6 text-center text-xs text-zinc-600">
           <Link href="/login" className="hover:text-zinc-400 transition-colors">
-            ← Back to login
+            {t("rp_back")}
           </Link>
         </p>
       </div>

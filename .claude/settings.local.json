@@ -63,7 +63,13 @@
       "Bash(grep -l direct c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/data/printers/*.json)",
       "Bash(grep max_speed c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/data/printers/*.json)",
       "Bash(export PATH=\"$PATH:/c/Users/QUANT/AppData/Roaming/npm\")",
-      "Bash(export PATH=\"/c/Program Files/nodejs:$PATH:/c/Users/QUANT/AppData/Roaming/npm\")"
+      "Bash(export PATH=\"/c/Program Files/nodejs:$PATH:/c/Users/QUANT/AppData/Roaming/npm\")",
+      "Bash(\"/c/Program Files/nodejs/node.exe\" -e \":*)",
+      "Bash(\"/c/Program Files/nodejs/node.exe\":*)",
+      "Bash(ssh -o StrictHostKeyChecking=no root@178.117.208.226 \"cd /root/autoslice && git pull origin master && systemctl restart autoslice 2>/dev/null || pkill -f ''uvicorn'' && sleep 1 && systemctl status autoslice 2>/dev/null || echo ''checking process...'' && pgrep -a uvicorn\")",
+      "Bash(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -p 2222 root@178.117.208.226 \"echo ok\")",
+      "Bash(find /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/app -type f -name \"*.py\" -exec ls -lh {})",
+      "Read(//c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/{print $5 \"\"\"\"\"\"\"\"/**)"
     ]
   }
 }
