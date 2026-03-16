@@ -69,7 +69,12 @@
       "Bash(ssh -o StrictHostKeyChecking=no root@178.117.208.226 \"cd /root/autoslice && git pull origin master && systemctl restart autoslice 2>/dev/null || pkill -f ''uvicorn'' && sleep 1 && systemctl status autoslice 2>/dev/null || echo ''checking process...'' && pgrep -a uvicorn\")",
       "Bash(ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -p 2222 root@178.117.208.226 \"echo ok\")",
       "Bash(find /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/app -type f -name \"*.py\" -exec ls -lh {})",
-      "Read(//c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/{print $5 \"\"\"\"\"\"\"\"/**)"
+      "Read(//c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/{print $5 \"\"\"\"\"\"\"\"/**)",
+      "Bash(cmd /c \"cd /d C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\frontend && netlify deploy --prod\")",
+      "Bash(cmd /c \"cd /d C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\frontend && netlify deploy --prod 2>&1\")",
+      "Bash(powershell -Command \"cd ''C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\frontend''; netlify deploy --prod\")",
+      "Bash(powershell -Command \"Get-Command netlify-cli -ErrorAction SilentlyContinue; npm list -g netlify-cli 2>&1 | head -3; npx netlify --version 2>&1\")",
+      "Bash(powershell -Command \"& { $env:PATH += '';C:\\\\Program Files\\\\nodejs''; npm --version }\")"
     ]
   }
 }
