@@ -8,7 +8,7 @@ import { saveAuth } from "@/lib/auth";
 import { useLang } from "@/contexts/LangContext";
 import { LANGS, type Lang } from "@/lib/i18n";
 
-const NOTICE_KEY = "autoslice_notice_v2_dismissed";
+const NOTICE_KEY = "autoslice_notice_v3_dismissed";
 
 export default function LoginPage() {
   const router = useRouter();
