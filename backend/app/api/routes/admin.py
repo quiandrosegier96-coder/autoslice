@@ -44,29 +44,23 @@ class RecentJob(BaseModel):
 def list_users(_: dict = Depends(get_admin_user)) -> list[UserRow]:
     from app.database import ADMIN_EMAILS
     with get_connection() as conn:
-        users = conn.execute(
-            "SELECT id, username, email, created_at FROM users ORDER BY created_at DESC"
-        ).fetchall()
-        result = []
-        for u in users:
-            uploads = conn.execute(
-                "SELECT COUNT(*) FROM jobs WHERE user_id = ? AND action = 'upload'",
-                (u["id"],)
-            ).fetchone()[0]
-            conversions = conn.execute(
-                "SELECT COUNT(*) FROM jobs WHERE user_id = ? AND action = 'convert'",
-                (u["id"],)
-            ).fetchone()[0]
-            result.append(UserRow(
-                id=u["id"],
-                username=u["username"],
-                email=u["email"],
-                created_at=u["created_at"],
-                is_admin=u["email"] in ADMIN_EMAILS,
-                uploads=uploads,
-                conversions=conversions,
-            ))
-    return result
+        rows = conn.execute("""
+            SELECT u.id, u.username, u.email, u.created_at,
+                   COALESCE(SUM(CASE WHEN j.action = 'upload'  THEN 1 ELSE 0 END), 0) AS uploads,
+                   COALESCE(SUM(CASE WHEN j.action = 'convert' THEN 1 ELSE 0 END), 0) AS conversions
+            FROM users u
+            LEFT JOIN jobs j ON j.user_id = u.id
+            GROUP BY u.id
+            ORDER BY u.created_at DESC
+        """).fetchall()
+    return [
+        UserRow(
+            id=r["id"], username=r["username"], email=r["email"],
+            created_at=r["created_at"], is_admin=r["email"] in ADMIN_EMAILS,
+            uploads=r["uploads"], conversions=r["conversions"],
+        )
+        for r in rows
+    ]
 
 
 @router.get("/admin/stats", response_model=StatsResponse)

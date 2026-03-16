@@ -3,8 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { apiPost } from "@/lib/api";
+import { useLang } from "@/contexts/LangContext";
+import { LANGS, type Lang } from "@/lib/i18n";
 
 export default function ForgotPasswordPage() {
+  const { lang, setLang, t } = useLang();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
@@ -37,7 +40,17 @@ export default function ForgotPasswordPage() {
             Auto<span className="text-brand">Slice</span>
           </span>
         </div>
-        <p className="text-zinc-500 text-sm">Reset your password</p>
+        <p className="text-zinc-500 text-sm mb-3">{t("fp_subtitle")}</p>
+        <div className="flex items-center justify-center gap-1">
+          {LANGS.map(({ code, label }) => (
+            <button key={code} onClick={() => setLang(code as Lang)}
+              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                lang === code ? "text-brand" : "text-zinc-600 hover:text-zinc-400"
+              }`}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="w-full max-w-sm bg-surface-card border border-surface-border rounded-xl p-8">
@@ -48,29 +61,23 @@ export default function ForgotPasswordPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
               </svg>
             </div>
-            <h2 className="text-white font-semibold mb-2">Request received</h2>
-            <p className="text-zinc-500 text-sm mb-2">
-              If your email is registered, a reset code has been generated.
-            </p>
-            <p className="text-zinc-600 text-xs mb-6">
-              Contact your admin to retrieve the code, then use it on the reset page.
-            </p>
+            <h2 className="text-white font-semibold mb-2">{t("fp_received")}</h2>
+            <p className="text-zinc-500 text-sm mb-2">{t("fp_received_body")}</p>
+            <p className="text-zinc-600 text-xs mb-6">{t("fp_admin_note")}</p>
             <Link
               href="/reset-password"
               className="block w-full py-2.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg text-sm text-center transition-colors"
             >
-              Enter reset code →
+              {t("fp_enter_code")}
             </Link>
             <Link href="/login" className="block mt-3 text-xs text-zinc-600 hover:text-zinc-400 transition-colors text-center">
-              Back to login
+              {t("fp_back")}
             </Link>
           </div>
         ) : (
           <>
-            <h1 className="text-xl font-semibold text-white mb-2">Forgot password</h1>
-            <p className="text-zinc-500 text-sm mb-6">
-              Enter your email address. Your admin will provide a reset code.
-            </p>
+            <h1 className="text-xl font-semibold text-white mb-2">{t("fp_heading")}</h1>
+            <p className="text-zinc-500 text-sm mb-6">{t("fp_body")}</p>
 
             {error && (
               <div className="mb-4 p-3 bg-brand/10 border border-brand/30 rounded-lg text-brand text-sm">
@@ -81,7 +88,7 @@ export default function ForgotPasswordPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
-                  Email
+                  {t("fp_email")}
                 </label>
                 <input
                   type="email"
@@ -99,13 +106,13 @@ export default function ForgotPasswordPage() {
                            disabled:cursor-not-allowed text-white font-semibold rounded-lg
                            transition-colors duration-150 text-sm"
               >
-                {loading ? "Sending…" : "Request reset code"}
+                {loading ? t("fp_submitting") : t("fp_submit")}
               </button>
             </form>
 
             <p className="mt-6 text-center text-xs text-zinc-600">
               <Link href="/login" className="hover:text-zinc-400 transition-colors">
-                ← Back to login
+                {t("fp_back")}
               </Link>
             </p>
           </>

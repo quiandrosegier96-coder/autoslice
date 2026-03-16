@@ -78,7 +78,7 @@ export default function HistoryPage() {
       <main className="max-w-3xl mx-auto px-4 py-10">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white mb-1">{t("hist_title")}</h1>
-          <p className="text-zinc-500 text-sm">Your recent uploads and conversions.</p>
+          <p className="text-zinc-500 text-sm">{t("hist_subtitle")}</p>
         </div>
 
         {error && (
@@ -99,9 +99,9 @@ export default function HistoryPage() {
                   d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
             </div>
-            <p className="mb-4 font-medium text-zinc-400">No activity yet</p>
+            <p className="mb-4 font-medium text-zinc-400">{t("hist_empty")}</p>
             <Link href="/convert" className="text-brand hover:text-brand-light transition-colors text-sm">
-              Convert your first file →
+              {t("hist_first")}
             </Link>
           </div>
         ) : (
@@ -113,7 +113,7 @@ export default function HistoryPage() {
                   <UploadIcon />
                 </div>
                 <div>
-                  <p className="text-xs text-zinc-500 uppercase tracking-wide mb-0.5">Uploads</p>
+                  <p className="text-xs text-zinc-500 uppercase tracking-wide mb-0.5">{t("hist_uploads")}</p>
                   <p className="text-2xl font-bold text-white">{uploads.length}</p>
                 </div>
               </div>
@@ -122,7 +122,7 @@ export default function HistoryPage() {
                   <ConvertIcon />
                 </div>
                 <div>
-                  <p className="text-xs text-zinc-500 uppercase tracking-wide mb-0.5">Conversions</p>
+                  <p className="text-xs text-zinc-500 uppercase tracking-wide mb-0.5">{t("hist_converts")}</p>
                   <p className="text-2xl font-bold text-white">{converts.length}</p>
                 </div>
               </div>
@@ -151,13 +151,13 @@ export default function HistoryPage() {
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-white truncate">
-                        {job.filename ?? <span className="text-zinc-500 italic">unknown file</span>}
+                        {job.filename ?? <span className="text-zinc-500 italic">{t("hist_no_printer")}</span>}
                       </p>
                       <p className="text-xs text-zinc-500 mt-0.5">
                         {job.printer_id ? (
                           <span className="text-zinc-400">{job.printer_id}</span>
                         ) : (
-                          <span className="italic">no printer</span>
+                          <span className="italic">{t("hist_no_printer")}</span>
                         )}
                       </p>
                     </div>
