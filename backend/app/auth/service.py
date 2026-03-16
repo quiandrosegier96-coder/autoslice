@@ -107,11 +107,14 @@ def reset_password(token: str, new_password: str) -> None:
         conn.commit()
 
 
-def login_user(email: str, password: str) -> dict:
+def login_user(identifier: str, password: str) -> dict:
+    """Accept either an email address or a username as the login identifier."""
     with get_connection() as conn:
         row = conn.execute(
-            "SELECT id, username, email, password_hash FROM users WHERE email = ?", (email,)
+            "SELECT id, username, email, password_hash FROM users "
+            "WHERE email = ? OR username = ?",
+            (identifier, identifier),
         ).fetchone()
     if row is None or not verify_password(password, row["password_hash"]):
-        raise ValueError("Invalid email or password.")
+        raise ValueError("Invalid email/username or password.")
     return {"id": row["id"], "username": row["username"], "email": row["email"]}

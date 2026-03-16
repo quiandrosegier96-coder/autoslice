@@ -48,6 +48,27 @@ def analyze(parsed_model: ParsedModel) -> GeometryAnalysis:
     except Exception:
         pass
 
+    # Slenderness ratio: z / min(x, y) — raw aspect ratio (independent of contact area)
+    slenderness_ratio = 0.0
+    try:
+        min_xy = min(bbox.x_mm, bbox.y_mm)
+        if min_xy > 0:
+            slenderness_ratio = round(bbox.z_mm / min_xy, 4)
+    except Exception:
+        pass
+
+    # Center-of-mass Z ratio: CoM_z / height (0=bottom, 1=top; >0.6 = top-heavy)
+    center_of_mass_z_ratio = 0.5
+    try:
+        com = mesh.center_mass   # [x, y, z]
+        height = bbox.z_mm
+        if height > 0:
+            min_z = float(mesh.bounds[0][2])
+            center_of_mass_z_ratio = round((float(com[2]) - min_z) / height, 4)
+            center_of_mass_z_ratio = max(0.0, min(1.0, center_of_mass_z_ratio))
+    except Exception:
+        pass
+
     return GeometryAnalysis(
         bounding_box=bbox,
         part_count=len(parsed_model.objects),
@@ -59,6 +80,8 @@ def analyze(parsed_model: ParsedModel) -> GeometryAnalysis:
         surface_area_mm2=surface_area_mm2,
         contact_area_mm2=contact_area_mm2,
         height_to_base_ratio=height_to_base_ratio,
+        slenderness_ratio=slenderness_ratio,
+        center_of_mass_z_ratio=center_of_mass_z_ratio,
     )
 
 

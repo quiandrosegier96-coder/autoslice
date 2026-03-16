@@ -22,4 +22,10 @@ def load_printer_profile(printer_id: str) -> PrinterProfile:
         nozzle_diameter_mm=data["nozzle_diameter_mm"],
         supported_filaments=[FilamentType(f) for f in data["supported_filaments"]],
         max_colors=data.get("max_colors", 1),
+        max_acceleration_xy=data.get("max_acceleration_xy", 5000),
+        max_acceleration_z=data.get("max_acceleration_z", 500),
+        max_jerk=data.get("max_jerk", 10.0),
+        max_speed_z_mm_s=data.get("max_speed_z_mm_s", 15),
+        min_layer_height_mm=data.get("min_layer_height_mm", 0.05),
+        max_layer_height_mm=data.get("max_layer_height_mm", 0.32),
     )

@@ -9,8 +9,8 @@ from app.models.printer import PrinterProfile
 def clamp_to_printer_limits(settings: PrintSettings, printer: PrinterProfile) -> PrintSettings:
     nd = printer.nozzle_diameter_mm
 
-    settings.layer_height_mm       = round(max(0.05, min(settings.layer_height_mm, nd * 0.8)), 3)
-    settings.first_layer_height_mm = round(max(0.1,  min(settings.first_layer_height_mm, nd)), 3)
+    settings.layer_height_mm       = round(max(printer.min_layer_height_mm, min(settings.layer_height_mm, min(nd * 0.8, printer.max_layer_height_mm))), 3)
+    settings.first_layer_height_mm = round(max(printer.min_layer_height_mm, min(settings.first_layer_height_mm, nd)), 3)
     settings.wall_count            = max(2, min(settings.wall_count, 8))
     settings.top_layers            = max(3, min(settings.top_layers, 12))
     settings.bottom_layers         = max(3, min(settings.bottom_layers, 12))

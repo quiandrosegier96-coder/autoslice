@@ -24,7 +24,7 @@ export const translations = {
     // Login
     login_subtitle:    "Aanmelden om door te gaan",
     login_welcome:     "Welkom terug",
-    login_email:       "E-mail",
+    login_email:       "E-mail of gebruikersnaam",
     login_password:    "Wachtwoord",
     login_submit:      "Aanmelden",
     login_submitting:  "Aanmelden…",
@@ -154,7 +154,7 @@ export const translations = {
 
     login_subtitle:    "Sign in to continue",
     login_welcome:     "Welcome back",
-    login_email:       "Email",
+    login_email:       "Email or username",
     login_password:    "Password",
     login_submit:      "Sign in",
     login_submitting:  "Signing in…",
@@ -279,7 +279,7 @@ export const translations = {
 
     login_subtitle:    "Connectez-vous pour continuer",
     login_welcome:     "Bon retour",
-    login_email:       "E-mail",
+    login_email:       "E-mail ou nom d'utilisateur",
     login_password:    "Mot de passe",
     login_submit:      "Se connecter",
     login_submitting:  "Connexion…",
@@ -404,7 +404,7 @@ export const translations = {
 
     login_subtitle:    "Melden Sie sich an, um fortzufahren",
     login_welcome:     "Willkommen zurück",
-    login_email:       "E-Mail",
+    login_email:       "E-Mail oder Benutzername",
     login_password:    "Passwort",
     login_submit:      "Anmelden",
     login_submitting:  "Anmelden…",

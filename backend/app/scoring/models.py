@@ -51,32 +51,40 @@ class BoundingBox(BaseModel):
 
 
 class OverhangFeatures(BaseModel):
-    has_overhangs:      bool
-    max_angle_deg:      float
-    overhang_area_ratio: float = Field(ge=0.0, le=1.0)
+    has_overhangs:              bool
+    max_angle_deg:              float
+    overhang_area_ratio:        float = Field(ge=0.0, le=1.0)
+    mild_area_ratio:            float = Field(default=0.0, ge=0.0, le=1.0)
+    moderate_area_ratio:        float = Field(default=0.0, ge=0.0, le=1.0)
+    severe_area_ratio:          float = Field(default=0.0, ge=0.0, le=1.0)
+    estimated_support_area_mm2: float = 0.0
 
 
 class BridgeFeatures(BaseModel):
-    has_bridges:  bool
-    max_span_mm:  float
+    has_bridges:     bool
+    max_span_mm:     float
+    bridge_area_mm2: float = 0.0
+    cluster_count:   int   = 0
 
 
 class ThinWallFeatures(BaseModel):
-    has_thin_walls:    bool
-    min_thickness_mm:  float
+    has_thin_walls:   bool
+    min_thickness_mm: float
 
 
 class GeometryFeatures(BaseModel):
-    bounding_box:          BoundingBox
-    part_count:            int
-    mesh_is_watertight:    bool
-    estimated_volume_cm3:  float
-    surface_area_mm2:      float
-    contact_area_mm2:      float
-    height_to_base_ratio:  float
-    overhang:              OverhangFeatures
-    bridge:                BridgeFeatures
-    thin_wall:             ThinWallFeatures
+    bounding_box:           BoundingBox
+    part_count:             int
+    mesh_is_watertight:     bool
+    estimated_volume_cm3:   float
+    surface_area_mm2:       float
+    contact_area_mm2:       float
+    height_to_base_ratio:   float
+    slenderness_ratio:      float = 0.0
+    center_of_mass_z_ratio: float = 0.5
+    overhang:               OverhangFeatures
+    bridge:                 BridgeFeatures
+    thin_wall:              ThinWallFeatures
 
     @classmethod
     def from_geometry_analysis(cls, geo: object) -> GeometryFeatures:
@@ -96,14 +104,22 @@ class GeometryFeatures(BaseModel):
             surface_area_mm2=geo.surface_area_mm2,
             contact_area_mm2=geo.contact_area_mm2,
             height_to_base_ratio=geo.height_to_base_ratio,
+            slenderness_ratio=geo.slenderness_ratio,
+            center_of_mass_z_ratio=geo.center_of_mass_z_ratio,
             overhang=OverhangFeatures(
                 has_overhangs=geo.overhang.has_overhangs,
                 max_angle_deg=geo.overhang.max_angle_deg,
                 overhang_area_ratio=geo.overhang.overhang_area_ratio,
+                mild_area_ratio=geo.overhang.mild_area_ratio,
+                moderate_area_ratio=geo.overhang.moderate_area_ratio,
+                severe_area_ratio=geo.overhang.severe_area_ratio,
+                estimated_support_area_mm2=geo.overhang.estimated_support_area_mm2,
             ),
             bridge=BridgeFeatures(
                 has_bridges=geo.bridge.has_bridges,
                 max_span_mm=geo.bridge.max_span_mm,
+                bridge_area_mm2=geo.bridge.bridge_area_mm2,
+                cluster_count=geo.bridge.cluster_count,
             ),
             thin_wall=ThinWallFeatures(
                 has_thin_walls=geo.thin_wall.has_thin_walls,
@@ -124,6 +140,7 @@ class RiskScore(BaseModel):
 
 class RiskScores(BaseModel):
     support:   RiskScore
+    bridge:    RiskScore   # bridge-specific quality risk (separate from support)
     adhesion:  RiskScore
     stability: RiskScore
     detail:    RiskScore
@@ -132,6 +149,7 @@ class RiskScores(BaseModel):
     def max_value(self) -> int:
         return max(
             self.support.value,
+            self.bridge.value,
             self.adhesion.value,
             self.stability.value,
             self.detail.value,

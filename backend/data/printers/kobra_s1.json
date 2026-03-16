@@ -1,10 +1,16 @@
 {
   "id": "kobra_s1",
   "display_name": "Anycubic Kobra S1",
-  "build_volume_x_mm": 220,
-  "build_volume_y_mm": 220,
-  "build_volume_z_mm": 260,
+  "build_volume_x_mm": 250,
+  "build_volume_y_mm": 250,
+  "build_volume_z_mm": 250,
   "max_speed_mm_s": 600,
+  "max_speed_z_mm_s": 15,
+  "max_acceleration_xy": 20000,
+  "max_acceleration_z": 1000,
+  "max_jerk": 15.0,
+  "min_layer_height_mm": 0.08,
+  "max_layer_height_mm": 0.28,
   "nozzle_diameter_mm": 0.4,
   "supported_filaments": ["pla", "petg", "tpu"],
   "default_settings": {
@@ -27,6 +33,10 @@
     "print_speed_mm_s": 200,
     "first_layer_speed_mm_s": 30,
     "fan_speed_percent": 100,
-    "fan_first_layer": false
+    "fan_first_layer": false,
+    "retract_length_mm": 1.0,
+    "retract_speed_mm_s": 40,
+    "z_hop_mm": 0.5,
+    "wipe_on_retract": true
   }
 }

@@ -58,10 +58,12 @@ def _decide_support(f: GeometryFeatures, s: RiskScores) -> SupportDecision:
     reasons: list[str] = []
     ov = f.overhang
 
+    # Trigger on moderate or severe overhang zones, or high support risk
     needs_supports = (
-        ov.overhang_area_ratio > 0.04 or
-        ov.max_angle_deg > 55 or
-        s.support.value >= 35
+        ov.moderate_area_ratio > 0.02 or
+        ov.severe_area_ratio   > 0.005 or
+        ov.max_angle_deg       > 55 or
+        s.support.value        >= 35
     )
 
     if not needs_supports:
@@ -75,32 +77,39 @@ def _decide_support(f: GeometryFeatures, s: RiskScores) -> SupportDecision:
 
     reasons.append(f"support_risk={s.support.value}")
 
-    # Support type: tree for organic overhangs, normal for mechanical
-    if s.support.value >= 60 or ov.overhang_area_ratio > 0.10:
+    # Support type: tree for severe/organic overhangs, normal for moderate/mechanical
+    if s.support.value >= 60 or ov.severe_area_ratio > 0.03 or ov.overhang_area_ratio > 0.10:
         stype: Literal["normal", "tree", "none"] = "tree"
         reasons.append(
-            f"Tree supports: overhang_ratio={ov.overhang_area_ratio:.1%}"
+            f"Tree supports: severe_ratio={ov.severe_area_ratio:.1%}"
+            f" or overhang_ratio={ov.overhang_area_ratio:.1%}"
             f" or support_risk={s.support.value} >= 60"
         )
     else:
         stype = "normal"
         reasons.append("Normal supports: moderate overhang geometry")
 
-    # Density
-    if s.support.value >= 70:
+    # Density: based on severity tiers + support risk score
+    if s.support.value >= 70 or ov.severe_area_ratio > 0.05:
         density = 25
-        reasons.append("Heavy density 25%: support_risk >= 70")
-    elif s.support.value >= 35:
+        reasons.append("Heavy density 25%: support_risk >= 70 or extensive severe overhangs")
+    elif s.support.value >= 35 or ov.moderate_area_ratio > 0.05:
         density = 15
         reasons.append("Normal density 15%: support_risk >= 35")
     else:
         density = 10
         reasons.append("Light density 10%: low support_risk")
 
-    # Angle threshold
-    if f.bridge.max_span_mm > 15:
+    # Angle threshold: tighten for bridges or severe overhangs
+    if f.bridge.max_span_mm > 15 or ov.severe_area_ratio > 0.02:
         angle = 40
-        reasons.append(f"Tighter angle 40°: bridge_span={f.bridge.max_span_mm:.1f}mm > 15mm")
+        reasons.append(
+            f"Tighter angle 40°: bridge_span={f.bridge.max_span_mm:.1f}mm > 15mm"
+            f" or severe_overhang={ov.severe_area_ratio:.1%}"
+        )
+    elif ov.moderate_area_ratio > 0.05:
+        angle = 45
+        reasons.append("Angle 45°: moderate overhang zone significant")
     else:
         angle = 50
 
@@ -327,13 +336,20 @@ def _decide_speed(
         speed = min(speed, 100)
         reasons.append(f"Max 100mm/s: stability_risk={s.stability.value} >= 35")
 
-    if f.bridge.max_span_mm > 5:
-        fan = max(fan, 80)
-        reasons.append(f"Fan >= 80%: bridge_span={f.bridge.max_span_mm:.1f}mm > 5mm")
-
-    if f.bridge.max_span_mm > 15:
-        speed = min(speed, 80)
-        reasons.append(f"Max 80mm/s: bridge_span={f.bridge.max_span_mm:.1f}mm > 15mm")
+    # Bridge-specific cooling and speed — use bridge_risk for finer control
+    if f.bridge.has_bridges:
+        if f.bridge.max_span_mm > 3:
+            fan = max(fan, 80)
+            reasons.append(f"Fan >= 80%: bridge_span={f.bridge.max_span_mm:.1f}mm > 3mm")
+        if f.bridge.max_span_mm > 8:
+            fan = max(fan, 100)
+            reasons.append(f"Fan 100%: bridge_span={f.bridge.max_span_mm:.1f}mm > 8mm")
+        if s.bridge.value >= 35:
+            speed = min(speed, 80)
+            reasons.append(f"Max 80mm/s: bridge_risk={s.bridge.value} >= 35")
+        if s.bridge.value >= 60:
+            speed = min(speed, 50)
+            reasons.append(f"Max 50mm/s: bridge_risk={s.bridge.value} >= 60 — long bridges")
 
     if s.detail.value >= 50:
         min_layer_time = max(min_layer_time, 15)

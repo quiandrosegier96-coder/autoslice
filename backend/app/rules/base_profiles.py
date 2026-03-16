@@ -42,4 +42,8 @@ def load_base_profile(printer: PrinterProfile) -> PrintSettings:
         first_layer_speed_mm_s=defaults["first_layer_speed_mm_s"],
         fan_speed_percent=defaults["fan_speed_percent"],
         fan_first_layer=defaults["fan_first_layer"],
+        retract_length_mm=defaults.get("retract_length_mm", 0.8),
+        retract_speed_mm_s=defaults.get("retract_speed_mm_s", 45),
+        z_hop_mm=defaults.get("z_hop_mm", 0.2),
+        wipe_on_retract=defaults.get("wipe_on_retract", False),
     )

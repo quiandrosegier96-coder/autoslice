@@ -85,19 +85,22 @@ async def convert(
     # Apply user's nozzle size to the printer profile before rules engine
     printer.nozzle_diameter_mm = req.nozzle_size_mm
 
-    intent = normalize(geometry)
+    try:
+        intent = normalize(geometry)
 
-    # Capture base settings for delta calculation
-    base_settings_json = json.dumps(dataclasses.asdict(load_base_profile(printer)))
+        # Capture base settings for delta calculation
+        base_settings_json = json.dumps(dataclasses.asdict(load_base_profile(printer)))
 
-    # Run engine with decision trace
-    trace = DecisionTrace(
-        job_id     = req.job_id,
-        printer_id = req.printer_id,
-        filament   = req.filament_type.value,
-        nozzle_mm  = req.nozzle_size_mm,
-    )
-    print_settings = generate_settings(intent, printer, req.filament_type, req.nozzle_size_mm, trace)
+        # Run engine with decision trace
+        trace = DecisionTrace(
+            job_id     = req.job_id,
+            printer_id = req.printer_id,
+            filament   = req.filament_type.value,
+            nozzle_mm  = req.nozzle_size_mm,
+        )
+        print_settings = generate_settings(intent, printer, req.filament_type, req.nozzle_size_mm, trace)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Settings generation failed: {exc}")
 
     # Store hardware selections in settings for export
     print_settings.nozzle_size_mm      = req.nozzle_size_mm

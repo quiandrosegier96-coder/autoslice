@@ -121,8 +121,8 @@ export default function LoginPage() {
             <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
               {t("login_email")}
             </label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com" required autoComplete="email" />
+            <input type="text" value={email} onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com or username" required autoComplete="username" />
           </div>
           <div>
             <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">

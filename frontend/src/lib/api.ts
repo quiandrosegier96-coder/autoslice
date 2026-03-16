@@ -104,7 +104,9 @@ export async function apiConvertDownload(
       const data = await res.json();
       throw new Error(data.detail || `Conversion failed (${res.status})`);
     }
-    throw new Error(`Conversion failed (${res.status})`);
+    const text = await res.text().catch(() => "");
+    const preview = text.slice(0, 200).replace(/<[^>]+>/g, "").trim();
+    throw new Error(preview || `Conversion failed (${res.status})`);
   }
   return res.blob();
 }

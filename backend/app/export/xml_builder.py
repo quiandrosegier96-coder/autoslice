@@ -162,7 +162,7 @@ def _make_process_config(settings: PrintSettings) -> dict:
         "retraction_length": [str(settings.retract_length_mm)],
         "retraction_speed": [str(settings.retract_speed_mm_s)],
         "z_hop": [str(settings.z_hop_mm)],
-        "z_hop_types": ["normal"],
+        "z_hop_types": ["Slope Lift"],
     }
 
 
@@ -207,6 +207,16 @@ def _make_machine_config(settings: PrintSettings, printer: PrinterProfile, color
         "nozzle_diameter": [str(settings.nozzle_size_mm)],
         "machine_max_speed_x": [str(printer.max_speed_mm_s)],
         "machine_max_speed_y": [str(printer.max_speed_mm_s)],
+        "machine_max_speed_z": [str(printer.max_speed_z_mm_s)],
+        "machine_max_acceleration_x": [str(printer.max_acceleration_xy)],
+        "machine_max_acceleration_y": [str(printer.max_acceleration_xy)],
+        "machine_max_acceleration_z": [str(printer.max_acceleration_z)],
+        "machine_max_jerk_x": [str(printer.max_jerk)],
+        "machine_max_jerk_y": [str(printer.max_jerk)],
+        "machine_max_jerk_z": [str(printer.max_jerk)],
+        "machine_max_jerk_e": [str(printer.max_jerk)],
+        "min_layer_height": [str(printer.min_layer_height_mm)],
+        "max_layer_height": [str(printer.max_layer_height_mm)],
         "printable_area": [
             "0x0",
             f"{printer.build_volume_x_mm}x0",

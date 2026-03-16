@@ -37,8 +37,10 @@ def apply_geometry_rules(
     thin_mm = geo.thin_wall.min_thickness_mm
 
     # ------------------------------------------------------------------ #
-    # SUPPORTS — type and density driven by support_risk
+    # SUPPORTS — type and density driven by support_risk + severity tiers
     # ------------------------------------------------------------------ #
+    ov = geo.overhang
+
     if intent.needs_supports:
         _set(settings, trace, "geometry.supports.enabled",
              f"needs_supports=True (support_risk={intent.support_risk})",
@@ -55,10 +57,12 @@ def apply_geometry_rules(
             _set(settings, trace, "geometry.supports.density",
                  "support_density_hint='normal'",
                  "support_density_percent", 15)
-            stype = "tree" if geo.overhang.overhang_area_ratio > 0.10 else "normal"
+            # Use tree supports for severe or organic overhangs
+            stype = "tree" if (ov.severe_area_ratio > 0.02 or
+                               ov.overhang_area_ratio > 0.10) else "normal"
             _set(settings, trace, "geometry.supports.type",
-                 f"overhang_area_ratio={geo.overhang.overhang_area_ratio:.2f}"
-                 f" {'>' if stype == 'tree' else '<='} 0.10 → {stype}",
+                 f"severe_ratio={ov.severe_area_ratio:.2f}"
+                 f" overhang_ratio={ov.overhang_area_ratio:.2f} → {stype}",
                  "support_type", stype)
         else:
             _set(settings, trace, "geometry.supports.density",
@@ -68,11 +72,18 @@ def apply_geometry_rules(
                  "support_density_hint='light' → normal",
                  "support_type", "normal")
 
-        if bridge_span > 15:
+        # Tighten angle threshold for long bridges or severe overhangs
+        if bridge_span > 15 or ov.severe_area_ratio > 0.02:
             _set(settings, trace, "geometry.supports.angle",
-                 f"bridge_span={bridge_span:.1f}mm > 15 → tighten angle to 40°",
+                 f"bridge_span={bridge_span:.1f}mm > 15"
+                 f" or severe_overhang={ov.severe_area_ratio:.2f} → angle 40°",
                  "support_angle_threshold_deg",
                  min(settings.support_angle_threshold_deg, 40))
+        elif ov.moderate_area_ratio > 0.05:
+            _set(settings, trace, "geometry.supports.angle",
+                 f"moderate_overhang={ov.moderate_area_ratio:.2f} > 5% → angle 45°",
+                 "support_angle_threshold_deg",
+                 min(settings.support_angle_threshold_deg, 45))
 
     # ------------------------------------------------------------------ #
     # BRIM — width driven by adhesion_risk
@@ -164,14 +175,22 @@ def apply_geometry_rules(
              f"stability_risk={intent.stability_risk} >= 35 → max 100mm/s",
              "print_speed_mm_s", min(settings.print_speed_mm_s, 100))
 
-    if bridge_span > 5:
+    if bridge_span > 3:
         _set(settings, trace, "geometry.fan.bridge",
-             f"bridge_span={bridge_span:.1f}mm > 5 → min fan 80%",
+             f"bridge_span={bridge_span:.1f}mm > 3 → min fan 80%",
              "fan_speed_percent", max(settings.fan_speed_percent, 80))
+    if bridge_span > 8:
+        _set(settings, trace, "geometry.fan.bridge_high",
+             f"bridge_span={bridge_span:.1f}mm > 8 → max fan 100%",
+             "fan_speed_percent", max(settings.fan_speed_percent, 100))
     if bridge_span > 15:
         _set(settings, trace, "geometry.speed.bridge",
              f"bridge_span={bridge_span:.1f}mm > 15 → max 80mm/s",
              "print_speed_mm_s", min(settings.print_speed_mm_s, 80))
+    if bridge_span > 30:
+        _set(settings, trace, "geometry.speed.bridge_long",
+             f"bridge_span={bridge_span:.1f}mm > 30 → max 50mm/s (long bridge)",
+             "print_speed_mm_s", min(settings.print_speed_mm_s, 50))
 
     # ------------------------------------------------------------------ #
     # THIN WALLS

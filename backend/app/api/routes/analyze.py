@@ -34,11 +34,17 @@ class OverhangSchema(BaseModel):
     has_overhangs: bool
     max_angle_deg: float
     overhang_area_ratio: float
+    mild_area_ratio: float = 0.0
+    moderate_area_ratio: float = 0.0
+    severe_area_ratio: float = 0.0
+    estimated_support_area_mm2: float = 0.0
 
 
 class BridgeSchema(BaseModel):
     has_bridges: bool
     max_span_mm: float
+    bridge_area_mm2: float = 0.0
+    cluster_count: int = 0
 
 
 class ThinWallSchema(BaseModel):
@@ -54,6 +60,8 @@ class GeometrySchema(BaseModel):
     surface_area_mm2: float
     contact_area_mm2: float
     height_to_base_ratio: float
+    slenderness_ratio: float = 0.0
+    center_of_mass_z_ratio: float = 0.5
     overhang: OverhangSchema
     bridge: BridgeSchema
     thin_wall: ThinWallSchema
@@ -179,8 +187,23 @@ async def analyze(job_id: str) -> AnalyzeResponse:
             surface_area_mm2=geometry.surface_area_mm2,
             contact_area_mm2=geometry.contact_area_mm2,
             height_to_base_ratio=geometry.height_to_base_ratio,
-            overhang=OverhangSchema(**dataclasses.asdict(geometry.overhang)),
-            bridge=BridgeSchema(**dataclasses.asdict(geometry.bridge)),
+            slenderness_ratio=geometry.slenderness_ratio,
+            center_of_mass_z_ratio=geometry.center_of_mass_z_ratio,
+            overhang=OverhangSchema(
+                has_overhangs=geometry.overhang.has_overhangs,
+                max_angle_deg=geometry.overhang.max_angle_deg,
+                overhang_area_ratio=geometry.overhang.overhang_area_ratio,
+                mild_area_ratio=geometry.overhang.mild_area_ratio,
+                moderate_area_ratio=geometry.overhang.moderate_area_ratio,
+                severe_area_ratio=geometry.overhang.severe_area_ratio,
+                estimated_support_area_mm2=geometry.overhang.estimated_support_area_mm2,
+            ),
+            bridge=BridgeSchema(
+                has_bridges=geometry.bridge.has_bridges,
+                max_span_mm=geometry.bridge.max_span_mm,
+                bridge_area_mm2=geometry.bridge.bridge_area_mm2,
+                cluster_count=geometry.bridge.cluster_count,
+            ),
             thin_wall=ThinWallSchema(**dataclasses.asdict(geometry.thin_wall)),
         ),
         intent=IntentSchema(

@@ -23,3 +23,10 @@ class PrinterProfile:
     nozzle_diameter_mm: float
     supported_filaments: list[FilamentType] = field(default_factory=list)
     max_colors: int = 1
+    # Machine limits (optional — exported to 3MF for slicer accuracy)
+    max_acceleration_xy: int = 5000
+    max_acceleration_z: int = 500
+    max_jerk: float = 10.0
+    max_speed_z_mm_s: int = 15
+    min_layer_height_mm: float = 0.05
+    max_layer_height_mm: float = 0.32
