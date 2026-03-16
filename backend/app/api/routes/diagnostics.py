@@ -8,7 +8,7 @@ GET /api/admin/decision-trace/{job_id}
 
 from fastapi import APIRouter, HTTPException
 
-from app.auth.dependencies import require_admin
+from app.auth.dependencies import get_admin_user as require_admin
 from app.database import get_generation_trace
 from fastapi import Depends
 
