@@ -46,10 +46,15 @@ def register(req: RegisterRequest) -> AuthResponse:
 
 @router.post("/auth/login", response_model=AuthResponse)
 def login(req: LoginRequest) -> AuthResponse:
+    from datetime import datetime, timezone
     try:
         user = login_user(req.email, req.password)
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc))
+    with get_connection() as conn:
+        conn.execute("UPDATE users SET last_login = ? WHERE id = ?",
+                     (datetime.now(timezone.utc).isoformat(), user["id"]))
+        conn.commit()
     token = create_access_token(user["id"], user["email"])
     return AuthResponse(access_token=token, username=user["username"], email=user["email"],
                         is_admin=user["email"] in ADMIN_EMAILS)

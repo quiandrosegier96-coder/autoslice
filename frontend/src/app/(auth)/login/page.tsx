@@ -165,7 +165,7 @@ export default function LoginPage() {
       )}
 
       <p className="mt-4 text-xs text-zinc-700">
-        AutoSlice © {new Date().getFullYear()} — Bambu to Anycubic converter
+        AutoSlice v1.2.0 © {new Date().getFullYear()} — Bambu to Anycubic converter
       </p>
     </div>
   );

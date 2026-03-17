@@ -17,7 +17,7 @@ def get_connection() -> sqlite3.Connection:
     return conn
 
 
-ADMIN_EMAILS = {"admin@autoslice.be", "admin2@autoslice.be"}
+ADMIN_EMAILS = {"admin@autoslice.be", "admin2@autoslice.be", "geoffroynick@network-it.be"}
 
 
 def _add_column_if_missing(conn: sqlite3.Connection, table: str, column: str, col_type: str) -> None:
@@ -104,6 +104,7 @@ def init_db() -> None:
         # Schema migrations — add new columns to existing tables without data loss
         _add_column_if_missing(conn, "generation_log", "decision_trace_json", "TEXT")
         _add_column_if_missing(conn, "generation_log", "settings_delta_json",  "TEXT")
+        _add_column_if_missing(conn, "users", "last_login", "TEXT")
         conn.commit()
 
 
