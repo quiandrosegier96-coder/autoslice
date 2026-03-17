@@ -5,6 +5,7 @@ import { Canvas, useLoader, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { ThreeMFLoader } from "three/examples/jsm/loaders/3MFLoader.js";
 import * as THREE from "three";
+import { SupportVisualization } from "./SupportVisualization";
 
 function AutoCamera({ object }: { object: THREE.Group }) {
   const { camera } = useThree();
@@ -61,7 +62,12 @@ function LoadingBox() {
   );
 }
 
-export function ModelViewer({ jobId }: { jobId: string }) {
+interface ModelViewerProps {
+  jobId:         string;
+  showSupports?: boolean;
+}
+
+export function ModelViewer({ jobId, showSupports = false }: ModelViewerProps) {
   const url = `/api/upload/${jobId}/file`;
   return (
     <div className="w-full h-72 bg-surface-card rounded-xl overflow-hidden border border-surface-border relative">
@@ -75,6 +81,7 @@ export function ModelViewer({ jobId }: { jobId: string }) {
         <directionalLight position={[-8, -5, -8]} intensity={0.3} />
         <Suspense fallback={<LoadingBox />}>
           <Model url={url} />
+          {showSupports && <SupportVisualization jobId={jobId} />}
         </Suspense>
         <OrbitControls enableZoom enablePan enableRotate />
       </Canvas>

@@ -161,6 +161,7 @@ export default function ConvertPage() {
   const [ratingLoading, setRatingLoading] = useState(false);
   const [ratingDone, setRatingDone] = useState(false);
   const [applyOrientation, setApplyOrientation] = useState(false);
+  const [showSupports, setShowSupports] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn()) { router.push("/login"); return; }
@@ -269,6 +270,7 @@ export default function ConvertPage() {
     setRatingDone(false);
     setRatingLoading(false);
     setApplyOrientation(false);
+    setShowSupports(false);
   }
 
   async function submitRating(stars: number) {
@@ -572,8 +574,24 @@ export default function ConvertPage() {
 
         {/* 3D Model Viewer */}
         {jobId && (step === "ready" || step === "converting" || step === "done") && (
-          <div className="mb-6">
-            <ModelViewer jobId={jobId} />
+          <div className="mb-6 flex flex-col gap-2">
+            <ModelViewer jobId={jobId} showSupports={showSupports} />
+            {analysis?.geometry.overhang.has_overhangs && (
+              <label className="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer select-none w-fit">
+                <input
+                  type="checkbox"
+                  checked={showSupports}
+                  onChange={(e) => setShowSupports(e.target.checked)}
+                  className="w-4 h-4 rounded accent-orange-500"
+                />
+                <span>Show support regions</span>
+                {showSupports && analysis.geometry.overhang.overhang_area_ratio > 0 && (
+                  <span className="text-xs text-zinc-600">
+                    ({(analysis.geometry.overhang.overhang_area_ratio * 100).toFixed(0)}% of surface)
+                  </span>
+                )}
+              </label>
+            )}
           </div>
         )}
 

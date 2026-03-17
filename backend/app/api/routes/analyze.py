@@ -17,6 +17,8 @@ from app.parser.model_parser import parse_model_files
 from app.parser.metadata_extractor import extract_archive_metadata
 from app.geometry.analyzer import analyze_mesh
 from app.geometry.mesh_loader import merge_meshes
+from app.support.detector import get_support_preview
+from app.support.models import SupportPreviewData
 from app.normalization.intent import normalize
 from app.scoring.models import GeometryFeatures
 from app.scoring.scorer import compute_risk_scores
@@ -277,3 +279,38 @@ async def analyze(job_id: str) -> AnalyzeResponse:
             detail_risk=intent.detail_risk,
         ),
     )
+
+
+@router.get("/analyze/{job_id}/support-preview", response_model=SupportPreviewData)
+async def support_preview(job_id: str) -> SupportPreviewData:
+    """
+    Compute and return support visualization data for the uploaded model.
+    Result is cached in-process after the first call.
+
+    Positions are in 3MF coordinate space (Z-up, mm). The frontend applies
+    the same -π/2 X rotation used by ThreeMFLoader, then subtracts model_center
+    to align with the AutoCamera centering transform.
+    """
+    job = find_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
+
+    loop = asyncio.get_event_loop()
+
+    archive = await loop.run_in_executor(None, unpack, job.archive_path, job.extract_dir)
+    if not archive.model_files:
+        raise HTTPException(status_code=422, detail="No .model files found in archive.")
+
+    try:
+        parsed_model = await loop.run_in_executor(
+            None, parse_model_files, archive.model_files, archive.object_type_map
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Failed to parse 3MF model: {exc}")
+
+    try:
+        mesh = await loop.run_in_executor(None, merge_meshes, parsed_model.objects)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Failed to load mesh: {exc}")
+
+    return await loop.run_in_executor(None, get_support_preview, job_id, mesh)
