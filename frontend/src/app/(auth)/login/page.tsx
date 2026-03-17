@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { apiPost } from "@/lib/api";
+import { apiPost, apiGet } from "@/lib/api";
 import { saveAuth } from "@/lib/auth";
 import { useLang } from "@/contexts/LangContext";
 import { LANGS, type Lang } from "@/lib/i18n";
@@ -18,9 +18,13 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showNotice, setShowNotice] = useState(false);
+  const [avgRating, setAvgRating] = useState<{ average: number; total: number } | null>(null);
 
   useEffect(() => {
     if (!localStorage.getItem(NOTICE_KEY)) setShowNotice(true);
+    apiGet<{ average: number; total: number }>("/ratings/average")
+      .then(setAvgRating)
+      .catch(() => {});
   }, []);
 
   function dismissNotice() {
@@ -152,7 +156,15 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <p className="mt-8 text-xs text-zinc-700">
+      {avgRating && avgRating.total > 0 && (
+        <div className="mt-6 flex items-center gap-2 text-sm text-zinc-500">
+          <span className="text-yellow-400 text-base">{"★".repeat(Math.round(avgRating.average))}{"☆".repeat(5 - Math.round(avgRating.average))}</span>
+          <span className="font-medium text-zinc-400">{avgRating.average.toFixed(1)}/5</span>
+          <span>— {t("rating_avg")} {avgRating.total} {t("rating_reviews")}</span>
+        </div>
+      )}
+
+      <p className="mt-4 text-xs text-zinc-700">
         AutoSlice © {new Date().getFullYear()} — Bambu to Anycubic converter
       </p>
     </div>

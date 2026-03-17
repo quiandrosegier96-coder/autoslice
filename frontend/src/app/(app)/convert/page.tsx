@@ -108,6 +108,9 @@ export default function ConvertPage() {
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [downloadName, setDownloadName] = useState("");
+  const [ratingGiven, setRatingGiven] = useState(0);
+  const [ratingLoading, setRatingLoading] = useState(false);
+  const [ratingDone, setRatingDone] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn()) { router.push("/login"); return; }
@@ -203,6 +206,22 @@ export default function ConvertPage() {
     setAnalysis(null);
     setDownloadUrl(null);
     setError("");
+    setRatingGiven(0);
+    setRatingDone(false);
+  }
+
+  async function submitRating(stars: number) {
+    if (!jobId || ratingDone) return;
+    setRatingGiven(stars);
+    setRatingLoading(true);
+    try {
+      await apiPost("/ratings", { job_id: jobId, stars }, true);
+      setRatingDone(true);
+    } catch {
+      setRatingDone(true);
+    } finally {
+      setRatingLoading(false);
+    }
   }
 
   async function sendFeedback(outcome: string) {
@@ -627,6 +646,31 @@ export default function ConvertPage() {
                         className={`py-1.5 px-2 rounded-lg border text-xs font-medium transition-colors disabled:opacity-50 ${color} bg-transparent`}
                       >
                         {label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Star rating card */}
+            <div className="mt-2 p-4 bg-surface-card border border-surface-border rounded-xl">
+              {ratingDone ? (
+                <p className="text-center text-sm text-green-400">{t("rating_thanks")}</p>
+              ) : (
+                <>
+                  <p className="text-xs text-zinc-500 mb-3 text-center">{t("rating_title")}</p>
+                  <div className="flex items-center justify-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => submitRating(star)}
+                        disabled={ratingLoading}
+                        className={`text-2xl transition-transform hover:scale-110 disabled:opacity-50 ${
+                          star <= ratingGiven ? "text-yellow-400" : "text-zinc-600 hover:text-yellow-300"
+                        }`}
+                      >
+                        ★
                       </button>
                     ))}
                   </div>

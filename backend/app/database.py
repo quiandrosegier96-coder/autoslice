@@ -92,6 +92,15 @@ def init_db() -> None:
                 created_at  TEXT NOT NULL
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS ratings (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id      TEXT NOT NULL,
+                user_id     INTEGER,
+                stars       INTEGER NOT NULL CHECK(stars BETWEEN 1 AND 5),
+                created_at  TEXT NOT NULL
+            )
+        """)
         # Schema migrations — add new columns to existing tables without data loss
         _add_column_if_missing(conn, "generation_log", "decision_trace_json", "TEXT")
         _add_column_if_missing(conn, "generation_log", "settings_delta_json",  "TEXT")
@@ -256,6 +265,25 @@ def log_feedback(job_id: str, user_id: int | None, outcome: str, notes: str | No
             (job_id, user_id, outcome, notes, created_at),
         )
         conn.commit()
+
+
+def submit_rating(job_id: str, user_id: int | None, stars: int) -> None:
+    from datetime import datetime, timezone
+    created_at = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        conn.execute(
+            "INSERT INTO ratings (job_id, user_id, stars, created_at) VALUES (?,?,?,?)",
+            (job_id, user_id, stars, created_at),
+        )
+        conn.commit()
+
+
+def get_average_rating() -> dict:
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT ROUND(AVG(stars), 1) as avg, COUNT(*) as total FROM ratings"
+        ).fetchone()
+    return {"average": row["avg"] or 0.0, "total": row["total"] or 0}
 
 
 def _diff_settings(base_json: str, final_json: str) -> dict:

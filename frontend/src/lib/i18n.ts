@@ -102,6 +102,10 @@ export const translations = {
     conv_fb_detail:    "Details verloren",
     conv_fb_thanks:    "Bedankt voor je feedback!",
     conv_multicolor_hint: "Kies ACE Pro of ACE Pro 2 om multi-color printen in te schakelen.",
+    rating_title:      "Beoordeel AutoSlice",
+    rating_thanks:     "Bedankt voor je beoordeling!",
+    rating_avg:        "Gemiddelde beoordeling",
+    rating_reviews:    "beoordelingen",
     conv_8slots:       "(8 sloten)",
 
     // History
@@ -230,6 +234,10 @@ export const translations = {
     conv_fb_detail:    "Details lost",
     conv_fb_thanks:    "Thanks for your feedback!",
     conv_multicolor_hint: "Select ACE Pro or ACE Pro 2 to enable multi-color printing.",
+    rating_title:      "Rate AutoSlice",
+    rating_thanks:     "Thanks for your rating!",
+    rating_avg:        "Average rating",
+    rating_reviews:    "reviews",
     conv_8slots:       "(8 slots)",
 
     hist_title:        "History",
@@ -355,6 +363,10 @@ export const translations = {
     conv_fb_detail:    "Détails perdus",
     conv_fb_thanks:    "Merci pour votre retour !",
     conv_multicolor_hint: "Sélectionnez ACE Pro ou ACE Pro 2 pour activer l'impression multi-couleur.",
+    rating_title:      "Évaluer AutoSlice",
+    rating_thanks:     "Merci pour votre évaluation !",
+    rating_avg:        "Note moyenne",
+    rating_reviews:    "avis",
     conv_8slots:       "(8 emplacements)",
 
     hist_title:        "Historique",
@@ -480,6 +492,10 @@ export const translations = {
     conv_fb_detail:    "Details verloren",
     conv_fb_thanks:    "Vielen Dank für Ihr Feedback!",
     conv_multicolor_hint: "Wählen Sie ACE Pro oder ACE Pro 2, um den Mehrfarbdruck zu aktivieren.",
+    rating_title:      "AutoSlice bewerten",
+    rating_thanks:     "Danke für Ihre Bewertung!",
+    rating_avg:        "Durchschnittsbewertung",
+    rating_reviews:    "Bewertungen",
     conv_8slots:       "(8 Slots)",
 
     hist_title:        "Verlauf",
