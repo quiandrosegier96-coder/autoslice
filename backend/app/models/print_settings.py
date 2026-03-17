@@ -50,6 +50,14 @@ class PrintSettings:
     # --- Pressure advance ---
     pressure_advance: float = 0.04   # per-filament PA value; 0.0 = disabled
 
+    # --- Line widths ---
+    line_width_mm: float = 0.4               # wall / perimeter line width
+    first_layer_line_width_mm: float = 0.5   # first layer (wider = better adhesion)
+    infill_line_width_mm: float = 0.44       # infill (slightly wider = fewer gaps)
+
+    # --- Support placement ---
+    support_placement: str = "buildplate_only"  # "buildplate_only" | "everywhere"
+
     # --- Support gaps ---
     support_top_z_distance_mm: float = 0.2    # gap above support (smaller = better surface but harder to remove)
     support_bottom_z_distance_mm: float = 0.2

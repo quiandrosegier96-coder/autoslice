@@ -12,18 +12,22 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+import numpy as np
+
 from app.ingestion.handler import find_job
 from app.ingestion.unpacker import unpack
 from app.parser.model_parser import parse_model_files
 from app.auth.dependencies import get_optional_user
 from app.database import log_job, log_generation_v2
 from app.diagnostics.models import DecisionTrace
-from app.geometry.analyzer import analyze as run_geometry
+from app.geometry.analyzer import analyze_mesh
+from app.geometry.mesh_loader import merge_meshes
 from app.normalization.intent import normalize
 from app.rules.base_profiles import load_base_profile
 from app.rules.engine import generate_settings
 from app.rules.printer_loader import load_printer_profile
 from app.export.anycubic_exporter import export as do_export
+from app.export.mesh_transform import euler_deg_to_rotation_matrix
 from app.models.printer import FilamentType
 
 router = APIRouter()
@@ -41,6 +45,7 @@ class ConvertRequest(BaseModel):
     color_count: int = 1
     filament_colors: list[str] = []
     filament_types: list[str] = []
+    orientation_euler_deg: list[float] = []   # [rx, ry, rz] — empty = no rotation
 
 
 @router.post("/convert")
@@ -77,8 +82,37 @@ async def convert(
     if not parsed_model.objects:
         raise HTTPException(status_code=422, detail="No mesh objects found.")
 
+    # Determine orientation rotation matrix (None = identity = no rotation)
+    rotation_matrix: np.ndarray | None = None
+    euler = req.orientation_euler_deg
+    if len(euler) == 3 and any(abs(v) > 0.5 for v in euler):
+        rotation_matrix = euler_deg_to_rotation_matrix(euler[0], euler[1], euler[2])
+
     try:
-        geometry = await loop.run_in_executor(None, run_geometry, parsed_model)
+        mesh = await loop.run_in_executor(None, merge_meshes, parsed_model.objects)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Failed to load mesh: {exc}")
+
+    # If rotation requested, apply it to the merged mesh so geometry analysis
+    # and settings generation are correct for the rotated orientation
+    if rotation_matrix is not None:
+        try:
+            import trimesh as _trimesh
+            rot_4x4 = np.eye(4)
+            rot_4x4[:3, :3] = rotation_matrix
+            mesh = mesh.copy()
+            mesh.apply_transform(rot_4x4)
+            # Translate to build plate (Z_min = 0)
+            z_min = float(mesh.bounds[0][2])
+            if abs(z_min) > 0.001:
+                mesh.apply_translation([0.0, 0.0, -z_min])
+        except Exception:
+            rotation_matrix = None  # rotation failed — continue with original
+
+    try:
+        geometry = await loop.run_in_executor(
+            None, analyze_mesh, mesh, len(parsed_model.objects)
+        )
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Geometry analysis failed: {exc}")
 
@@ -123,7 +157,8 @@ async def convert(
 
     try:
         await loop.run_in_executor(
-            None, do_export, archive, print_settings, printer, req.filament_type, output_path
+            None, do_export, archive, print_settings, printer,
+            req.filament_type, output_path, rotation_matrix,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Export failed: {exc}")

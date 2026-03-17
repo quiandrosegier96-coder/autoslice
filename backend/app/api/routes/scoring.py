@@ -17,10 +17,14 @@ from fastapi import APIRouter, HTTPException
 from app.ingestion.handler import find_job
 from app.ingestion.unpacker import unpack
 from app.parser.model_parser import parse_model_files
-from app.geometry.analyzer import analyze as run_geometry
+from app.geometry.analyzer import analyze_mesh
+from app.geometry.mesh_loader import merge_meshes
 from app.scoring.models import GeometryFeatures, GenerationReport, DecisionEntry
 from app.scoring.scorer import compute_risk_scores
 from app.scoring.decisions import compute_settings_decisions
+from app.scoring.printability import compute_printability
+from app.explain.generator import generate_explanations
+from app.orientation.scorer import score_orientations
 from app.database import get_generation_trace
 
 from datetime import datetime, timezone
@@ -65,13 +69,45 @@ async def scoring_report(job_id: str) -> GenerationReport:
         raise HTTPException(status_code=422, detail="No mesh objects found.")
 
     try:
-        geometry = await loop.run_in_executor(None, run_geometry, parsed_model)
+        mesh = await loop.run_in_executor(None, merge_meshes, parsed_model.objects)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Failed to load mesh: {exc}")
+
+    try:
+        geometry = await loop.run_in_executor(
+            None, analyze_mesh, mesh, len(parsed_model.objects)
+        )
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Geometry analysis failed: {exc}")
 
-    features = GeometryFeatures.from_geometry_analysis(geometry)
-    scores   = compute_risk_scores(features)
-    decisions = compute_settings_decisions(features, scores)
+    features     = GeometryFeatures.from_geometry_analysis(geometry)
+    scores       = compute_risk_scores(features)
+    decisions    = compute_settings_decisions(features, scores)
+    printability = compute_printability(
+        support_risk   = scores.support.value,
+        adhesion_risk  = scores.adhesion.value,
+        stability_risk = scores.stability.value,
+        detail_risk    = scores.detail.value,
+        bridge_risk    = scores.bridge.value,
+    )
+    explanations = generate_explanations(decisions, features, scores)
+
+    try:
+        orientation = await loop.run_in_executor(None, score_orientations, mesh)
+    except Exception:
+        from app.orientation.models import OrientationCandidate, OrientationReport
+        _fb = OrientationCandidate(
+            label="Original", rotation_euler_deg=[0, 0, 0],
+            overhang_area_ratio=0.0, contact_area_mm2=0.0,
+            height_to_base_ratio=0.0, height_mm=0.0,
+            support_score=50, adhesion_score=50,
+            stability_score=50, height_score=50, total_score=50,
+        )
+        orientation = OrientationReport(
+            recommended=_fb, original=_fb, all_candidates=[_fb],
+            improvement=0, should_rotate=False, support_reduction_pct=0.0,
+            reasons=["Orientation analysis unavailable."],
+        )
 
     # Pull engine trace + delta from the DB if a conversion was logged
     trace_data = get_generation_trace(job_id)
@@ -97,6 +133,9 @@ async def scoring_report(job_id: str) -> GenerationReport:
         geometry       = features,
         risk_scores    = scores,
         difficulty     = scores.difficulty,
+        printability   = printability,
+        explanations   = explanations,
+        orientation    = orientation,
         decisions      = decisions,
         decision_trace = decision_trace,
         settings_delta = settings_delta,

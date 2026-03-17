@@ -290,6 +290,56 @@ def apply_geometry_rules(
                  "support_top_z_distance_mm",
                  max(settings.support_top_z_distance_mm, 0.25))
 
+    # ------------------------------------------------------------------ #
+    # SUPPORT PLACEMENT — everywhere vs build-plate-only
+    # ------------------------------------------------------------------ #
+    if settings.supports_enabled:
+        if (
+            ov.overhang_area_ratio > 0.15
+            or (ov.severe_area_ratio > 0.01 and intent.support_risk >= 50)
+            or (ov.moderate_area_ratio > 0.10 and intent.support_risk >= 60)
+        ):
+            _set(settings, trace, "geometry.support_placement.everywhere",
+                 f"overhang_ratio={ov.overhang_area_ratio:.2f} > 0.15 "
+                 f"or severe={ov.severe_area_ratio:.3f}/moderate={ov.moderate_area_ratio:.2f} "
+                 f"with support_risk={intent.support_risk} → everywhere",
+                 "support_placement", "everywhere")
+        else:
+            _set(settings, trace, "geometry.support_placement.buildplate",
+                 f"overhang_ratio={ov.overhang_area_ratio:.2f} reachable from below"
+                 f" → buildplate_only",
+                 "support_placement", "buildplate_only")
+
+    # ------------------------------------------------------------------ #
+    # LINE WIDTHS — wall / first layer / infill
+    # ------------------------------------------------------------------ #
+    nozzle = settings.nozzle_size_mm
+    thin_mm = geo.thin_wall.min_thickness_mm
+    if geo.thin_wall.has_thin_walls and thin_mm < nozzle * 2.5:
+        # Exact nozzle width — going wider would miss these walls entirely
+        wall_lw         = round(nozzle, 3)
+        first_layer_lw  = round(nozzle * 1.1, 3)   # slight extra for adhesion
+        infill_lw       = round(nozzle, 3)
+        trigger = (f"thin_mm={thin_mm:.2f} < nozzle*2.5={nozzle*2.5:.3f}"
+                   f" → exact nozzle width")
+    elif intent.detail_risk >= 40:
+        # High detail — keep walls at exact nozzle, widen infill slightly
+        wall_lw         = round(nozzle, 3)
+        first_layer_lw  = round(nozzle * 1.2, 3)
+        infill_lw       = round(nozzle * 1.05, 3)
+        trigger = (f"detail_risk={intent.detail_risk} >= 40"
+                   f" → exact nozzle width for resolution")
+    else:
+        # Standard: walls 105%, first layer 125%, infill 110%
+        wall_lw         = round(nozzle * 1.05, 3)
+        first_layer_lw  = round(nozzle * 1.25, 3)
+        infill_lw       = round(nozzle * 1.10, 3)
+        trigger = f"standard widths: 105%/125%/110% of nozzle ({nozzle}mm)"
+
+    _set(settings, trace, "geometry.line_width.wall",    trigger, "line_width_mm",             wall_lw)
+    _set(settings, trace, "geometry.line_width.first",   trigger, "first_layer_line_width_mm",  first_layer_lw)
+    _set(settings, trace, "geometry.line_width.infill",  trigger, "infill_line_width_mm",       infill_lw)
+
     return settings
 
 

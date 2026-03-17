@@ -30,6 +30,15 @@ def analyze(parsed_model: ParsedModel) -> GeometryAnalysis:
     except Exception as exc:
         raise ValueError(f"Failed to load mesh geometry: {exc}") from exc
 
+    return analyze_mesh(mesh, len(parsed_model.objects))
+
+
+def analyze_mesh(mesh: trimesh.Trimesh, part_count: int = 1) -> GeometryAnalysis:
+    """
+    Run all geometry analysis passes on an already-loaded trimesh.
+    Allows callers that have already built the mesh (e.g. orientation scorer)
+    to avoid a second merge_meshes call.
+    """
     bbox = _safe(compute_bounding_box, mesh, BoundingBox(0.0, 0.0, 0.0, 0.0))
     overhang = _safe(detect_overhangs, mesh, OverhangReport(False, 0.0, 0.0))
     bridge = _safe(detect_bridges, mesh, BridgeReport(False, 0.0))
@@ -71,7 +80,7 @@ def analyze(parsed_model: ParsedModel) -> GeometryAnalysis:
 
     return GeometryAnalysis(
         bounding_box=bbox,
-        part_count=len(parsed_model.objects),
+        part_count=part_count,
         mesh_is_watertight=bool(mesh.is_watertight),
         estimated_volume_cm3=bbox.volume_cm3,
         overhang=overhang,

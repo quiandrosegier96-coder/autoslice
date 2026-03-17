@@ -20,6 +20,52 @@ const ModelViewer = dynamic(
   }
 );
 
+type PrintabilityScore = {
+  total: number;
+  support_score: number;
+  adhesion_score: number;
+  stability_score: number;
+  detail_score: number;
+  bridge_score: number;
+  difficulty_label: string;
+  warnings: string[];
+};
+
+type SettingExplanation = {
+  setting: string;
+  value: string;
+  reason: string;
+  icon: "check" | "warning" | "info";
+};
+
+type ExplanationReport = {
+  summary: string;
+  items: SettingExplanation[];
+};
+
+type OrientationCandidate = {
+  label: string;
+  rotation_euler_deg: number[];
+  overhang_area_ratio: number;
+  contact_area_mm2: number;
+  height_to_base_ratio: number;
+  height_mm: number;
+  support_score: number;
+  adhesion_score: number;
+  stability_score: number;
+  total_score: number;
+};
+
+type OrientationReport = {
+  recommended: OrientationCandidate;
+  original: OrientationCandidate;
+  all_candidates: OrientationCandidate[];
+  improvement: number;
+  should_rotate: boolean;
+  support_reduction_pct: number;
+  reasons: string[];
+};
+
 type AnalysisResult = {
   job_id: string;
   model: { part_count: number; unit: string };
@@ -43,6 +89,9 @@ type AnalysisResult = {
     stability_risk: number;
     detail_risk: number;
   };
+  printability: PrintabilityScore;
+  explanations: ExplanationReport;
+  orientation: OrientationReport;
 };
 
 type Printer = { id: string; display_name: string; supported_filaments: string[]; max_colors: number };
@@ -111,6 +160,7 @@ export default function ConvertPage() {
   const [ratingGiven, setRatingGiven] = useState(0);
   const [ratingLoading, setRatingLoading] = useState(false);
   const [ratingDone, setRatingDone] = useState(false);
+  const [applyOrientation, setApplyOrientation] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn()) { router.push("/login"); return; }
@@ -152,6 +202,7 @@ export default function ConvertPage() {
     setStep("uploading");
     setAnalysis(null);
     setDownloadUrl(null);
+    setApplyOrientation(false);
     try {
       const up = await apiUpload(file);
       setJobId(up.job_id);
@@ -177,11 +228,17 @@ export default function ConvertPage() {
     setStep("converting");
     setError("");
     try {
+      const orientEuler =
+        applyOrientation && analysis?.orientation?.should_rotate
+          ? analysis.orientation.recommended.rotation_euler_deg
+          : [];
+
       const blob = await apiConvertDownload(
         jobId, selectedPrinter, selectedFilament, nozzleSize, nozzleType, 1.75, buildPlate, flushVolume,
         colorCount,
         slotColors.slice(0, colorCount),
         slotFilaments.slice(0, colorCount),
+        orientEuler,
       );
       const url = URL.createObjectURL(blob);
       const name = `autoslice_${selectedPrinter}_${selectedFilament}.3mf`;
@@ -206,8 +263,12 @@ export default function ConvertPage() {
     setAnalysis(null);
     setDownloadUrl(null);
     setError("");
+    setFeedbackSent(false);
+    setFeedbackLoading(false);
     setRatingGiven(0);
     setRatingDone(false);
+    setRatingLoading(false);
+    setApplyOrientation(false);
   }
 
   async function submitRating(stars: number) {
@@ -407,7 +468,7 @@ export default function ConvertPage() {
           {multiColorMode !== "none" ? (
             <>
               {dualUnit && (
-                <p className="text-xs text-zinc-600 mb-1.5 -mt-1">Unit 1</p>
+                <p className="text-xs text-zinc-600 mb-1.5 -mt-1">{t("conv_unit1")}</p>
               )}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {Array.from({ length: Math.min(colorCount, 4) }, (_, i) => (
@@ -418,7 +479,7 @@ export default function ConvertPage() {
               </div>
               {dualUnit && colorCount === 8 && (
                 <>
-                  <p className="text-xs text-zinc-600 mt-4 mb-1.5">Unit 2</p>
+                  <p className="text-xs text-zinc-600 mt-4 mb-1.5">{t("conv_unit2")}</p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {Array.from({ length: 4 }, (_, i) => (
                       <ColorSlot key={i + 4} index={i + 4} slotColors={slotColors} setSlotColors={setSlotColors}
@@ -466,7 +527,7 @@ export default function ConvertPage() {
                 </svg>
               </div>
               <p className="text-white font-medium mb-1">{t("conv_drop")}</p>
-              <p className="text-zinc-500 text-sm">or click to browse</p>
+              <p className="text-zinc-500 text-sm">{t("conv_or_browse")}</p>
             </>
           )}
 
@@ -492,7 +553,7 @@ export default function ConvertPage() {
                 onClick={(e) => { e.stopPropagation(); reset(); }}
                 className="text-xs text-zinc-500 hover:text-brand transition-colors mt-1"
               >
-                Upload different file
+                {t("conv_change_file")}
               </button>
             </div>
           )}
@@ -504,7 +565,7 @@ export default function ConvertPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
                 </svg>
               </div>
-              <p className="text-green-400 text-sm font-medium">Conversion complete</p>
+              <p className="text-green-400 text-sm font-medium">{t("conv_done")}</p>
             </div>
           )}
         </div>
@@ -520,7 +581,7 @@ export default function ConvertPage() {
         {analysis && (
           <div className="bg-surface-card border border-surface-border rounded-xl p-6 mb-6">
             <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide mb-4">
-              Model Analysis
+              {t("conv_analysis")}
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-5">
               <Stat label={t("conv_size") + " X"} value={`${analysis.geometry.bounding_box.x_mm} mm`} />
@@ -574,6 +635,26 @@ export default function ConvertPage() {
           </div>
         )}
 
+        {/* Orientation optimization */}
+        {analysis?.orientation && (
+          <OrientationCard
+            report={analysis.orientation}
+            apply={applyOrientation}
+            onToggle={setApplyOrientation}
+            disabled={isWorking}
+          />
+        )}
+
+        {/* Printability score */}
+        {analysis?.printability && (
+          <PrintabilityCard score={analysis.printability} />
+        )}
+
+        {/* Explanations */}
+        {analysis?.explanations && (
+          <ExplanationsCard report={analysis.explanations} />
+        )}
+
         {/* Action buttons */}
         {step === "ready" && (
           <button
@@ -585,14 +666,14 @@ export default function ConvertPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
             </svg>
-            Generate Anycubic 3MF
+            {t("conv_generate")}
           </button>
         )}
 
         {step === "converting" && (
           <button disabled className="w-full py-3 bg-brand/50 text-white font-semibold rounded-lg text-sm flex items-center justify-center gap-2">
             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
-            Generating…
+            {t("conv_generating")}
           </button>
         )}
 
@@ -608,7 +689,7 @@ export default function ConvertPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4 4m0 0l4-4m-4 4V4"/>
               </svg>
-              Download {downloadName}
+              {t("conv_download")} {downloadName}
             </a>
             <button
               onClick={reset}
@@ -620,16 +701,16 @@ export default function ConvertPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M12 4v16m8-8H4"/>
               </svg>
-              Convert New Project
+              {t("conv_new")}
             </button>
 
             {/* Feedback card */}
             <div className="mt-2 p-4 bg-surface-card border border-surface-border rounded-xl">
               {feedbackSent ? (
-                <p className="text-center text-sm text-green-400">Thanks for your feedback!</p>
+                <p className="text-center text-sm text-green-400">{t("conv_fb_thanks")}</p>
               ) : (
                 <>
-                  <p className="text-xs text-zinc-500 mb-3 text-center">How did your print turn out?</p>
+                  <p className="text-xs text-zinc-500 mb-3 text-center">{t("conv_feedback_q")}</p>
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { outcome: "printed_ok",         label: t("conv_fb_ok"),      color: "text-green-400 border-green-500/30 hover:bg-green-500/10" },
@@ -746,6 +827,336 @@ function ColorSlot({
           <option key={f} value={f}>{FILAMENT_LABELS[f] ?? f.toUpperCase()}</option>
         ))}
       </select>
+    </div>
+  );
+}
+
+function OrientationCard({
+  report, apply, onToggle, disabled,
+}: {
+  report: OrientationReport;
+  apply: boolean;
+  onToggle: (v: boolean) => void;
+  disabled: boolean;
+}) {
+  const { t } = useLang();
+  const [open, setOpen] = useState(false);
+
+  const scoreColor = (v: number) =>
+    v >= 75 ? "text-green-400" :
+    v >= 55 ? "text-yellow-400" :
+    v >= 35 ? "text-orange-400" : "text-red-400";
+
+  const ScoreBar = ({ label, value }: { label: string; value: number }) => {
+    const color =
+      value >= 75 ? "bg-green-500" :
+      value >= 55 ? "bg-yellow-500" :
+      value >= 35 ? "bg-orange-500" : "bg-red-500";
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-zinc-500 w-16 shrink-0">{label}</span>
+        <div className="flex-1 h-1 bg-surface-elevated rounded-full overflow-hidden">
+          <div className={`h-full rounded-full ${color}`} style={{ width: `${value}%` }} />
+        </div>
+        <span className={`text-xs font-mono w-6 text-right ${scoreColor(value)}`}>{value}</span>
+      </div>
+    );
+  };
+
+  const CandidateRow = ({ c, highlight }: { c: OrientationCandidate; highlight?: boolean }) => (
+    <div className={`rounded-lg border p-3 ${highlight ? "border-brand/40 bg-brand/5" : "border-surface-border"}`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className={`text-xs font-semibold ${highlight ? "text-brand" : "text-zinc-300"}`}>{c.label}</span>
+        <span className={`text-xs font-bold tabular-nums ${scoreColor(c.total_score)}`}>{c.total_score}</span>
+      </div>
+      <div className="space-y-1">
+        <ScoreBar label={t("orient_support")}   value={c.support_score} />
+        <ScoreBar label={t("orient_adhesion")}  value={c.adhesion_score} />
+        <ScoreBar label={t("orient_stability")} value={c.stability_score} />
+      </div>
+      <div className="flex gap-3 mt-2">
+        <span className="text-xs text-zinc-600">{c.overhang_area_ratio === 0 ? "No overhangs" : `${(c.overhang_area_ratio * 100).toFixed(0)}% overhang`}</span>
+        <span className="text-xs text-zinc-600">{c.height_mm.toFixed(0)} mm tall</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="bg-surface-card border border-surface-border rounded-xl mb-6 overflow-hidden">
+      {/* Header — always visible */}
+      <div className="p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+            {t("orient_title")}
+          </h2>
+          {report.should_rotate ? (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full border text-brand bg-brand/10 border-brand/20">
+              {t("orient_suggested")}
+            </span>
+          ) : (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full border text-green-400 bg-green-500/10 border-green-500/20">
+              {t("orient_optimal")}
+            </span>
+          )}
+        </div>
+
+        {report.should_rotate ? (
+          <>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <p className="text-xs text-zinc-600 mb-1.5">Original</p>
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-2xl font-bold tabular-nums ${scoreColor(report.original.total_score)}`}>
+                    {report.original.total_score}
+                  </span>
+                  <span className="text-xs text-zinc-600">/ 100</span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-zinc-600 mb-1.5">Recommended — {report.recommended.label}</p>
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-2xl font-bold tabular-nums ${scoreColor(report.recommended.total_score)}`}>
+                    {report.recommended.total_score}
+                  </span>
+                  <span className="text-xs text-zinc-500">
+                    +{report.improvement} pts
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-1.5 mb-3">
+              {report.reasons.map((r, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <svg className="w-3.5 h-3.5 text-brand shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-xs text-zinc-400">{r}</span>
+                </div>
+              ))}
+            </div>
+            <label className="flex items-center gap-2.5 cursor-pointer select-none w-fit">
+              <input
+                type="checkbox"
+                checked={apply}
+                onChange={(e) => onToggle(e.target.checked)}
+                disabled={disabled}
+                className="w-3.5 h-3.5 accent-brand cursor-pointer disabled:opacity-50"
+              />
+              <span className={`text-xs font-medium ${apply ? "text-brand" : "text-zinc-400"}`}>
+                {t("orient_apply")}
+              </span>
+            </label>
+          </>
+        ) : (
+          <div className="flex items-center gap-3">
+            <span className={`text-3xl font-bold tabular-nums ${scoreColor(report.original.total_score)}`}>
+              {report.original.total_score}
+            </span>
+            <span className="text-xs text-zinc-500 leading-relaxed">
+              {report.reasons[0]}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* All candidates — expandable */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-5 py-3 border-t border-surface-border text-left hover:bg-surface-elevated/40 transition-colors"
+      >
+        <span className="text-xs text-zinc-500">
+          {open
+            ? t("orient_hide_all")
+            : t("orient_show_all").replace("{n}", String(report.all_candidates.length))}
+        </span>
+        <svg
+          className={`w-4 h-4 text-zinc-600 transition-transform ${open ? "rotate-180" : ""}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
+        </svg>
+      </button>
+
+      {open && (
+        <div className="px-5 pb-5 grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {report.all_candidates.map((c) => (
+            <CandidateRow
+              key={c.label}
+              c={c}
+              highlight={c.label === report.recommended.label && report.should_rotate}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExplanationsCard({ report }: { report: ExplanationReport }) {
+  const { t } = useLang();
+  const [open, setOpen] = useState(false);
+
+  const iconEl = (icon: SettingExplanation["icon"]) => {
+    if (icon === "check") return (
+      <svg className="w-3.5 h-3.5 text-green-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15 3.293 9.879a1 1 0 111.414-1.414L8.414 12.172l6.879-6.879a1 1 0 011.414 0z" clipRule="evenodd"/>
+      </svg>
+    );
+    if (icon === "warning") return (
+      <svg className="w-3.5 h-3.5 text-yellow-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd"/>
+      </svg>
+    );
+    return (
+      <svg className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+      </svg>
+    );
+  };
+
+  return (
+    <div className="bg-surface-card border border-surface-border rounded-xl mb-6 overflow-hidden">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between p-5 text-left hover:bg-surface-elevated/40 transition-colors"
+      >
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide mb-1">
+            {t("explain_title")}
+          </h2>
+          <p className="text-xs text-zinc-500 line-clamp-1">{report.summary}</p>
+        </div>
+        <svg
+          className={`w-4 h-4 text-zinc-500 shrink-0 ml-4 transition-transform ${open ? "rotate-180" : ""}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
+        </svg>
+      </button>
+
+      {open && (
+        <div className="px-5 pb-5 border-t border-surface-border">
+          <p className="text-xs text-zinc-400 leading-relaxed pt-4 pb-3 border-b border-surface-border/50 mb-4">
+            {report.summary}
+          </p>
+          <div className="space-y-4">
+            {report.items.map((item) => (
+              <div key={item.setting} className="flex gap-3">
+                {iconEl(item.icon)}
+                <div className="min-w-0">
+                  <div className="flex items-baseline gap-2 flex-wrap mb-0.5">
+                    <span className="text-xs font-semibold text-zinc-300">{item.setting}</span>
+                    <span className="text-xs font-mono text-brand">{item.value}</span>
+                  </div>
+                  <p className="text-xs text-zinc-500 leading-relaxed">{item.reason}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PrintabilityCard({ score }: { score: PrintabilityScore }) {
+  const { t } = useLang();
+
+  const totalColor =
+    score.total >= 80 ? "text-green-400" :
+    score.total >= 60 ? "text-yellow-400" :
+    score.total >= 40 ? "text-orange-400" :
+    "text-red-400";
+
+  const trackColor =
+    score.total >= 80 ? "bg-green-500" :
+    score.total >= 60 ? "bg-yellow-500" :
+    score.total >= 40 ? "bg-orange-500" :
+    "bg-red-500";
+
+  const difficultyKey =
+    score.difficulty_label === "Easy"        ? "print_easy" :
+    score.difficulty_label === "Moderate"    ? "print_moderate" :
+    score.difficulty_label === "Challenging" ? "print_challenging" :
+    "print_difficult";
+
+  const labelColor =
+    score.difficulty_label === "Easy"        ? "text-green-400 bg-green-500/10 border-green-500/20" :
+    score.difficulty_label === "Moderate"    ? "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" :
+    score.difficulty_label === "Challenging" ? "text-orange-400 bg-orange-500/10 border-orange-500/20" :
+    "text-red-400 bg-red-500/10 border-red-500/20";
+
+  const subs: { label: string; value: number }[] = [
+    { label: t("print_support"),   value: score.support_score },
+    { label: t("print_adhesion"),  value: score.adhesion_score },
+    { label: t("print_stability"), value: score.stability_score },
+    { label: t("print_detail"),    value: score.detail_score },
+    { label: t("print_bridge"),    value: score.bridge_score },
+  ];
+
+  return (
+    <div className="bg-surface-card border border-surface-border rounded-xl p-6 mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+          {t("print_title")}
+        </h2>
+        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${labelColor}`}>
+          {t(difficultyKey)}
+        </span>
+      </div>
+
+      {/* Total score */}
+      <div className="flex items-end gap-3 mb-4">
+        <span className={`text-5xl font-bold tabular-nums ${totalColor}`}>
+          {score.total}
+        </span>
+        <span className="text-zinc-600 text-xl mb-1">/ 100</span>
+      </div>
+      <div className="w-full h-2 bg-surface-elevated rounded-full overflow-hidden mb-5">
+        <div
+          className={`h-full rounded-full transition-all duration-700 ${trackColor}`}
+          style={{ width: `${score.total}%` }}
+        />
+      </div>
+
+      {/* Sub-scores */}
+      <div className="space-y-2 mb-4">
+        {subs.map(({ label, value }) => {
+          const color =
+            value >= 70 ? "bg-green-500" :
+            value >= 50 ? "bg-yellow-500" :
+            value >= 30 ? "bg-orange-500" :
+            "bg-red-500";
+          const textColor =
+            value >= 70 ? "text-green-400" :
+            value >= 50 ? "text-yellow-400" :
+            value >= 30 ? "text-orange-400" :
+            "text-red-400";
+          return (
+            <div key={label} className="flex items-center gap-3">
+              <span className="text-xs text-zinc-500 w-20 shrink-0">{label}</span>
+              <div className="flex-1 h-1.5 bg-surface-elevated rounded-full overflow-hidden">
+                <div className={`h-full rounded-full ${color}`} style={{ width: `${value}%` }} />
+              </div>
+              <span className={`text-xs font-mono w-8 text-right ${textColor}`}>{value}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Warnings */}
+      {score.warnings.length > 0 && (
+        <div className="border-t border-surface-border pt-3 space-y-1.5">
+          {score.warnings.map((w, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <svg className="w-3.5 h-3.5 text-yellow-500 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd"/>
+              </svg>
+              <span className="text-xs text-zinc-400">{w}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

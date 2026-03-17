@@ -12,6 +12,8 @@ so this module works with any printer profile — it only applies geometry
 and risk-driven adjustments on top of whatever base was loaded.
 """
 
+from __future__ import annotations
+
 from typing import Literal
 
 from app.scoring.models import (
@@ -19,6 +21,7 @@ from app.scoring.models import (
     GeometryFeatures,
     InfillDecision,
     LayerDecision,
+    LineWidthDecision,
     QualityDecision,
     RiskScores,
     SettingsDecisions,
@@ -31,6 +34,7 @@ from app.scoring.models import (
 def compute_settings_decisions(
     features:              GeometryFeatures,
     scores:                RiskScores,
+    nozzle_mm:             float = 0.4,
     base_speed_mm_s:       int   = 200,
     base_layer_height_mm:  float = 0.2,
     base_fan_percent:      int   = 100,
@@ -40,13 +44,14 @@ def compute_settings_decisions(
     base_bottom_layers:    int   = 4,
 ) -> SettingsDecisions:
     return SettingsDecisions(
-        support = _decide_support(features, scores),
-        brim    = _decide_brim(features, scores),
-        layer   = _decide_layer(features, scores, base_layer_height_mm),
-        walls   = _decide_walls(features, scores, base_wall_count, base_top_layers, base_bottom_layers),
-        infill  = _decide_infill(features, scores, base_infill_percent),
-        speed   = _decide_speed(features, scores, base_speed_mm_s, base_fan_percent),
-        quality = _decide_quality(features, scores),
+        support    = _decide_support(features, scores),
+        brim       = _decide_brim(features, scores),
+        layer      = _decide_layer(features, scores, base_layer_height_mm),
+        walls      = _decide_walls(features, scores, base_wall_count, base_top_layers, base_bottom_layers),
+        infill     = _decide_infill(features, scores, base_infill_percent),
+        speed      = _decide_speed(features, scores, base_speed_mm_s, base_fan_percent),
+        quality    = _decide_quality(features, scores),
+        line_width = _decide_line_width(features, scores, nozzle_mm),
     )
 
 
@@ -69,6 +74,7 @@ def _decide_support(f: GeometryFeatures, s: RiskScores) -> SupportDecision:
     if not needs_supports:
         return SupportDecision(
             enabled=False, type="none",
+            placement="buildplate_only",
             density_percent=0, angle_threshold_deg=50,
             interface_enabled=False, interface_layers=0,
             top_z_distance_mm=0.2, xy_distance_mm=0.35,
@@ -127,8 +133,30 @@ def _decide_support(f: GeometryFeatures, s: RiskScores) -> SupportDecision:
     else:
         top_z = 0.2
 
+    # Support placement: "everywhere" when overhangs appear on vertical or
+    # hanging faces that aren't reachable by growing up from the build plate.
+    # Heuristic: high overhang_area_ratio on a model with non-trivial moderate
+    # zone → overhangs are distributed across the model, not just at the base.
+    if (
+        ov.overhang_area_ratio > 0.15 or
+        (ov.severe_area_ratio > 0.01 and s.support.value >= 50) or
+        (ov.moderate_area_ratio > 0.10 and s.support.value >= 60)
+    ):
+        placement: Literal["buildplate_only", "everywhere"] = "everywhere"
+        reasons.append(
+            "Support placement: everywhere — overhang geometry distributed across the model, "
+            "not reachable by buildplate-only supports"
+        )
+    else:
+        placement = "buildplate_only"
+        reasons.append(
+            "Support placement: buildplate_only — overhangs are reachable from below, "
+            "reducing support volume and removal difficulty"
+        )
+
     return SupportDecision(
         enabled=True, type=stype,
+        placement=placement,
         density_percent=density,
         angle_threshold_deg=angle,
         interface_enabled=True,
@@ -418,5 +446,76 @@ def _decide_quality(f: GeometryFeatures, s: RiskScores) -> QualityDecision:
         ironing_enabled=ironing,
         top_surface_pattern=top_surface,
         seam_position=seam,
+        reasons=reasons,
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Line width
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _decide_line_width(
+    f:         GeometryFeatures,
+    s:         RiskScores,
+    nozzle_mm: float = 0.4,
+) -> LineWidthDecision:
+    """
+    Determine wall, first-layer, and infill line widths from nozzle size and
+    geometry risk scores.
+
+    Rules:
+      - Thin walls or high detail risk → use exact nozzle diameter (100%)
+        to maximise resolution; going wider would skip features < line_width.
+      - Standard prints → 105% of nozzle for walls (slightly over-extruding
+        fills gaps at corners), 125% first layer (better bed adhesion),
+        110% infill (reduces gaps between infill lines, improves strength).
+      - Printer constraint: line_width must be in [80%, 150%] of nozzle_mm.
+    """
+    reasons: list[str] = []
+    tw = f.thin_wall
+
+    # Constraint: clamp to safe range
+    min_w = round(nozzle_mm * 0.80, 3)
+    max_w = round(nozzle_mm * 1.50, 3)
+
+    # Wall / perimeter width
+    if tw.has_thin_walls and tw.min_thickness_mm < nozzle_mm * 2.5:
+        # Thin walls: exact nozzle width maximises the chance of printing them
+        wall_w = round(nozzle_mm, 3)
+        reasons.append(
+            f"Wall line width = exact nozzle {wall_w}mm — thin walls detected "
+            f"({tw.min_thickness_mm:.2f}mm); going wider would skip features"
+        )
+    elif s.detail.value >= 40:
+        wall_w = round(nozzle_mm, 3)
+        reasons.append(
+            f"Wall line width = exact nozzle {wall_w}mm — detail_risk={s.detail.value} "
+            f"requires maximum resolution"
+        )
+    else:
+        wall_w = round(min(nozzle_mm * 1.05, max_w), 3)
+        reasons.append(
+            f"Wall line width {wall_w}mm (105% of nozzle) — standard quality; "
+            f"slight over-extrusion fills corner gaps without sacrificing detail"
+        )
+
+    # First-layer width: always wider to maximise bed adhesion
+    first_w = round(min(nozzle_mm * 1.25, max_w), 3)
+    reasons.append(
+        f"First-layer line width {first_w}mm (125% of nozzle) — wider squish "
+        f"maximises contact with the build plate"
+    )
+
+    # Infill width: 110% — infill is hidden so wider lines mean fewer passes
+    infill_w = round(min(nozzle_mm * 1.10, max_w), 3)
+    reasons.append(
+        f"Infill line width {infill_w}mm (110% of nozzle) — infill is hidden; "
+        f"slightly wider lines reduce gap count and improve part strength"
+    )
+
+    return LineWidthDecision(
+        line_width_mm=wall_w,
+        first_layer_width_mm=first_w,
+        infill_width_mm=infill_w,
         reasons=reasons,
     )

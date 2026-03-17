@@ -15,8 +15,17 @@ from app.ingestion.handler import find_job
 from app.ingestion.unpacker import unpack
 from app.parser.model_parser import parse_model_files
 from app.parser.metadata_extractor import extract_archive_metadata
-from app.geometry.analyzer import analyze as run_geometry
+from app.geometry.analyzer import analyze_mesh
+from app.geometry.mesh_loader import merge_meshes
 from app.normalization.intent import normalize
+from app.scoring.models import GeometryFeatures
+from app.scoring.scorer import compute_risk_scores
+from app.scoring.decisions import compute_settings_decisions
+from app.scoring.printability import PrintabilityScore, compute_printability
+from app.explain.models import ExplanationReport
+from app.explain.generator import generate_explanations
+from app.orientation.models import OrientationReport
+from app.orientation.scorer import score_orientations
 
 router = APIRouter()
 
@@ -100,6 +109,9 @@ class AnalyzeResponse(BaseModel):
     model: ModelInfoSchema
     geometry: GeometrySchema
     intent: IntentSchema
+    printability: PrintabilityScore
+    explanations: ExplanationReport
+    orientation: OrientationReport
 
 
 # ---------- Route ----------
@@ -149,14 +161,56 @@ async def analyze(job_id: str) -> AnalyzeResponse:
             detail=f"No mesh objects found. Scanned {len(archive.model_files)} file(s): {file_names}",
         )
 
+    # Build mesh once — shared by geometry analysis and orientation scorer
+    try:
+        mesh = await loop.run_in_executor(
+            None, merge_meshes, parsed_model.objects
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Failed to load mesh: {exc}")
+
     # Geometry analysis (CPU-bound → thread pool)
     try:
-        geometry = await loop.run_in_executor(None, run_geometry, parsed_model)
+        geometry = await loop.run_in_executor(
+            None, analyze_mesh, mesh, len(parsed_model.objects)
+        )
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Geometry analysis failed: {exc}")
 
+    # Orientation optimization (CPU-bound, runs on same mesh — no extra copy)
+    try:
+        orientation = await loop.run_in_executor(None, score_orientations, mesh)
+    except Exception:
+        # Non-fatal — orientation is a best-effort enhancement
+        from app.orientation.models import OrientationCandidate
+        _fallback = OrientationCandidate(
+            label="Original", rotation_euler_deg=[0, 0, 0],
+            overhang_area_ratio=0.0, contact_area_mm2=0.0,
+            height_to_base_ratio=0.0, height_mm=0.0,
+            support_score=50, adhesion_score=50,
+            stability_score=50, height_score=50, total_score=50,
+        )
+        orientation = OrientationReport(
+            recommended=_fallback, original=_fallback, all_candidates=[_fallback],
+            improvement=0, should_rotate=False, support_reduction_pct=0.0,
+            reasons=["Orientation analysis unavailable."],
+        )
+
     # Normalize
     intent = normalize(geometry)
+
+    # Scoring layer — builds full features + risk scores for printability + explanations
+    features     = GeometryFeatures.from_geometry_analysis(geometry)
+    risk_scores  = compute_risk_scores(features)
+    decisions    = compute_settings_decisions(features, risk_scores)
+    printability = compute_printability(
+        support_risk   = risk_scores.support.value,
+        adhesion_risk  = risk_scores.adhesion.value,
+        stability_risk = risk_scores.stability.value,
+        detail_risk    = risk_scores.detail.value,
+        bridge_risk    = risk_scores.bridge.value,
+    )
+    explanations = generate_explanations(decisions, features, risk_scores)
 
     # Archive metadata
     meta = extract_archive_metadata(
@@ -168,6 +222,9 @@ async def analyze(job_id: str) -> AnalyzeResponse:
 
     return AnalyzeResponse(
         job_id=job_id,
+        printability=printability,
+        explanations=explanations,
+        orientation=orientation,
         archive=ArchiveInfoSchema(
             filename=meta.original_filename,
             size_bytes=meta.size_bytes,

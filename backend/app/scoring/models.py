@@ -16,6 +16,9 @@ from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, Field
+from app.scoring.printability import PrintabilityScore
+from app.explain.models import ExplanationReport
+from app.orientation.models import OrientationReport
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -173,6 +176,7 @@ class RiskScores(BaseModel):
 class SupportDecision(BaseModel):
     enabled:             bool
     type:                Literal["normal", "tree", "none"]
+    placement:           Literal["buildplate_only", "everywhere"] = "buildplate_only"
     density_percent:     int
     angle_threshold_deg: int
     interface_enabled:   bool
@@ -220,14 +224,22 @@ class QualityDecision(BaseModel):
     reasons:              list[str]
 
 
+class LineWidthDecision(BaseModel):
+    line_width_mm:           float   # wall / perimeter width
+    first_layer_width_mm:    float   # first layer (wider for adhesion)
+    infill_width_mm:         float   # infill (slightly wider, speed-focused)
+    reasons:                 list[str]
+
+
 class SettingsDecisions(BaseModel):
-    support: SupportDecision
-    brim:    BrimDecision
-    layer:   LayerDecision
-    walls:   WallDecision
-    infill:  InfillDecision
-    speed:   SpeedDecision
-    quality: QualityDecision
+    support:    SupportDecision
+    brim:       BrimDecision
+    layer:      LayerDecision
+    walls:      WallDecision
+    infill:     InfillDecision
+    speed:      SpeedDecision
+    quality:    QualityDecision
+    line_width: LineWidthDecision
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -251,6 +263,9 @@ class GenerationReport(BaseModel):
     geometry:       GeometryFeatures
     risk_scores:    RiskScores
     difficulty:     Literal["easy", "moderate", "hard"]
+    printability:   PrintabilityScore
+    explanations:   ExplanationReport
+    orientation:    OrientationReport
     decisions:      SettingsDecisions
     decision_trace: list[DecisionEntry]
     settings_delta: dict[str, object]

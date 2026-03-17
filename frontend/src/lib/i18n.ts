@@ -108,6 +108,34 @@ export const translations = {
     rating_reviews:    "beoordelingen",
     conv_8slots:       "(8 sloten)",
 
+    // Printability
+    print_title:       "Afdrukeerbaarheid",
+    print_easy:        "Makkelijk",
+    print_moderate:    "Gemiddeld",
+    print_challenging: "Uitdagend",
+    print_difficult:   "Moeilijk",
+    print_support:     "Steunen",
+    print_adhesion:    "Hechting",
+    print_stability:   "Stabiliteit",
+    print_detail:      "Detail",
+    print_bridge:      "Bruggen",
+
+    // Explanations
+    explain_title:     "Waarom deze instellingen?",
+
+    // Orientation
+    orient_title:      "Oriëntatie",
+    orient_optimal:    "Al optimaal",
+    orient_suggested:  "Rotatie aanbevolen",
+    orient_apply:      "Aanbevolen oriëntatie toepassen op uitvoer",
+    orient_show_all:   "Toon alle {n} oriëntaties",
+    orient_hide_all:   "Verberg oriëntaties",
+    orient_score:      "Score",
+    orient_support:    "Steunen",
+    orient_adhesion:   "Hechting",
+    orient_stability:  "Stabiliteit",
+    orient_height:     "Hoogte",
+
     // History
     hist_title:        "Geschiedenis",
     hist_subtitle:     "Je recente uploads en conversies.",
@@ -240,6 +268,34 @@ export const translations = {
     rating_reviews:    "reviews",
     conv_8slots:       "(8 slots)",
 
+    // Printability
+    print_title:       "Printability Score",
+    print_easy:        "Easy",
+    print_moderate:    "Moderate",
+    print_challenging: "Challenging",
+    print_difficult:   "Difficult",
+    print_support:     "Supports",
+    print_adhesion:    "Adhesion",
+    print_stability:   "Stability",
+    print_detail:      "Detail",
+    print_bridge:      "Bridging",
+
+    // Explanations
+    explain_title:     "Why these settings?",
+
+    // Orientation
+    orient_title:      "Orientation",
+    orient_optimal:    "Already optimal",
+    orient_suggested:  "Rotation suggested",
+    orient_apply:      "Apply recommended orientation to output",
+    orient_show_all:   "Show all {n} orientations",
+    orient_hide_all:   "Hide orientations",
+    orient_score:      "Score",
+    orient_support:    "Supports",
+    orient_adhesion:   "Adhesion",
+    orient_stability:  "Stability",
+    orient_height:     "Height",
+
     hist_title:        "History",
     hist_subtitle:     "Your recent uploads and conversions.",
     hist_empty:        "No activity yet",
@@ -369,6 +425,34 @@ export const translations = {
     rating_reviews:    "avis",
     conv_8slots:       "(8 emplacements)",
 
+    // Printability
+    print_title:       "Score d'imprimabilité",
+    print_easy:        "Facile",
+    print_moderate:    "Modéré",
+    print_challenging: "Difficile",
+    print_difficult:   "Très difficile",
+    print_support:     "Supports",
+    print_adhesion:    "Adhérence",
+    print_stability:   "Stabilité",
+    print_detail:      "Détail",
+    print_bridge:      "Ponts",
+
+    // Explanations
+    explain_title:     "Pourquoi ces paramètres ?",
+
+    // Orientation
+    orient_title:      "Orientation",
+    orient_optimal:    "Déjà optimal",
+    orient_suggested:  "Rotation suggérée",
+    orient_apply:      "Appliquer l'orientation recommandée à la sortie",
+    orient_show_all:   "Afficher les {n} orientations",
+    orient_hide_all:   "Masquer les orientations",
+    orient_score:      "Score",
+    orient_support:    "Supports",
+    orient_adhesion:   "Adhérence",
+    orient_stability:  "Stabilité",
+    orient_height:     "Hauteur",
+
     hist_title:        "Historique",
     hist_subtitle:     "Vos uploads et conversions récents.",
     hist_empty:        "Aucune activité",
@@ -497,6 +581,34 @@ export const translations = {
     rating_avg:        "Durchschnittsbewertung",
     rating_reviews:    "Bewertungen",
     conv_8slots:       "(8 Slots)",
+
+    // Printability
+    print_title:       "Druckbarkeit",
+    print_easy:        "Einfach",
+    print_moderate:    "Mittel",
+    print_challenging: "Anspruchsvoll",
+    print_difficult:   "Schwierig",
+    print_support:     "Stützen",
+    print_adhesion:    "Haftung",
+    print_stability:   "Stabilität",
+    print_detail:      "Detail",
+    print_bridge:      "Brücken",
+
+    // Explanations
+    explain_title:     "Warum diese Einstellungen?",
+
+    // Orientation
+    orient_title:      "Ausrichtung",
+    orient_optimal:    "Bereits optimal",
+    orient_suggested:  "Drehung empfohlen",
+    orient_apply:      "Empfohlene Ausrichtung auf Ausgabe anwenden",
+    orient_show_all:   "Alle {n} Ausrichtungen anzeigen",
+    orient_hide_all:   "Ausrichtungen ausblenden",
+    orient_score:      "Punkte",
+    orient_support:    "Stützen",
+    orient_adhesion:   "Haftung",
+    orient_stability:  "Stabilität",
+    orient_height:     "Höhe",
 
     hist_title:        "Verlauf",
     hist_subtitle:     "Ihre letzten Uploads und Konvertierungen.",

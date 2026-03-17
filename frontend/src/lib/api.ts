@@ -77,6 +77,7 @@ export async function apiConvertDownload(
   colorCount = 1,
   filamentColors: string[] = [],
   filamentTypes: string[] = [],
+  orientationEulerDeg: number[] = [],
 ): Promise<Blob> {
   const res = await fetch(`${BASE}/convert`, {
     method: "POST",
@@ -96,6 +97,7 @@ export async function apiConvertDownload(
       color_count: colorCount,
       filament_colors: filamentColors,
       filament_types: filamentTypes,
+      orientation_euler_deg: orientationEulerDeg,
     }),
   });
   if (!res.ok) {
