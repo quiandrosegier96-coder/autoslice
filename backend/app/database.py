@@ -95,6 +95,7 @@ def init_db() -> None:
         # Schema migrations — add new columns to existing tables without data loss
         _add_column_if_missing(conn, "generation_log", "decision_trace_json", "TEXT")
         _add_column_if_missing(conn, "generation_log", "settings_delta_json",  "TEXT")
+        _add_column_if_missing(conn, "users", "last_login", "TEXT")
         conn.commit()
 
 

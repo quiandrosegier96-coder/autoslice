@@ -11,6 +11,7 @@ type UserRow = {
   username: string;
   email: string;
   created_at: string;
+  last_login: string | null;
   is_admin: boolean;
   uploads: number;
   conversions: number;
@@ -227,6 +228,7 @@ export default function AdminPage() {
                       <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">User</th>
                       <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Email</th>
                       <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Joined</th>
+                      <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Last Login</th>
                       <th className="text-right px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Uploads</th>
                       <th className="text-right px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Conversions</th>
                       <th className="text-center px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Role</th>
@@ -245,6 +247,7 @@ export default function AdminPage() {
                         </td>
                         <td className="px-4 py-3 text-zinc-400 text-xs">{u.email}</td>
                         <td className="px-4 py-3 text-zinc-500 text-xs whitespace-nowrap">{formatDate(u.created_at)}</td>
+                        <td className="px-4 py-3 text-zinc-500 text-xs whitespace-nowrap">{u.last_login ? timeAgo(u.last_login) : "Never"}</td>
                         <td className="px-4 py-3 text-zinc-300 text-right font-mono text-xs">{u.uploads}</td>
                         <td className="px-4 py-3 text-zinc-300 text-right font-mono text-xs">{u.conversions}</td>
                         <td className="px-4 py-3 text-center">
@@ -260,7 +263,7 @@ export default function AdminPage() {
                     ))}
                     {users.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="px-4 py-10 text-center text-zinc-500">No users yet.</td>
+                        <td colSpan={7} className="px-4 py-10 text-center text-zinc-500">No users yet.</td>
                       </tr>
                     )}
                   </tbody>
