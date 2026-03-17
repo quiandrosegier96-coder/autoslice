@@ -30,10 +30,7 @@ export function isLoggedIn(): boolean {
   return !!localStorage.getItem("autoslice_token");
 }
 
-const ADMIN_EMAILS = ["admin@autoslice.be", "admin2@autoslice.be"];
-
 export function isAdmin(): boolean {
   const user = getUser();
-  if (!user?.is_admin) return false;
-  return ADMIN_EMAILS.includes(user.email);
+  return !!user?.is_admin;
 }
