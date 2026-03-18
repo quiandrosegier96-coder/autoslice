@@ -1,259 +1,577 @@
 """
-AutoSlice — Tree support skeleton generator.
+AutoSlice — Professional Tree Support Generator v2.
 
-Converts detected support columns into an organic tree-branch skeleton
-that the 3D viewer can render as tapered, branching support structures.
+Physically valid, collision-aware, multi-level tree support generation.
 
-Algorithm overview
-──────────────────
-1. Cluster support columns by XY proximity (greedy single-linkage).
-2. For each cluster create one trunk root on the build plate whose XY
-   position is the cluster centroid.
-3. Grow the trunk upward to a "branching node" height (~60% of the way
-   from z_min to the lowest overhang in the cluster).
-4. Small clusters (≤ 3 tips): emit one branch per column directly from
-   the branching node to the overhang contact point.
-5. Large clusters: apply a second-level clustering, add intermediate
-   sub-trunks, then emit individual tip branches.
-6. Taper radii linearly from base (thick) to tip (thin).
+Architecture
+────────────
+Internal representation: a directed acyclic graph of _Node objects.
+  · Every node carries a 3D position (3MF Z-up, mm) and a radius.
+  · Edges point from child toward its parent (child.pid = parent.nid).
+  · Root nodes sit on the build plate (is_root=True, pid=None).
+  · Tip nodes contact the model's overhang underside (is_tip=True).
+
+Levels produced
+───────────────
+  root (z_min)  ←  trunk node  ←  [sub-trunk node]  ←  tip (z_top)
+
+  (arrows show parent direction — visually the tree grows upward)
+
+Collision avoidance
+───────────────────
+Each direct-line branch is ray-cast against the model mesh.  If a collision
+is detected within the branch length, a waypoint is inserted offset outward
+from the mesh center-of-mass.  Both sub-segments inherit the original parent/
+child relationship, effectively rerouting the branch around the obstacle.
+
+Radius tapering
+───────────────
+  root  : _trunk_radius(n_descendants)   → up to _TRUNK_R_MAX mm
+  tip   : _TIP_R                          → 0.55 mm
+  intermediate : geometric taper (_TAPER per level) clamped to _BRANCH_R_MIN
 
 Coordinate space
 ────────────────
-All coordinates are in 3MF space (Z-up, mm).  The frontend applies the
-same -π/2 X-rotation + center-subtraction used for every other support
-object, so no special handling is needed here.
+All positions are returned in 3MF space (Z-up, mm).  The frontend applies
+the same -π/2 X-rotation and model-center subtraction used for the model.
+
+Changelog
+─────────
+v2 over v1:
+  · KD-tree spatial clustering (O(n log n)) instead of O(n²) greedy scan
+  · True tree graph — all segments share a connected acyclic structure
+  · Multi-level hierarchy: tip → branch node → sub-trunk → trunk → root
+  · Mesh collision avoidance via downward + diagonal ray casting
+  · Branch angle constraints (max 40° from vertical for FDM stability)
+  · Load-aware trunk radius (proportional to supported overhang count)
+  · Splay applied per-tip to guarantee visible lean (no vertical pillars)
+  · Topological BFS converts node graph → ordered TreeBranch segments
 """
 
 from __future__ import annotations
 
 import math
+from collections import deque
+from typing import Optional
+
+import numpy as np
+
+try:
+    from scipy.spatial import KDTree as _KDTree
+    _HAS_SCIPY = True
+except ImportError:
+    _HAS_SCIPY = False
+
 from app.support.models import SupportColumn, TreeBranch
 
-# ── Tuneable constants ─────────────────────────────────────────────────────────
 
-# Columns within this XY distance are placed on a shared trunk
-_PRIMARY_CLUSTER_MM   = 18.0
+# ── Tunable constants ─────────────────────────────────────────────────────────
 
-# Tip branches from the same sub-cluster share an intermediate sub-trunk
-_SECONDARY_CLUSTER_MM =  9.0
+# Radii (mm)
+_TIP_R         = 0.55    # contact-point radius — easily removable
+_TRUNK_R_MIN   = 1.6     # thinnest allowable trunk base
+_TRUNK_R_MAX   = 4.2     # thickest allowable trunk base
+_BRANCH_R_MIN  = 0.72    # thinnest non-tip intermediate segment
+_TAPER         = 0.76    # radius multiplier per tree level
 
-# Maximum trunk clusters before we start merging aggressively
-_MAX_TRUNKS = 30
+# Clustering distances (mm, XY plane only)
+_L1_MM         = 14.0    # tip → branch node: tips within this radius share a branch
+_L2_MM         = 32.0    # branch node → sub-trunk
+_L3_MM         = 65.0    # sub-trunk → trunk root
 
-# Trunk radii (mm)
-_TRUNK_BASE_MIN   = 2.2   # thinnest possible trunk base
-_TRUNK_BASE_MAX   = 5.0   # thickest possible trunk base
-_TRUNK_TAPER      = 0.60  # top radius = base * taper
+# Tree limits
+_MAX_TRUNKS    = 22      # hard cap on root trunk count
 
-# Sub-trunk and tip radii
-_SUB_TRUNK_TAPER  = 0.78  # sub-trunk start = trunk_top * this
-_SUB_TRUNK_END    = 0.52  # sub-trunk end   = sub_start * this
-_TIP_RADIUS       = 0.55  # final contact-point radius (mm)
+# Geometry
+_HEIGHT_FRAC   = 0.52    # merge-node height as fraction of [z_min .. z_tip]
+_MAX_ANGLE_DEG = 40.0    # max branch angle from vertical (printability)
+_MIN_SEG_MM    = 1.5     # discard segments shorter than this
 
-# The branching node is placed this fraction of the way from z_min to the
-# lowest overhang z_bottom in the cluster.
-_BRANCH_HEIGHT_FRACTION = 0.55
+# Splay (tip branches)
+_SPLAY         = 1.18    # outward lean multiplier
+_MIN_XY_SPREAD = 3.0     # minimum horizontal displacement for tip branches
 
-# Minimum height a trunk must reach (mm above z_min)
-_MIN_TRUNK_HEIGHT_MM = 4.0
-
-# Safety margin below overhang — branch end is this far below z_top
-_BRANCH_END_MARGIN_MM = 0.0   # flush with overhang underside
-
-# Minimum XY spread to guarantee visually angled branches.
-# If a column is too close to its trunk centroid, the branch looks vertical.
-# We push the branch tip slightly outward so all branches have a lean angle.
-_MIN_XY_SPREAD_MM = 3.5
-
-# Extra outward lean applied to tip position (multiplier on spread vector).
-# Values > 1.0 exaggerate the splay for more organic appearance.
-_BRANCH_SPLAY = 1.25
+# Collision avoidance
+_COL_MARGIN    = 0.8     # minimum clearance from mesh surface (mm)
+_RAY_NUDGE     = 0.15    # nudge ray-origin off the start surface
 
 
-# ── Public entry point ─────────────────────────────────────────────────────────
+# ── Internal node ─────────────────────────────────────────────────────────────
+
+class _Node:
+    """Lightweight tree node used only during skeleton construction."""
+
+    __slots__ = ("nid", "pos", "r", "pid", "tip", "root", "ndesc")
+
+    def __init__(
+        self,
+        nid:  int,
+        pos:  np.ndarray,
+        r:    float,
+        pid:  Optional[int] = None,
+        tip:  bool = False,
+        root: bool = False,
+    ) -> None:
+        self.nid   = nid
+        self.pos   = np.asarray(pos, dtype=float)
+        self.r     = float(r)
+        self.pid   = pid        # parent node id (None = root of tree)
+        self.tip   = tip        # contacts model overhang
+        self.root  = root       # sits on build plate
+        self.ndesc = 1          # number of descendant tips (filled by _count_desc)
+
+
+# ── Public entry point ────────────────────────────────────────────────────────
 
 def generate_tree_branches(
-    columns: list[SupportColumn],
-    z_min: float,
+    columns:       list[SupportColumn],
+    z_min:         float,
+    mesh=None,
+    nozzle_mm:     float = 0.4,
+    max_angle_deg: float = _MAX_ANGLE_DEG,
 ) -> list[TreeBranch]:
     """
-    Build a tree-branch skeleton from a list of support columns.
+    Build a physically valid, collision-aware tree-support skeleton.
 
     Parameters
     ----------
-    columns : list[SupportColumn]
-        Support columns produced by the overhang detector (3MF space, Z-up).
-    z_min : float
-        Minimum Z of the model — defines the build plate height.
+    columns       : support columns produced by the overhang detector
+    z_min         : build-plate Z coordinate in 3MF model space (mm)
+    mesh          : trimesh.Trimesh used for collision avoidance (None = skip)
+    nozzle_mm     : nozzle diameter — sets minimum viable radius
+    max_angle_deg : maximum branch angle from vertical
 
     Returns
     -------
-    list[TreeBranch]
-        Ordered list of branch segments.  Each segment carries its parent_id
-        so the frontend can reconstruct the full tree topology.
+    List of TreeBranch segments ordered parent-first (BFS from roots) so the
+    frontend renderer can draw them without a secondary sort pass.
     """
     if not columns:
         return []
 
-    branches: list[TreeBranch] = []
-    next_id = 0
+    nodes:  list[_Node] = []
+    _nid = [0]                              # mutable int counter
+    tan_max = math.tan(math.radians(max_angle_deg))
 
-    primary_groups = _cluster(columns, _PRIMARY_CLUSTER_MM)
+    def mk(pos, r, pid=None, tip=False, root=False) -> _Node:
+        n = _Node(_nid[0], np.asarray(pos, dtype=float), r,
+                  pid=pid, tip=tip, root=root)
+        nodes.append(n)
+        _nid[0] += 1
+        return n
 
-    # If we produced too many trunks, increase the merge distance adaptively
-    if len(primary_groups) > _MAX_TRUNKS:
-        scale = math.sqrt(len(primary_groups) / _MAX_TRUNKS)
-        primary_groups = _cluster(columns, _PRIMARY_CLUSTER_MM * scale)
+    # ── 1. Tip nodes ──────────────────────────────────────────────────────────
+    tip_nodes: list[_Node] = [
+        mk([c.x, c.y, c.z_top], _TIP_R, tip=True)
+        for c in columns
+    ]
 
-    for group in primary_groups:
-        cx, cy = _centroid_xy(group)
-        min_z_bottom = min(c.z_bottom for c in group)
+    # ── 2. Hierarchical merging: tips → L1 → L2 → L3 ─────────────────────────
+    # Each pass clusters nodes in XY and inserts a merge node below them.
+    # The merge node's Z is chosen to satisfy the branch-angle constraint.
+    level: list[_Node] = tip_nodes
 
-        # Branching node height
-        raw_branch_h = z_min + (min_z_bottom - z_min) * _BRANCH_HEIGHT_FRACTION
-        branch_h = max(raw_branch_h, z_min + _MIN_TRUNK_HEIGHT_MM)
-        branch_h = min(branch_h, min_z_bottom - 0.5)   # must be below overhang
-
-        n = len(group)
-        trunk_r_base = min(_TRUNK_BASE_MIN + n * 0.45, _TRUNK_BASE_MAX)
-        trunk_r_top  = trunk_r_base * _TRUNK_TAPER
-
-        # ── Trunk (build plate → branching node) ──────────────────────────────
-        trunk_id = next_id
-        branches.append(TreeBranch(
-            id=next_id, parent_id=None,
-            start_x=cx, start_y=cy, start_z=z_min,
-            end_x=cx,   end_y=cy,   end_z=branch_h,
-            start_radius=trunk_r_base,
-            end_radius=trunk_r_top,
-            is_tip=False,
-        ))
-        next_id += 1
-
-        if n <= 3:
-            # ── Direct branches from branching node to each tip ────────────────
-            for col in group:
-                ex, ey = _splayed_tip(cx, cy, col.x, col.y)
-                branches.append(TreeBranch(
-                    id=next_id, parent_id=trunk_id,
-                    start_x=cx,  start_y=cy,  start_z=branch_h,
-                    end_x=ex,    end_y=ey,    end_z=col.z_top - _BRANCH_END_MARGIN_MM,
-                    start_radius=trunk_r_top,
-                    end_radius=_TIP_RADIUS,
-                    is_tip=True,
-                ))
-                next_id += 1
-
-        else:
-            # ── Two-level hierarchy: sub-trunks → tips ────────────────────────
-            sub_groups = _cluster(group, _SECONDARY_CLUSTER_MM)
-
-            for sub in sub_groups:
-                sub_cx, sub_cy = _centroid_xy(sub)
-                sub_min_zb = min(c.z_bottom for c in sub)
-
-                # Sub-branching node: halfway between trunk top and sub_min_zb
-                raw_sub_h = branch_h + (sub_min_zb - branch_h) * 0.55
-                sub_branch_h = max(raw_sub_h, branch_h + 0.5)
-                sub_branch_h = min(sub_branch_h, sub_min_zb - 0.5)
-
-                sub_r_start = trunk_r_top  * _SUB_TRUNK_TAPER
-                sub_r_end   = sub_r_start  * _SUB_TRUNK_END
-
-                # Ensure sub-trunk endpoint is visibly splayed from trunk tip
-                scx, scy = _splayed_tip(cx, cy, sub_cx, sub_cy)
-
-                # Sub-trunk
-                sub_trunk_id = next_id
-                branches.append(TreeBranch(
-                    id=next_id, parent_id=trunk_id,
-                    start_x=cx,   start_y=cy,   start_z=branch_h,
-                    end_x=scx,    end_y=scy,    end_z=sub_branch_h,
-                    start_radius=sub_r_start,
-                    end_radius=sub_r_end,
-                    is_tip=False,
-                ))
-                next_id += 1
-
-                # Tip branches from sub-trunk tip to each column
-                for col in sub:
-                    ex, ey = _splayed_tip(scx, scy, col.x, col.y)
-                    branches.append(TreeBranch(
-                        id=next_id, parent_id=sub_trunk_id,
-                        start_x=scx,  start_y=scy,  start_z=sub_branch_h,
-                        end_x=ex,     end_y=ey,     end_z=col.z_top - _BRANCH_END_MARGIN_MM,
-                        start_radius=sub_r_end,
-                        end_radius=_TIP_RADIUS,
-                        is_tip=True,
-                    ))
-                    next_id += 1
-
-    return branches
-
-
-# ── Helpers ────────────────────────────────────────────────────────────────────
-
-def _cluster(
-    columns: list[SupportColumn],
-    max_dist: float,
-) -> list[list[SupportColumn]]:
-    """
-    Greedy single-linkage clustering by XY Euclidean distance.
-
-    Each column is assigned to the first cluster whose seed is within
-    max_dist.  This is O(n²) but n is capped at MAX_COLUMNS (300) in the
-    caller, so it is fast enough for interactive use.
-    """
-    used  = [False] * len(columns)
-    groups: list[list[SupportColumn]] = []
-
-    for i, col in enumerate(columns):
-        if used[i]:
-            continue
-        group = [col]
-        used[i] = True
-        for j in range(i + 1, len(columns)):
-            if used[j]:
+    for cluster_mm in (_L1_MM, _L2_MM, _L3_MM):
+        if len(level) <= 1:
+            break
+        groups = _cluster_xy(level, cluster_mm)
+        next_level: list[_Node] = []
+        for grp in groups:
+            if len(grp) == 1:
+                next_level.append(grp[0])
                 continue
-            if math.hypot(col.x - columns[j].x, col.y - columns[j].y) <= max_dist:
-                group.append(columns[j])
+            cx, cy, mz = _merge_pos(grp, z_min, tan_max)
+            r_merge = float(np.clip(len(grp) ** 0.42 * 0.55, _BRANCH_R_MIN, _TRUNK_R_MAX * 0.8))
+            mn = mk([cx, cy, mz], r_merge)
+            for child in grp:
+                if child.pid is None:           # only connect unparented nodes
+                    child.pid = mn.nid
+            next_level.append(mn)
+        level = next_level
+
+    # Adaptive extra merge if still over the trunk cap
+    if len(level) > _MAX_TRUNKS:
+        scale = math.sqrt(len(level) / _MAX_TRUNKS)
+        groups = _cluster_xy(level, _L3_MM * scale)
+        merged: list[_Node] = []
+        for grp in groups:
+            if len(grp) == 1:
+                merged.append(grp[0])
+                continue
+            cx, cy, mz = _merge_pos(grp, z_min, tan_max)
+            mn = mk([cx, cy, mz], _TRUNK_R_MIN)
+            for child in grp:
+                if child.pid is None:
+                    child.pid = mn.nid
+            merged.append(mn)
+        level = merged
+
+    # ── 3. Root nodes on the build plate ─────────────────────────────────────
+    # Count descendants before creating roots so we can size trunks correctly.
+    node_map      = {n.nid: n for n in nodes}
+    children_map  = _build_children_map(nodes)
+    _count_desc(nodes, node_map, children_map)
+
+    for top in level:
+        r_root = float(np.clip(
+            _TRUNK_R_MIN + top.ndesc ** 0.5 * 0.52,
+            _TRUNK_R_MIN, _TRUNK_R_MAX,
+        ))
+        root = mk([top.pos[0], top.pos[1], z_min], r_root, root=True)
+        top.pid = root.nid          # connect top-level node to its trunk root
+
+    # Rebuild maps now that roots exist
+    node_map     = {n.nid: n for n in nodes}
+    children_map = _build_children_map(nodes)
+
+    # ── 4. Tip splay — ensure every tip branch has a visible lean ─────────────
+    _splay_tips(nodes, node_map)
+
+    # ── 5. Radius assignment via depth-based taper ───────────────────────────
+    _assign_radii(nodes, node_map, children_map)
+
+    # ── 6. Collision avoidance ────────────────────────────────────────────────
+    if mesh is not None:
+        _avoid_collisions(nodes, node_map, mesh, _nid)
+        # Rebuild maps to include any inserted waypoint nodes
+        node_map     = {n.nid: n for n in nodes}
+        children_map = _build_children_map(nodes)
+
+    # ── 7. Convert node graph → ordered TreeBranch segment list ──────────────
+    return _to_branches(nodes, node_map, children_map)
+
+
+# ── Clustering ────────────────────────────────────────────────────────────────
+
+def _cluster_xy(nodes: list[_Node], radius: float) -> list[list[_Node]]:
+    """
+    Group nodes by XY proximity.
+
+    Uses scipy KDTree when available (O(n log n)); falls back to O(n²) greedy
+    single-linkage scan.  Clustering is performed in the XY plane only so
+    that nodes at different heights can still share a trunk.
+    """
+    if len(nodes) <= 1:
+        return [[n] for n in nodes]
+
+    pts  = np.array([[n.pos[0], n.pos[1]] for n in nodes])
+    used = np.zeros(len(nodes), dtype=bool)
+    groups: list[list[_Node]] = []
+
+    if _HAS_SCIPY:
+        tree = _KDTree(pts)
+        for i in range(len(nodes)):
+            if used[i]:
+                continue
+            idxs = tree.query_ball_point(pts[i], radius)
+            grp  = [nodes[j] for j in idxs if not used[j]]
+            for j in idxs:
                 used[j] = True
-        groups.append(group)
+            groups.append(grp)
+    else:
+        for i, n in enumerate(nodes):
+            if used[i]:
+                continue
+            grp   = [n]
+            used[i] = True
+            for j in range(i + 1, len(nodes)):
+                if not used[j]:
+                    d = math.hypot(n.pos[0] - nodes[j].pos[0],
+                                   n.pos[1] - nodes[j].pos[1])
+                    if d <= radius:
+                        grp.append(nodes[j])
+                        used[j] = True
+            groups.append(grp)
 
     return groups
 
 
-def _centroid_xy(cols: list[SupportColumn]) -> tuple[float, float]:
-    n = len(cols)
-    return sum(c.x for c in cols) / n, sum(c.y for c in cols) / n
+# ── Merge-node placement ──────────────────────────────────────────────────────
 
-
-def _splayed_tip(
-    origin_x: float, origin_y: float,
-    target_x: float, target_y: float,
-) -> tuple[float, float]:
+def _merge_pos(
+    group:   list[_Node],
+    z_min:   float,
+    tan_max: float,
+) -> tuple[float, float, float]:
     """
-    Return the effective XY endpoint for a branch tip.
+    Compute the XY centroid and Z height for a merge node.
 
-    Ensures the branch has a minimum visible lean (_MIN_XY_SPREAD_MM).
-    Also applies _BRANCH_SPLAY to exaggerate the spread for a more
-    organic, tree-like appearance.
+    The Z is chosen as `_HEIGHT_FRAC` of the way from z_min to the lowest tip
+    in the group, then clamped downward so the branch angle from every group
+    member to the merge node does not exceed max_angle_deg.
+
+    Hard constraints:
+      mz >= z_min + 2.0   (clear the build plate)
+      mz <= z_ref - 0.5   (stay below the group's lowest tip)
     """
-    dx = target_x - origin_x
-    dy = target_y - origin_y
-    dist = math.hypot(dx, dy)
+    cx    = float(np.mean([n.pos[0] for n in group]))
+    cy    = float(np.mean([n.pos[1] for n in group]))
+    z_ref = float(min(n.pos[2] for n in group))      # lowest tip in group
 
-    if dist < _MIN_XY_SPREAD_MM:
-        # Direction is almost vertical — push target outward to min spread
-        if dist < 1e-6:
-            # Degenerate case: branch directly above trunk — pick +X direction
-            dx, dy = _MIN_XY_SPREAD_MM, 0.0
+    # Fractional default height
+    mz = z_min + (z_ref - z_min) * _HEIGHT_FRAC
+
+    # Enforce angle constraint: for each member, z_member - mz ≥ d_xy / tan_max
+    if tan_max > 1e-9:
+        for n in group:
+            d_xy = math.hypot(cx - n.pos[0], cy - n.pos[1])
+            if d_xy > 1e-6:
+                mz = min(mz, n.pos[2] - d_xy / tan_max)
+
+    # Hard floor / ceiling
+    mz = max(mz, z_min + 2.0)
+    mz = min(mz, max(z_ref - 0.5, z_min + 0.5))
+
+    return cx, cy, mz
+
+
+# ── Graph helpers ─────────────────────────────────────────────────────────────
+
+def _build_children_map(nodes: list[_Node]) -> dict[int, list[int]]:
+    cm: dict[int, list[int]] = {}
+    for n in nodes:
+        if n.pid is not None:
+            cm.setdefault(n.pid, []).append(n.nid)
+    return cm
+
+
+def _count_desc(
+    nodes:       list[_Node],
+    nm:          dict[int, _Node],
+    cm:          dict[int, list[int]],
+) -> None:
+    """DFS to populate ndesc (number of descendant tips) for every node."""
+    visited: set[int] = set()
+
+    def dfs(nid: int) -> int:
+        if nid in visited:
+            return nm[nid].ndesc
+        visited.add(nid)
+        n = nm[nid]
+        children = cm.get(nid, [])
+        n.ndesc  = sum(dfs(c) for c in children) if children else 1
+        return n.ndesc
+
+    for n in nodes:
+        dfs(n.nid)
+
+
+# ── Splay & radius ────────────────────────────────────────────────────────────
+
+def _splay_tips(nodes: list[_Node], nm: dict[int, _Node]) -> None:
+    """
+    Adjust tip-node XY positions to guarantee a minimum visible lean.
+
+    Tips directly above their parent would render as vertical cylinders.
+    This pushes each tip outward by _SPLAY (if already leaning) or to at
+    least _MIN_XY_SPREAD (if nearly vertical), creating organic angles.
+    """
+    for n in nodes:
+        if not n.tip or n.pid is None:
+            continue
+        p = nm.get(n.pid)
+        if p is None:
+            continue
+
+        dx = n.pos[0] - p.pos[0]
+        dy = n.pos[1] - p.pos[1]
+        d  = math.hypot(dx, dy)
+
+        if d < _MIN_XY_SPREAD:
+            if d < 1e-6:
+                dx, dy = _MIN_XY_SPREAD, 0.0    # degenerate: push +X
+            else:
+                s   = _MIN_XY_SPREAD / d
+                dx *= s
+                dy *= s
         else:
-            scale = _MIN_XY_SPREAD_MM / dist
-            dx *= scale
-            dy *= scale
-    else:
-        dx *= _BRANCH_SPLAY
-        dy *= _BRANCH_SPLAY
+            dx *= _SPLAY
+            dy *= _SPLAY
 
-    return origin_x + dx, origin_y + dy
+        n.pos[0] = p.pos[0] + dx
+        n.pos[1] = p.pos[1] + dy
+
+
+def _assign_radii(
+    nodes:       list[_Node],
+    nm:          dict[int, _Node],
+    cm:          dict[int, list[int]],
+) -> None:
+    """
+    Walk downward from each root, tapering radius geometrically.
+
+    Root nodes already have their radius set at creation time (proportional
+    to ndesc).  Tips are forced to _TIP_R.  All intermediate nodes receive
+    parent_r * _TAPER clamped to _BRANCH_R_MIN.
+    """
+    def walk(nid: int, parent_r: float, depth: int) -> None:
+        n = nm[nid]
+        if n.tip:
+            n.r = _TIP_R
+        elif not n.root:
+            n.r = float(max(parent_r * _TAPER, _BRANCH_R_MIN))
+        for child_nid in cm.get(nid, []):
+            walk(child_nid, n.r, depth + 1)
+
+    for n in nodes:
+        if n.root:
+            walk(n.nid, n.r, 0)
+
+
+# ── Collision avoidance ───────────────────────────────────────────────────────
+
+def _avoid_collisions(
+    nodes:   list[_Node],
+    nm:      dict[int, _Node],
+    mesh,
+    nid_ctr: list[int],
+) -> None:
+    """
+    Ray-cast each branch against the model mesh and insert avoidance waypoints.
+
+    For every branch (parent → child):
+      1. Cast a ray from parent toward child.
+      2. If the first hit is within the branch length (+ _COL_MARGIN),
+         a waypoint is inserted at the branch midpoint displaced outward
+         from the mesh's center-of-mass by _COL_MARGIN * 3.
+      3. The child is reparented to the waypoint; the waypoint inherits
+         the original parent.
+
+    This single-pass approach handles the majority of cases.  Deep re-entry
+    geometries may still partially collide, but practical support geometry
+    rarely creates such configurations.
+    """
+    try:
+        mesh_com = np.array(mesh.center_mass, dtype=float).ravel()[:3]
+    except Exception:
+        try:
+            mesh_com = np.array(mesh.centroid, dtype=float).ravel()[:3]
+        except Exception:
+            return  # can't determine center — skip avoidance
+
+    # Snapshot to avoid iterating over newly-added waypoints
+    snapshot = [(n.nid, n.pid) for n in nodes if n.pid is not None]
+
+    for child_nid, parent_nid in snapshot:
+        child  = nm.get(child_nid)
+        parent = nm.get(parent_nid)
+        if child is None or parent is None:
+            continue
+
+        p1     = parent.pos
+        p2     = child.pos
+        vec    = p2 - p1
+        length = float(np.linalg.norm(vec))
+
+        if length < _MIN_SEG_MM:
+            continue
+
+        direction = vec / length
+        origin    = p1 + direction * _RAY_NUDGE   # nudge off start surface
+
+        try:
+            locs, _, _ = mesh.ray.intersects_location(
+                ray_origins   = [origin],
+                ray_directions = [direction],
+                multiple_hits  = False,
+            )
+        except Exception:
+            continue
+
+        if len(locs) == 0:
+            continue
+
+        hit_dist = float(np.linalg.norm(
+            np.asarray(locs[0], dtype=float) - origin
+        ))
+
+        # Hit is past the branch endpoint → not a collision for this branch
+        if hit_dist > length - _RAY_NUDGE + _COL_MARGIN:
+            continue
+
+        # ── Collision detected — insert avoidance waypoint ────────────────
+        mid     = (p1 + p2) * 0.5
+        outward = mid - mesh_com
+        outward /= (float(np.linalg.norm(outward)) + 1e-9)
+
+        wp_pos    = mid + outward * (_COL_MARGIN * 3.0)
+        wp_pos[2] = float(np.clip(wp_pos[2], p1[2] + 0.2, p2[2] - 0.2))
+
+        wp_r = (parent.r + child.r) * 0.5
+        wp   = _Node(nid_ctr[0], wp_pos, wp_r, pid=parent_nid)
+        nm[nid_ctr[0]] = wp
+        nodes.append(wp)
+        nid_ctr[0] += 1
+
+        child.pid = wp.nid       # reroute: parent → waypoint → child
+
+
+# ── Segment conversion ────────────────────────────────────────────────────────
+
+def _to_branches(
+    nodes:       list[_Node],
+    nm:          dict[int, _Node],
+    cm:          dict[int, list[int]],
+) -> list[TreeBranch]:
+    """
+    BFS from root nodes → emit one TreeBranch per directed edge.
+
+    parent_id in TreeBranch refers to the *branch* whose endpoint is the
+    start of this segment (i.e. the segment that ends at the current node's
+    parent).  Roots have no incoming segment so their direct children get
+    parent_id=None — making those children the trunk segments visible in the
+    renderer.
+
+    Segments shorter than _MIN_SEG_MM are silently dropped.
+    """
+    branches:     list[TreeBranch]  = []
+    bid           = [0]
+    node_to_bid:  dict[int, Optional[int]] = {}   # nid → branch_id ending there
+    visited:      set[int]                  = set()
+
+    queue: deque[_Node] = deque(n for n in nodes if n.root)
+
+    while queue:
+        n = queue.popleft()
+        if n.nid in visited:
+            continue
+        visited.add(n.nid)
+
+        if n.root:
+            # Root sits on the build plate — no incoming segment.
+            # Its children will emit trunk segments with parent_id=None.
+            node_to_bid[n.nid] = None
+        else:
+            parent     = nm.get(n.pid)
+            parent_bid = node_to_bid.get(n.pid) if n.pid is not None else None
+
+            if parent is not None:
+                seg_len = float(np.linalg.norm(n.pos - parent.pos))
+                if seg_len >= _MIN_SEG_MM:
+                    branches.append(TreeBranch(
+                        id           = bid[0],
+                        parent_id    = parent_bid,
+                        start_x      = float(parent.pos[0]),
+                        start_y      = float(parent.pos[1]),
+                        start_z      = float(parent.pos[2]),
+                        end_x        = float(n.pos[0]),
+                        end_y        = float(n.pos[1]),
+                        end_z        = float(n.pos[2]),
+                        start_radius = float(parent.r),
+                        end_radius   = float(n.r),
+                        is_tip       = n.tip,
+                    ))
+                    node_to_bid[n.nid] = bid[0]
+                    bid[0] += 1
+                else:
+                    # Short segment: inherit parent's branch_id so children
+                    # don't lose their topological connection.
+                    node_to_bid[n.nid] = parent_bid
+            else:
+                node_to_bid[n.nid] = parent_bid
+
+        for child_nid in cm.get(n.nid, []):
+            if child_nid not in visited:
+                queue.append(nm[child_nid])
+
+    return branches

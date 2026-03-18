@@ -114,7 +114,27 @@
       "Bash(grep -r \"SupportColumn\\\\|SupportPreview\" /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend --include=*.py)",
       "Bash(grep -r \"SupportColumn\\\\|raycast\\\\|raycasting\" /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/app --include=*.py)",
       "Bash(xargs grep:*)",
-      "Bash(grep -E \"\\\\.\\(py|ts|tsx\\)$\")"
+      "Bash(grep -E \"\\\\.\\(py|ts|tsx\\)$\")",
+      "Bash(taskkill /PID 168216 /F)",
+      "Bash(cmd /c \"taskkill /PID 168216 /F\")",
+      "Bash(cmd /c \"for /f \"\"tokens=5\"\" %a in \\(''netstat -ano ^| findstr :8000''\\) do taskkill /PID %a /F\")",
+      "Bash(cmd /c \"powershell -Command \"\"Stop-Process -Id \\(Get-NetTCPConnection -LocalPort 8000\\).OwningProcess -Force 2>&1\"\"\")",
+      "Bash(powershell -Command \"Get-Process -Id \\(Get-NetTCPConnection -LocalPort 8000 -ErrorAction Stop\\).OwningProcess | Select-Object Id, ProcessName, MainWindowTitle\")",
+      "Bash(powershell -Command \"Stop-Process -Id 168216 -Force; Start-Sleep -Milliseconds 500; \\(Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue\\).Count\")",
+      "Bash(powershell -Command \"Get-Process -Id 168216 -ErrorAction SilentlyContinue | Select-Object Id, HasExited\")",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Select-Object LocalPort, State, OwningProcess\")",
+      "Bash(powershell -Command \"Get-Process -Id 168216\")",
+      "Bash(curl -s http://localhost:8000/docs)",
+      "Bash(curl -s http://localhost:8000/openapi.json)",
+      "Bash(python -c \"import json,sys; s=json.load\\(sys.stdin\\); ar=s[''''components''''][''''schemas''''].get\\(''''AnalyzeResponse'''',{}\\); print\\(list\\(ar.get\\(''''properties'''',{}\\).keys\\(\\)\\)\\)\")",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 8000 | ForEach-Object { Stop-Process -Id $_OwningProcess -Force -ErrorAction SilentlyContinue }; Start-Sleep 2; \\(Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue\\).Count\")",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Select-Object OwningProcess\")",
+      "Bash(powershell -Command \"Stop-Process -Id 187180 -Force; Start-Sleep 2; Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Select-Object OwningProcess\")",
+      "Bash(powershell -Command \"Get-Process | Where-Object { $_.Name -like ''*python*'' -or $_.Name -like ''*uvicorn*'' } | Select-Object Id, ProcessName, CPU\")",
+      "Bash(powershell -Command \"Stop-Process -Id 33108, 175048 -Force -ErrorAction SilentlyContinue; Start-Sleep 3; Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Select-Object OwningProcess\")",
+      "Bash(powershell -Command \"Stop-Process -Id 52216 -Force -ErrorAction SilentlyContinue; Start-Sleep 2; Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Select-Object OwningProcess\")",
+      "Bash(powershell -Command \"Get-Process | Where-Object { $_.Name -like ''*python*'' } | Select-Object Id, ProcessName\")",
+      "Bash(powershell -Command \"Stop-Process -Id 49448 -Force -ErrorAction SilentlyContinue; Start-Sleep 3; Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Measure-Object | Select-Object Count\")"
     ]
   }
 }

@@ -63,7 +63,7 @@ FLOOR_MARGIN_MIN_MM = 0.5     # minimum, mm
 # ── Cache (in-process, per uvicorn worker) ────────────────────────────────────
 
 _cache: dict[str, SupportPreviewData] = {}
-_CACHE_VERSION = "v3"   # bump this to invalidate all in-process cache entries
+_CACHE_VERSION = "v4"   # bump this to invalidate all in-process cache entries
 
 
 def get_support_preview(
@@ -249,7 +249,7 @@ def _compute(
     columns_capped = columns[:MAX_COLUMNS]
     tree_branches: list = []
     try:
-        tree_branches = generate_tree_branches(columns_capped, z_min=z_min)
+        tree_branches = generate_tree_branches(columns_capped, z_min=z_min, mesh=mesh)
     except Exception:
         tree_branches = []
 
