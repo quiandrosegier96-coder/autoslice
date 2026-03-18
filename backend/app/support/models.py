@@ -16,6 +16,38 @@ class SupportColumn(BaseModel):
     radius:   float   # mm
 
 
+class TreeBranch(BaseModel):
+    """
+    One segment of a tree support skeleton.
+
+    Coordinates are in 3MF space (Z-up, mm).  The frontend applies the same
+    -π/2 X-rotation + center-subtraction used for all support geometry.
+
+    Hierarchy
+    ---------
+    parent_id is None  → root trunk (starts at build plate, z = z_min)
+    parent_id is set   → sub-trunk or tip branch extending from parent's end
+    is_tip = True      → contact point with the model's overhang surface
+    """
+    id:           int
+    parent_id:    Optional[int] = None
+
+    # 3MF-space coordinates (Z-up, mm)
+    start_x:      float
+    start_y:      float
+    start_z:      float
+    end_x:        float
+    end_y:        float
+    end_z:        float
+
+    # Radius at start and end — wider at root, narrower toward tips
+    start_radius: float
+    end_radius:   float
+
+    # True when this branch terminates at an overhang contact point
+    is_tip:       bool = False
+
+
 class SupportDebugLayers(BaseModel):
     """
     Extra data attached when the endpoint is called with ?debug=true.
@@ -47,6 +79,11 @@ class SupportPreviewData(BaseModel):
     overhang_severity:  list[str]   # one entry per triangle: "mild" | "moderate" | "severe"
 
     support_columns:    list[SupportColumn]
+
+    # Tree support skeleton — populated when support_type == "tree"
+    tree_branches:      list[TreeBranch] = []
+    trunk_count:        int = 0   # number of root trunks (parent_id is None)
+    tip_count:          int = 0   # number of model-contact tips (is_tip=True)
 
     # Bounding-box center in 3MF space — frontend converts to Three.js space and subtracts
     # this to match the centering that AutoCamera applies to the loaded model.

@@ -30,7 +30,8 @@ from typing import Optional
 import numpy as np
 import trimesh
 
-from app.support.models import SupportColumn, SupportDebugLayers, SupportPreviewData
+from app.support.models import SupportColumn, SupportDebugLayers, SupportPreviewData, TreeBranch
+from app.support.tree_generator import generate_tree_branches
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -62,6 +63,7 @@ FLOOR_MARGIN_MIN_MM = 0.5     # minimum, mm
 # ── Cache (in-process, per uvicorn worker) ────────────────────────────────────
 
 _cache: dict[str, SupportPreviewData] = {}
+_CACHE_VERSION = "v3"   # bump this to invalidate all in-process cache entries
 
 
 def get_support_preview(
@@ -70,7 +72,7 @@ def get_support_preview(
     debug: bool = False,
 ) -> SupportPreviewData:
     """Return cached or freshly computed support preview for this job."""
-    cache_key = f"{job_id}{'_dbg' if debug else ''}"
+    cache_key = f"{job_id}_{_CACHE_VERSION}{'_dbg' if debug else ''}"
     if cache_key in _cache:
         return _cache[cache_key]
     result = _compute(job_id, mesh, debug=debug)
@@ -233,11 +235,26 @@ def _compute(
     # ── 7. Metadata ───────────────────────────────────────────────────────────
     severe_ratio   = float((ov_nz <= -_COS_65).sum()) / max(len(ov_nz), 1)
     overhang_ratio = float(overhang_mask.sum()) / max(len(face_normals), 1)
-    support_type   = "tree"        if (severe_ratio > 0.05 or overhang_ratio > 0.10) else "normal"
+    # Always classify as "tree" — the viewer always renders the branching skeleton.
+    # Legacy "normal" label is kept for models with very simple geometry (≤2 columns).
+    support_type   = "normal" if len(columns) <= 2 else "tree"
     placement      = "everywhere"  if overhang_ratio > 0.15 else "buildplate_only"
     overhang_area  = float(ov_area.sum())
 
     columns.sort(key=lambda c: c.radius, reverse=True)
+
+    # ── 7b. Tree support skeleton ─────────────────────────────────────────────
+    # Always generate — even "normal" models get a skeleton so the frontend can
+    # render branch geometry instead of cylinders whenever possible.
+    columns_capped = columns[:MAX_COLUMNS]
+    tree_branches: list = []
+    try:
+        tree_branches = generate_tree_branches(columns_capped, z_min=z_min)
+    except Exception:
+        tree_branches = []
+
+    trunk_count = sum(1 for b in tree_branches if b.parent_id is None)
+    tip_count   = sum(1 for b in tree_branches if b.is_tip)
 
     # ── 8. Optional debug layers ──────────────────────────────────────────────
     debug_obj: Optional[SupportDebugLayers] = None
@@ -257,10 +274,13 @@ def _compute(
         placement=placement,
         overhang_positions=overhang_positions,
         overhang_severity=severity,
-        support_columns=columns[:MAX_COLUMNS],
+        support_columns=columns_capped,
+        tree_branches=tree_branches,
+        trunk_count=trunk_count,
+        tip_count=tip_count,
         model_center=center,
         overhang_area_mm2=overhang_area,
-        column_count=len(columns[:MAX_COLUMNS]),
+        column_count=len(columns_capped),
         debug=debug_obj,
     )
 
@@ -288,6 +308,9 @@ def _no_supports(job_id: str, center: list[float]) -> SupportPreviewData:
         overhang_positions=[],
         overhang_severity=[],
         support_columns=[],
+        tree_branches=[],
+        trunk_count=0,
+        tip_count=0,
         model_center=center,
         overhang_area_mm2=0.0,
         column_count=0,

@@ -66,10 +66,26 @@ type OrientationReport = {
   reasons: string[];
 };
 
+type NozzleRiskItem = {
+  type:           string;
+  severity:       "low" | "medium" | "high";
+  reason:         string;
+  recommendation: string;
+};
+
+type NozzleRiskReport = {
+  has_risks:            boolean;
+  risks:                NozzleRiskItem[];
+  recommended_z_hop_mm: number;
+  recommended_combing:  string;
+  recommended_flow_pct: number;
+};
+
 type AnalysisResult = {
   job_id: string;
   archive: { filename: string; size_bytes: number };
   model: { part_count: number; unit: string };
+  nozzle_risk: NozzleRiskReport;
   geometry: {
     bounding_box: { x_mm: number; y_mm: number; z_mm: number; volume_cm3: number };
     part_count: number;
@@ -129,13 +145,23 @@ type ScoringReport = {
 
 // Support preview (from /api/analyze/{jobId}/support-preview)
 type SupportPreview = {
-  job_id: string;
-  needs_supports: boolean;
-  support_type: string;
-  placement: string;
+  job_id:           string;
+  needs_supports:   boolean;
+  support_type:     string;  // "none" | "normal" | "tree"
+  placement:        string;
   overhang_area_mm2: number;
-  column_count: number;
+  column_count:     number;
+  trunk_count:      number;  // tree: root trunk count
+  tip_count:        number;  // tree: contact point count
 };
+
+// Viewer display mode
+type ViewMode =
+  | "model"                 // model only, no supports
+  | "model+supports"        // model + tree support overlay
+  | "supports"              // supports only (model hidden)
+  | "transparent+supports"  // semi-transparent model + supports
+  | "heatmap";              // overhang heatmap (no support geometry)
 
 // Client-side G-code validation
 type GcodeValidationResult = {
@@ -475,19 +501,22 @@ function SupportAnalysisCard({ jobId, showSupports, onShowSupports }: {
                     riskLevel === "medium" ? "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" :
                     "text-green-400 bg-green-500/10 border-green-500/20";
 
-  const typeLabel: Record<string, string> = {
-    none:   "None",
-    normal: "Normal (touching buildplate)",
-    tree:   "Tree (organic, branching)",
-  };
+  const isTree = data.support_type === "tree";
 
   return (
     <div className="bg-surface-card border border-surface-border rounded-2xl p-4">
       <div className="flex items-center justify-between mb-3">
         <SectionLabel>Support Analysis</SectionLabel>
-        <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border ${riskColor} -mt-1`}>
-          {riskLevel === "high" ? "High support need" : riskLevel === "medium" ? "Moderate" : "Low need"}
-        </span>
+        <div className="flex items-center gap-1.5 -mt-1">
+          {isTree && (
+            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border text-amber-400 bg-amber-500/10 border-amber-500/20 uppercase tracking-wide">
+              Tree
+            </span>
+          )}
+          <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border ${riskColor}`}>
+            {riskLevel === "high" ? "High need" : riskLevel === "medium" ? "Moderate" : "Low need"}
+          </span>
+        </div>
       </div>
 
       {!data.needs_supports ? (
@@ -502,28 +531,63 @@ function SupportAnalysisCard({ jobId, showSupports, onShowSupports }: {
         </div>
       ) : (
         <div className="space-y-2 mb-3">
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-surface-elevated rounded-xl p-2.5">
-              <p className="text-[10px] text-zinc-600 mb-1">Columns</p>
-              <p className="text-sm font-bold text-zinc-200 tabular-nums">{data.column_count}</p>
+          {/* Stats grid */}
+          {isTree ? (
+            <div className="grid grid-cols-3 gap-1.5">
+              {[
+                { label: "Trunks",       value: String(data.trunk_count) },
+                { label: "Contact tips", value: String(data.tip_count)   },
+                { label: "Overhang",     value: `${data.overhang_area_mm2.toFixed(0)} mm²` },
+              ].map(s => (
+                <div key={s.label} className="bg-surface-elevated rounded-xl p-2 text-center">
+                  <p className="text-[10px] text-zinc-600 mb-0.5">{s.label}</p>
+                  <p className="text-xs font-bold font-mono text-zinc-200">{s.value}</p>
+                </div>
+              ))}
             </div>
-            <div className="bg-surface-elevated rounded-xl p-2.5">
-              <p className="text-[10px] text-zinc-600 mb-1">Overhang area</p>
-              <p className="text-sm font-bold text-zinc-200 tabular-nums">{data.overhang_area_mm2.toFixed(0)} mm²</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-surface-elevated rounded-xl p-2.5">
+                <p className="text-[10px] text-zinc-600 mb-1">Columns</p>
+                <p className="text-sm font-bold text-zinc-200 tabular-nums">{data.column_count}</p>
+              </div>
+              <div className="bg-surface-elevated rounded-xl p-2.5">
+                <p className="text-[10px] text-zinc-600 mb-1">Overhang area</p>
+                <p className="text-sm font-bold text-zinc-200 tabular-nums">{data.overhang_area_mm2.toFixed(0)} mm²</p>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="space-y-1.5 pt-1">
+          <div className="space-y-0">
             {[
-              { label: "Support type",      value: typeLabel[data.support_type] ?? data.support_type },
-              { label: "Placement",         value: data.placement.replace("_", " ") },
+              { label: "Support type", value: isTree ? "Tree (organic branching)" : "Normal (buildplate columns)" },
+              { label: "Placement",    value: data.placement.replace("_", " ") },
             ].map(r => (
-              <div key={r.label} className="flex items-center justify-between py-1 border-b border-surface-border/30 last:border-0">
+              <div key={r.label} className="flex items-center justify-between py-1.5 border-b border-surface-border/30 last:border-0">
                 <span className="text-[11px] text-zinc-500">{r.label}</span>
                 <span className="text-[11px] font-medium text-zinc-300 capitalize">{r.value}</span>
               </div>
             ))}
           </div>
+
+          {/* Tree support explanation */}
+          {isTree && (
+            <div className="mt-1 p-2.5 bg-amber-500/5 border border-amber-500/15 rounded-xl space-y-1.5">
+              <p className="text-[10px] font-semibold text-amber-400/80 uppercase tracking-wide">Why tree supports?</p>
+              {[
+                "Isolated overhang islands detected — organic branches reach them more efficiently than columns.",
+                "Reduced contact surface minimises scarring on visible faces.",
+                "Branching trunks share material, lowering overall support volume.",
+              ].map((t, i) => (
+                <div key={i} className="flex items-start gap-1.5">
+                  <svg className="w-3 h-3 text-amber-500/60 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15 3.293 9.879a1 1 0 111.414-1.414L8.414 12.172l6.879-6.879a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <p className="text-[10px] text-zinc-500 leading-relaxed">{t}</p>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Risk warning if supports disabled */}
           {!showSupports && (
@@ -816,9 +880,8 @@ function ModelInfoCard({ analysis }: { analysis: AnalysisResult }) {
 // ─── Card: Export Preflight ────────────────────────────────────────────────────
 
 function ExportPreflightCard({
-  analysis, scoring, gcodeResult, onConvert,
+  scoring, gcodeResult, onConvert,
 }: {
-  analysis:    AnalysisResult;
   scoring:     ScoringReport | null;
   gcodeResult: GcodeValidationResult | null;
   onConvert:   () => void;
@@ -921,6 +984,116 @@ function ExportPreflightCard({
       {!scoring && (
         <p className="text-center text-[10px] text-zinc-600 mt-2">Converting also generates your final print settings</p>
       )}
+    </div>
+  );
+}
+
+// ─── Card: Nozzle Collision Risk ──────────────────────────────────────────────
+
+const RISK_TYPE_LABELS: Record<string, string> = {
+  overhang_curl:  "Overhang Curl",
+  bridge_droop:   "Bridge Droop",
+  tower_sway:     "Tower Sway",
+  travel_scrape:  "Travel Scrape",
+};
+
+function NozzleRiskCard({ report }: { report: NozzleRiskReport }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  if (!report.has_risks) {
+    return (
+      <div className="bg-surface-card border border-surface-border rounded-2xl p-4">
+        <SectionLabel>Nozzle Collision Risk</SectionLabel>
+        <div className="flex items-center gap-2.5 py-1">
+          <div className="w-7 h-7 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center shrink-0">
+            <IconCheck />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-green-400">Low nozzle collision risk</p>
+            <p className="text-[11px] text-zinc-600">No significant scraping risks detected.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const maxSev = report.risks.some(r => r.severity === "high") ? "high"
+    : report.risks.some(r => r.severity === "medium") ? "medium" : "low";
+
+  const headerCls = maxSev === "high"   ? "text-red-400    bg-red-500/10    border-red-500/20"
+    : maxSev === "medium" ? "text-yellow-400 bg-yellow-500/10 border-yellow-500/20"
+    : "text-zinc-400 bg-surface-elevated border-surface-border";
+
+  const sevDot = (s: "low" | "medium" | "high") =>
+    s === "high"   ? "bg-red-500"    :
+    s === "medium" ? "bg-yellow-500" : "bg-zinc-500";
+
+  return (
+    <div className="bg-surface-card border border-surface-border rounded-2xl overflow-hidden">
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <SectionLabel>Nozzle Collision Risk</SectionLabel>
+          <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border -mt-1 ${headerCls}`}>
+            {maxSev.charAt(0).toUpperCase() + maxSev.slice(1)}
+          </span>
+        </div>
+
+        {/* Risk list */}
+        <div className="space-y-1.5 mb-3">
+          {report.risks.map(risk => (
+            <div key={risk.type}>
+              <button
+                onClick={() => setExpanded(expanded === risk.type ? null : risk.type)}
+                className="w-full flex items-center gap-2.5 py-2 px-2.5 rounded-xl hover:bg-surface-elevated transition-colors text-left"
+              >
+                <span className={`w-2 h-2 rounded-full shrink-0 ${sevDot(risk.severity)}`} />
+                <span className="text-xs text-zinc-300 flex-1">{RISK_TYPE_LABELS[risk.type] ?? risk.type}</span>
+                <svg className={`w-3.5 h-3.5 text-zinc-600 transition-transform ${expanded === risk.type ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
+                </svg>
+              </button>
+              {expanded === risk.type && (
+                <div className="mx-2 mb-1.5 px-3 py-2.5 bg-surface-elevated rounded-xl space-y-2">
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">{risk.reason}</p>
+                  <div className="flex items-start gap-1.5 pt-1 border-t border-surface-border/40">
+                    <svg className="w-3 h-3 text-brand shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+                    </svg>
+                    <p className="text-[11px] text-zinc-500 leading-relaxed">{risk.recommendation}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Auto-fix recommendations */}
+        <div className="pt-3 border-t border-surface-border space-y-1.5">
+          <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest mb-2">Recommended fixes</p>
+          {[
+            report.recommended_z_hop_mm > 0 && {
+              label: "Z-hop",
+              value: `${report.recommended_z_hop_mm} mm`,
+              cls:   "text-blue-400  bg-blue-500/10  border-blue-500/20",
+            },
+            report.recommended_combing !== "off" && {
+              label: "Combing",
+              value: report.recommended_combing === "not_in_skin" ? "Not in skin" : "All",
+              cls:   "text-purple-400 bg-purple-500/10 border-purple-500/20",
+            },
+            report.recommended_flow_pct < 100 && {
+              label: "Flow",
+              value: `${report.recommended_flow_pct}%`,
+              cls:   "text-orange-400 bg-orange-500/10 border-orange-500/20",
+            },
+          ].filter(Boolean).map(fix => fix && (
+            <div key={fix.label} className="flex items-center justify-between">
+              <span className="text-[11px] text-zinc-500">{fix.label}</span>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${fix.cls}`}>{fix.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1090,14 +1263,20 @@ export default function ViewerPage() {
   const [scoring,      setScoring]      = useState<ScoringReport | null>(null);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState("");
-  const [showSupports,      setShowSupports]      = useState(false);
+  const [viewMode,          setViewMode]          = useState<ViewMode>("model");
   const [wireframe,         setWireframe]         = useState(false);
   const [showOverhangZones, setShowOverhangZones] = useState(false);
   const [resetKey,          setResetKey]          = useState(0);
   const [orientationFeedback, setOrientationFeedback] = useState<"idle" | "applied">("idle");
   const [gcodeResult, setGcodeResult]                 = useState<GcodeValidationResult | null>(null);
 
-  useEffect(() => { if (showOverhangZones) setShowSupports(true); }, [showOverhangZones]);
+  // Derived viewer props from viewMode
+  const showSupports   = viewMode !== "model";
+  const modelOpacity   = viewMode === "supports" ? 0.0 : viewMode === "transparent+supports" ? 0.18 : 1.0;
+  const heatmapOnly    = viewMode === "heatmap";
+
+  // Sync overhang zone debug toggle with view mode
+  useEffect(() => { if (showOverhangZones) setViewMode(v => v === "model" ? "model+supports" : v); }, [showOverhangZones]);
 
   const debugMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debug") === "1";
   const debugLayers = { showAllOverhangs: showOverhangZones, showActiveCandidates: false, showFilteredCandidates: false };
@@ -1135,10 +1314,17 @@ export default function ViewerPage() {
 
   const statusBadge = analysis
     ? geo?.overhang.has_overhangs
-      ? { label: "Supports detected",   cls: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" }
-      : { label: "No supports needed",  cls: "text-green-400  bg-green-500/10  border-green-500/20"  }
+      ? { label: "Supports analyzed",  cls: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" }
+      : { label: "No supports needed", cls: "text-green-400  bg-green-500/10  border-green-500/20"  }
     : loading
-    ? { label: "Analyzing…",            cls: "text-zinc-500 border-surface-border" }
+    ? { label: "Analyzing…",           cls: "text-zinc-500 border-surface-border" }
+    : null;
+
+  const gcodeStatusBadge = gcodeResult
+    ? gcodeResult.status === "ok"    ? { label: "G-code valid",         cls: "text-green-400 bg-green-500/10 border-green-500/20" }
+    : gcodeResult.status === "fixed" ? { label: "G-code auto-corrected",cls: "text-blue-400  bg-blue-500/10  border-blue-500/20"  }
+    : gcodeResult.status === "error" ? { label: "G-code error",         cls: "text-red-400   bg-red-500/10   border-red-500/20"  }
+    : null
     : null;
 
   return (
@@ -1185,6 +1371,9 @@ export default function ViewerPage() {
           {statusBadge && (
             <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${statusBadge.cls}`}>{statusBadge.label}</span>
           )}
+          {gcodeStatusBadge && (
+            <span className={`hidden lg:inline-flex text-[10px] font-semibold px-2.5 py-1 rounded-full border ${gcodeStatusBadge.cls}`}>{gcodeStatusBadge.label}</span>
+          )}
           {intent && diffColor && (
             <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${diffColor}`}>
               {intent.difficulty.charAt(0).toUpperCase() + intent.difficulty.slice(1)}
@@ -1206,6 +1395,8 @@ export default function ViewerPage() {
               jobId={jobId}
               showSupports={showSupports}
               wireframe={wireframe}
+              modelOpacity={modelOpacity}
+              heatmapOnly={heatmapOnly}
               className="w-full h-full absolute inset-0"
               resetKey={resetKey}
               debugMode={debugMode}
@@ -1222,20 +1413,26 @@ export default function ViewerPage() {
               </ViewerBtn>
             </div>
 
-            {/* Top-right quick toggles */}
-            <div className="absolute top-3 right-3 z-10 flex gap-2">
-              {geo?.overhang.has_overhangs && (
-                <ViewerBtn onClick={() => setShowSupports(s => !s)} active={showSupports} activeClass="bg-orange-500/20 border-orange-500/40 text-orange-300">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                  </svg>
-                  {showSupports ? "Supports on" : "Supports"}
+            {/* Top-right view mode selector */}
+            <div className="absolute top-3 right-3 z-10 flex gap-1.5 flex-wrap justify-end max-w-xs">
+              {(geo?.overhang.has_overhangs ? (
+                [
+                  { mode: "model"                as ViewMode, label: "Model",        activeClass: "bg-white/10 border-white/30 text-white"              },
+                  { mode: "model+supports"       as ViewMode, label: "+ Supports",   activeClass: "bg-orange-500/20 border-orange-500/40 text-orange-300" },
+                  { mode: "transparent+supports" as ViewMode, label: "Transparent",  activeClass: "bg-purple-500/20 border-purple-500/40 text-purple-300"  },
+                  { mode: "supports"             as ViewMode, label: "Supports only",activeClass: "bg-amber-500/20 border-amber-500/40 text-amber-300"    },
+                  { mode: "heatmap"              as ViewMode, label: "Heatmap",      activeClass: "bg-red-500/20 border-red-500/40 text-red-300"          },
+                ] satisfies { mode: ViewMode; label: string; activeClass: string }[]
+              ) : (
+                [
+                  { mode: "model" as ViewMode, label: "Model", activeClass: "bg-white/10 border-white/30 text-white" },
+                ] satisfies { mode: ViewMode; label: string; activeClass: string }[]
+              )).map(({ mode, label, activeClass }) => (
+                <ViewerBtn key={mode} onClick={() => setViewMode(mode)} active={viewMode === mode} activeClass={activeClass}>
+                  {label}
                 </ViewerBtn>
-              )}
+              ))}
               <ViewerBtn onClick={() => setWireframe(w => !w)} active={wireframe} activeClass="bg-blue-500/20 border-blue-500/40 text-blue-300">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h16M4 17h16"/>
-                </svg>
                 Wireframe
               </ViewerBtn>
             </div>
@@ -1310,15 +1507,20 @@ export default function ViewerPage() {
               <SupportAnalysisCard
                 jobId={jobId}
                 showSupports={showSupports}
-                onShowSupports={setShowSupports}
+                onShowSupports={(v) => setViewMode(v ? "model+supports" : "model")}
               />
 
-              {/* 4. G-code Validator */}
+              {/* 4. Nozzle Collision Risk */}
+              {analysis.nozzle_risk && (
+                <NozzleRiskCard report={analysis.nozzle_risk} />
+              )}
+
+              {/* 5. G-code Validator */}
               <GcodeValidationCard onResult={setGcodeResult} />
 
-              {/* 5. Viewer Controls */}
+              {/* 6. Viewer Controls */}
               <ViewerControlsCard
-                showSupports={showSupports}     onShowSupports={setShowSupports}
+                showSupports={showSupports}     onShowSupports={(v) => setViewMode(v ? "model+supports" : "model")}
                 wireframe={wireframe}           onWireframe={setWireframe}
                 showOverhangZones={showOverhangZones} onShowOverhangZones={setShowOverhangZones}
                 hasOverhangs={!!geo?.overhang.has_overhangs}
@@ -1327,9 +1529,8 @@ export default function ViewerPage() {
                 shouldRotate={analysis.orientation.should_rotate}
               />
 
-              {/* 6. Export Preflight + CTA */}
+              {/* 7. Export Preflight + CTA */}
               <ExportPreflightCard
-                analysis={analysis}
                 scoring={scoring}
                 gcodeResult={gcodeResult}
                 onConvert={() => router.push("/convert")}

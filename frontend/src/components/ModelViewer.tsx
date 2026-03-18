@@ -10,9 +10,9 @@ import { SupportVisualization, SupportDebugLayerToggles } from "./SupportVisuali
 function AutoCamera({ object }: { object: THREE.Group }) {
   const { camera } = useThree();
   useEffect(() => {
-    const box = new THREE.Box3().setFromObject(object);
+    const box    = new THREE.Box3().setFromObject(object);
     const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
+    const size   = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
     object.position.sub(center);
     const cam = camera as THREE.PerspectiveCamera;
@@ -21,30 +21,42 @@ function AutoCamera({ object }: { object: THREE.Group }) {
     camera.position.set(dist * 0.6, dist * 0.45, dist);
     camera.lookAt(0, 0, 0);
     cam.near = dist * 0.001;
-    cam.far = dist * 10;
+    cam.far  = dist * 10;
     cam.updateProjectionMatrix();
   }, [object, camera]);
   return null;
 }
 
-function Model({ url, wireframe = false }: { url: string; wireframe?: boolean }) {
+function Model({
+  url,
+  wireframe = false,
+  opacity   = 1,
+}: {
+  url:       string;
+  wireframe?: boolean;
+  opacity?:   number;
+}) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const object = useLoader(ThreeMFLoader as any, url) as THREE.Group;
 
-  // Apply a clean material so the model is always visible
   useEffect(() => {
-    object.traverse((child) => {
+    const transparent = opacity < 0.99;
+    object.traverse(child => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
         mesh.material = new THREE.MeshStandardMaterial({
-          color: wireframe ? "#888888" : "#cc2222",
+          color:       wireframe ? "#888888" : "#cc2222",
           wireframe,
-          roughness: 0.6,
-          metalness: 0.1,
+          roughness:   0.6,
+          metalness:   0.1,
+          transparent,
+          opacity,
+          depthWrite:  !transparent,
         });
+        mesh.visible = opacity > 0.01;
       }
     });
-  }, [object, wireframe]);
+  }, [object, wireframe, opacity]);
 
   return (
     <>
@@ -64,23 +76,25 @@ function LoadingBox() {
 }
 
 interface ModelViewerProps {
-  jobId:         string;
-  showSupports?: boolean;
-  wireframe?:    boolean;
-  /** Override the wrapper div className. Default includes h-72 and card styling. */
-  className?:    string;
-  /** Increment to remount the Canvas and reset camera to initial position. */
-  resetKey?:     number;
-  /** Pass true to fetch support-preview with ?debug=true */
-  debugMode?:    boolean;
-  /** Which debug layers to show (only used when debugMode=true) */
-  debugLayers?:  SupportDebugLayerToggles;
+  jobId:          string;
+  showSupports?:  boolean;
+  wireframe?:     boolean;
+  /** 0 = model invisible (supports-only mode); 1 = fully opaque (default) */
+  modelOpacity?:  number;
+  /** When true only the overhang heatmap is rendered inside the support layer */
+  heatmapOnly?:   boolean;
+  className?:     string;
+  resetKey?:      number;
+  debugMode?:     boolean;
+  debugLayers?:   SupportDebugLayerToggles;
 }
 
 export function ModelViewer({
   jobId,
   showSupports = false,
   wireframe    = false,
+  modelOpacity = 1,
+  heatmapOnly  = false,
   className    = "w-full h-72 bg-surface-card rounded-xl overflow-hidden border border-surface-border relative",
   resetKey,
   debugMode    = false,
@@ -98,12 +112,13 @@ export function ModelViewer({
         <directionalLight position={[10, 15, 10]} intensity={1.4} />
         <directionalLight position={[-8, -5, -8]} intensity={0.3} />
         <Suspense fallback={<LoadingBox />}>
-          <Model url={url} wireframe={wireframe} />
-          {showSupports && (
+          <Model url={url} wireframe={wireframe} opacity={modelOpacity} />
+          {(showSupports || heatmapOnly) && (
             <SupportVisualization
               jobId={jobId}
               debugMode={debugMode}
               debugLayers={debugLayers}
+              heatmapOnly={heatmapOnly}
             />
           )}
         </Suspense>

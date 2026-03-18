@@ -28,6 +28,7 @@ from app.explain.models import ExplanationReport
 from app.explain.generator import generate_explanations
 from app.orientation.models import OrientationReport
 from app.orientation.scorer import score_orientations
+from app.geometry.nozzle_risk import assess_nozzle_risk
 
 router = APIRouter()
 
@@ -105,6 +106,21 @@ class ArchiveInfoSchema(BaseModel):
     file_listing: list[str]
 
 
+class NozzleRiskItemSchema(BaseModel):
+    type:           str
+    severity:       str   # "low" | "medium" | "high"
+    reason:         str
+    recommendation: str
+
+
+class NozzleRiskReportSchema(BaseModel):
+    has_risks:            bool
+    risks:                list[NozzleRiskItemSchema] = []
+    recommended_z_hop_mm: float = 0.0
+    recommended_combing:  str   = "off"
+    recommended_flow_pct: float = 100.0
+
+
 class AnalyzeResponse(BaseModel):
     job_id: str
     archive: ArchiveInfoSchema
@@ -114,6 +130,7 @@ class AnalyzeResponse(BaseModel):
     printability: PrintabilityScore
     explanations: ExplanationReport
     orientation: OrientationReport
+    nozzle_risk: NozzleRiskReportSchema
 
 
 # ---------- Route ----------
@@ -214,6 +231,29 @@ async def analyze(job_id: str) -> AnalyzeResponse:
     )
     explanations = generate_explanations(decisions, features, risk_scores)
 
+    # Nozzle collision risk assessment
+    nozzle_risk_raw = assess_nozzle_risk(
+        overhang_area_ratio   = geometry.overhang.overhang_area_ratio,
+        severe_overhang_ratio = geometry.overhang.severe_area_ratio,
+        bridge_max_span_mm    = geometry.bridge.max_span_mm,
+        height_to_base_ratio  = geometry.height_to_base_ratio,
+        min_wall_mm           = geometry.thin_wall.min_thickness_mm,
+        has_thin_walls        = geometry.thin_wall.has_thin_walls,
+    )
+    nozzle_risk = NozzleRiskReportSchema(
+        has_risks            = nozzle_risk_raw.has_risks,
+        risks                = [
+            NozzleRiskItemSchema(
+                type=r.type, severity=r.severity,
+                reason=r.reason, recommendation=r.recommendation,
+            )
+            for r in nozzle_risk_raw.risks
+        ],
+        recommended_z_hop_mm = nozzle_risk_raw.recommended_z_hop_mm,
+        recommended_combing  = nozzle_risk_raw.recommended_combing,
+        recommended_flow_pct = nozzle_risk_raw.recommended_flow_pct,
+    )
+
     # Archive metadata
     meta = extract_archive_metadata(
         original_filename=job.original_filename,
@@ -227,6 +267,7 @@ async def analyze(job_id: str) -> AnalyzeResponse:
         printability=printability,
         explanations=explanations,
         orientation=orientation,
+        nozzle_risk=nozzle_risk,
         archive=ArchiveInfoSchema(
             filename=meta.original_filename,
             size_bytes=meta.size_bytes,
