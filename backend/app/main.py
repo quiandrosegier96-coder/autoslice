@@ -5,7 +5,7 @@ AutoSlice — FastAPI application entry point.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import upload, analyze, convert, auth, printers, admin, feedback, diagnostics, scoring, ratings
+from app.api.routes import upload, analyze, convert, auth, printers, admin, feedback, diagnostics, scoring, ratings, gcode
 from app.config import settings
 from app.database import init_db, seed_admin_users
 
@@ -33,6 +33,7 @@ app.include_router(feedback.router,    prefix="/api", tags=["feedback"])
 app.include_router(diagnostics.router, prefix="/api", tags=["diagnostics"])
 app.include_router(scoring.router,     prefix="/api", tags=["scoring"])
 app.include_router(ratings.router,     prefix="/api", tags=["ratings"])
+app.include_router(gcode.router,       prefix="/api", tags=["gcode"])
 
 
 @app.on_event("startup")

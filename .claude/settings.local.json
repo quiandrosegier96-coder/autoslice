@@ -113,7 +113,8 @@
       "Bash(find /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src -type f \\\\\\(-name *.ts -o -name *.tsx -o -name *.js -o -name *.jsx \\\\\\))",
       "Bash(grep -r \"SupportColumn\\\\|SupportPreview\" /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend --include=*.py)",
       "Bash(grep -r \"SupportColumn\\\\|raycast\\\\|raycasting\" /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/app --include=*.py)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(grep -E \"\\\\.\\(py|ts|tsx\\)$\")"
     ]
   }
 }

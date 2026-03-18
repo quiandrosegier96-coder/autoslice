@@ -65,6 +65,28 @@ export async function apiAnalyze(jobId: string) {
   return apiGet(`/analyze/${jobId}`, true);
 }
 
+export async function apiScoringReport(jobId: string) {
+  return apiGet(`/scoring/report/${jobId}`, true);
+}
+
+export async function apiSupportPreview(jobId: string) {
+  return apiGet(`/analyze/${jobId}/support-preview`, true);
+}
+
+export async function apiValidateGcode(gcode: string): Promise<{
+  status: string;
+  has_m83: boolean;
+  has_m82: boolean;
+  g92_e0_count: number;
+  layer_count: number;
+  line_count: number;
+  issues: string[];
+  fixes_applied: string[];
+  fixed_gcode: string | null;
+}> {
+  return apiPost("/gcode/validate", { gcode }, true);
+}
+
 export async function apiConvertDownload(
   jobId: string,
   printerId: string,
