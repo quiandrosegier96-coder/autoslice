@@ -27,7 +27,7 @@ function AutoCamera({ object }: { object: THREE.Group }) {
   return null;
 }
 
-function Model({ url }: { url: string }) {
+function Model({ url, wireframe = false }: { url: string; wireframe?: boolean }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const object = useLoader(ThreeMFLoader as any, url) as THREE.Group;
 
@@ -37,13 +37,14 @@ function Model({ url }: { url: string }) {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
         mesh.material = new THREE.MeshStandardMaterial({
-          color: "#cc2222",
+          color: wireframe ? "#888888" : "#cc2222",
+          wireframe,
           roughness: 0.6,
           metalness: 0.1,
         });
       }
     });
-  }, [object]);
+  }, [object, wireframe]);
 
   return (
     <>
@@ -65,22 +66,33 @@ function LoadingBox() {
 interface ModelViewerProps {
   jobId:         string;
   showSupports?: boolean;
+  wireframe?:    boolean;
+  /** Override the wrapper div className. Default includes h-72 and card styling. */
+  className?:    string;
+  /** Increment to remount the Canvas and reset camera to initial position. */
+  resetKey?:     number;
 }
 
-export function ModelViewer({ jobId, showSupports = false }: ModelViewerProps) {
+export function ModelViewer({
+  jobId,
+  showSupports = false,
+  wireframe    = false,
+  className    = "w-full h-72 bg-surface-card rounded-xl overflow-hidden border border-surface-border relative",
+  resetKey,
+}: ModelViewerProps) {
   const url = `/api/upload/${jobId}/file`;
   return (
-    <div className="w-full h-72 bg-surface-card rounded-xl overflow-hidden border border-surface-border relative">
+    <div className={className}>
       <p className="absolute bottom-2 right-3 text-[10px] text-zinc-600 pointer-events-none select-none z-10">
         drag to rotate · scroll to zoom
       </p>
-      <Canvas camera={{ position: [0, 0, 200], fov: 45 }} gl={{ antialias: true }}>
+      <Canvas key={resetKey} camera={{ position: [0, 0, 200], fov: 45 }} gl={{ antialias: true }}>
         <color attach="background" args={["#191919"]} />
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 15, 10]} intensity={1.4} />
         <directionalLight position={[-8, -5, -8]} intensity={0.3} />
         <Suspense fallback={<LoadingBox />}>
-          <Model url={url} />
+          <Model url={url} wireframe={wireframe} />
           {showSupports && <SupportVisualization jobId={jobId} />}
         </Suspense>
         <OrbitControls enableZoom enablePan enableRotate />

@@ -79,7 +79,32 @@
       "Bash(python -c \":*)",
       "Bash(node -e \":*)",
       "Bash(node -e \"const fs=require\\(''fs''\\);const raw=fs.readFileSync\\(''C:/Users/QUANT/.claude/projects/c--Users-QUANT-GitHub-AutoSlice-GITPPORN-autoslice/3461b1f7-05b4-4456-8347-afb7183a62a6.jsonl'',''utf8''\\);const idx=raw.indexOf\\(''PHASE''\\);if\\(idx>=0\\){process.stdout.write\\(raw.slice\\(Math.max\\(0,idx-100\\),idx+4000\\)\\);}else{console.log\\(''not found''\\);}\")",
-      "Bash(find c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend -name *.json)"
+      "Bash(find c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend -name *.json)",
+      "Bash(grep -r '\"\"version\"\"' frontend/package.json backend/pyproject.toml)",
+      "Bash(cat \"/c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\(app\\)/convert/page.tsx\")",
+      "Bash(head -60 /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(app\\\\\\)/convert/page.tsx)",
+      "Bash(python -c \"from app.support.detector import get_support_preview; from app.support.models import SupportPreviewData; print\\(''OK''\\)\")",
+      "Bash(python -c \"from app.main import app; print\\(''App loaded OK''\\)\")",
+      "Bash(find c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/temp -name *.3mf)",
+      "Bash(cat /temp/readonly/\"Bash tool output \\(0zj59m\\)\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill /PID 52912 /F)",
+      "Bash(cmd.exe /c \"taskkill /PID 52912 /F\")",
+      "Bash(cmd.exe /c \"taskkill /PID 52912 /F 2>&1\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(powershell -Command \"Stop-Process -Id 52912 -Force; Write-Host ''Killed''\")",
+      "Bash(powershell -Command \"Get-Process -Id 52912 -ErrorAction SilentlyContinue | Select-Object Id,Name,CPU\")",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 8000 -State Listen | Select-Object LocalAddress,LocalPort,OwningProcess\")",
+      "Bash(powershell -Command \"Get-Process -Id 52912\")",
+      "Bash(powershell -Command \"Start-Sleep -Seconds 2; Test-NetConnection -ComputerName localhost -Port 8000 -InformationLevel Quiet\")",
+      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 8000 | Select-Object LocalAddress,LocalPort,State,OwningProcess\")",
+      "Bash(powershell -Command \"Get-Process | Where-Object {$_Id -in \\(52912, 15420, 68224\\)} | Select-Object Id,Name,CPU\")",
+      "Bash(powershell -Command \":*)",
+      "Bash(powershell -Command \"Stop-Process -Id 15420 -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 3; Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue | Select-Object LocalPort,OwningProcess\")",
+      "Bash(powershell -Command \"Get-Process -Name python* | Select-Object Id,Name,MainWindowTitle | Format-Table -AutoSize\")",
+      "Bash(powershell -Command \"Get-Process -Name python* | Stop-Process -Force; Start-Sleep -Seconds 3; Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue | Select-Object LocalPort,OwningProcess; Write-Host ''Done''\")",
+      "Bash(wc -l c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(app\\\\\\)/convert/page.tsx)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
