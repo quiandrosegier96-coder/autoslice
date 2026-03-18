@@ -104,7 +104,11 @@
       "Bash(powershell -Command \"Get-Process -Name python* | Select-Object Id,Name,MainWindowTitle | Format-Table -AutoSize\")",
       "Bash(powershell -Command \"Get-Process -Name python* | Stop-Process -Force; Start-Sleep -Seconds 3; Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue | Select-Object LocalPort,OwningProcess; Write-Host ''Done''\")",
       "Bash(wc -l c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(app\\\\\\)/convert/page.tsx)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(python -c \"from app.support.detector import get_support_preview; from app.support.models import SupportPreviewData, SupportDebugLayers; print\\(''OK''\\)\")",
+      "Bash(powershell -Command \"Get-Process -Name python* -ErrorAction SilentlyContinue | Stop-Process -Force; Write-Host ''killed''\")",
+      "Bash(curl -s http://localhost:8000/api/health)",
+      "Bash(curl -s http://localhost:8000/)"
     ]
   }
 }
