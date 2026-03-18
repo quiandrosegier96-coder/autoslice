@@ -1,0 +1,4 @@
+#!/bin/sh
+# pre-push hook — bumps patch version before every push.
+# Skips automatically if the last commit is already a version bump.
+python "$(git rev-parse --show-toplevel)/scripts/version.py" bump

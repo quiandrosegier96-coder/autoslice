@@ -1,0 +1,3 @@
+#!/bin/sh
+# post-rewrite hook — syncs version files after git rebase / git commit --amend.
+python "$(git rev-parse --show-toplevel)/scripts/version.py" sync
