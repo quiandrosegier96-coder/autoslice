@@ -134,7 +134,14 @@
       "Bash(powershell -Command \"Stop-Process -Id 33108, 175048 -Force -ErrorAction SilentlyContinue; Start-Sleep 3; Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Select-Object OwningProcess\")",
       "Bash(powershell -Command \"Stop-Process -Id 52216 -Force -ErrorAction SilentlyContinue; Start-Sleep 2; Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Select-Object OwningProcess\")",
       "Bash(powershell -Command \"Get-Process | Where-Object { $_.Name -like ''*python*'' } | Select-Object Id, ProcessName\")",
-      "Bash(powershell -Command \"Stop-Process -Id 49448 -Force -ErrorAction SilentlyContinue; Start-Sleep 3; Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Measure-Object | Select-Object Count\")"
+      "Bash(powershell -Command \"Stop-Process -Id 49448 -Force -ErrorAction SilentlyContinue; Start-Sleep 3; Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Measure-Object | Select-Object Count\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/api/analyze/test)",
+      "Bash(curl -s -X POST http://localhost:8000/api/upload -F \"file=@/dev/null\" -w \"\\\\nHTTP %{http_code}\")",
+      "Bash(python -c \"import scipy; print\\(''scipy'', scipy.__version__\\)\")",
+      "Bash(python -c \"import json,sys; p=json.load\\(sys.stdin\\); print\\(json.dumps\\(p.get\\(''''scripts'''',{}\\), indent=2\\)\\)\")",
+      "Bash(powershell -Command \"Get-Process | Where-Object { $_.Name -like ''*python*'' -or $_.Name -like ''*node*'' } | Select-Object Id, ProcessName\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/convert)",
+      "Bash(curl -s -X POST http://localhost:3000/api/upload -F \"file=@c:/Users/QUANT/3D Objects/3D Builder/Bulldozer.3mf\" -w \"\\\\nHTTP %{http_code}\")"
     ]
   }
 }
