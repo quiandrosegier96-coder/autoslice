@@ -108,7 +108,12 @@
       "Bash(python -c \"from app.support.detector import get_support_preview; from app.support.models import SupportPreviewData, SupportDebugLayers; print\\(''OK''\\)\")",
       "Bash(powershell -Command \"Get-Process -Name python* -ErrorAction SilentlyContinue | Stop-Process -Force; Write-Host ''killed''\")",
       "Bash(curl -s http://localhost:8000/api/health)",
-      "Bash(curl -s http://localhost:8000/)"
+      "Bash(curl -s http://localhost:8000/)",
+      "Bash(find /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice -type f \\\\\\(-name *support* -o -name *raycast* -o -name *preview* -o -name *viewer* -o -name *model* -o -name *slice* -o -name *overhang* \\\\\\))",
+      "Bash(find /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src -type f \\\\\\(-name *.ts -o -name *.tsx -o -name *.js -o -name *.jsx \\\\\\))",
+      "Bash(grep -r \"SupportColumn\\\\|SupportPreview\" /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend --include=*.py)",
+      "Bash(grep -r \"SupportColumn\\\\|raycast\\\\|raycasting\" /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/app --include=*.py)",
+      "Bash(xargs grep:*)"
     ]
   }
 }
