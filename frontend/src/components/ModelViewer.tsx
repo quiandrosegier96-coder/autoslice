@@ -5,7 +5,7 @@ import { Canvas, useLoader, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { ThreeMFLoader } from "three/examples/jsm/loaders/3MFLoader.js";
 import * as THREE from "three";
-import { SupportVisualization } from "./SupportVisualization";
+import { SupportVisualization, SupportDebugLayerToggles } from "./SupportVisualization";
 
 function AutoCamera({ object }: { object: THREE.Group }) {
   const { camera } = useThree();
@@ -71,6 +71,10 @@ interface ModelViewerProps {
   className?:    string;
   /** Increment to remount the Canvas and reset camera to initial position. */
   resetKey?:     number;
+  /** Pass true to fetch support-preview with ?debug=true */
+  debugMode?:    boolean;
+  /** Which debug layers to show (only used when debugMode=true) */
+  debugLayers?:  SupportDebugLayerToggles;
 }
 
 export function ModelViewer({
@@ -79,6 +83,8 @@ export function ModelViewer({
   wireframe    = false,
   className    = "w-full h-72 bg-surface-card rounded-xl overflow-hidden border border-surface-border relative",
   resetKey,
+  debugMode    = false,
+  debugLayers,
 }: ModelViewerProps) {
   const url = `/api/upload/${jobId}/file`;
   return (
@@ -93,7 +99,13 @@ export function ModelViewer({
         <directionalLight position={[-8, -5, -8]} intensity={0.3} />
         <Suspense fallback={<LoadingBox />}>
           <Model url={url} wireframe={wireframe} />
-          {showSupports && <SupportVisualization jobId={jobId} />}
+          {showSupports && (
+            <SupportVisualization
+              jobId={jobId}
+              debugMode={debugMode}
+              debugLayers={debugLayers}
+            />
+          )}
         </Suspense>
         <OrbitControls enableZoom enablePan enableRotate />
       </Canvas>

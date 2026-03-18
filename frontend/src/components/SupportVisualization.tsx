@@ -13,6 +13,15 @@ type SupportColumn = {
   radius:   number;
 };
 
+type SupportDebugLayers = {
+  /** All detected overhang triangles before self-support / floor filtering */
+  all_overhang_positions:    number[];
+  /** Cluster centroids that received a column */
+  active_candidate_points:   number[];
+  /** Cluster centroids that were filtered out (self-supported, too short, floor) */
+  filtered_candidate_points: number[];
+};
+
 type SupportPreviewData = {
   job_id:             string;
   needs_supports:     boolean;
@@ -24,6 +33,7 @@ type SupportPreviewData = {
   model_center:       [number, number, number];
   overhang_area_mm2:  number;
   column_count:       number;
+  debug:              SupportDebugLayers | null;
 };
 
 // ── Coordinate transform ──────────────────────────────────────────────────────
@@ -60,6 +70,7 @@ function toThreePos(
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
+/** Orange mesh — overhang faces that need support */
 function OverhangMesh({ positions }: { positions: Float32Array }) {
   const geometry = useMemo(() => {
     const geo = new THREE.BufferGeometry();
@@ -81,17 +92,40 @@ function OverhangMesh({ positions }: { positions: Float32Array }) {
   );
 }
 
+/** Blue mesh — all detected overhang faces (debug layer, before filtering) */
+function AllOverhangMesh({ positions }: { positions: Float32Array }) {
+  const geometry = useMemo(() => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geo.computeVertexNormals();
+    return geo;
+  }, [positions]);
+
+  return (
+    <mesh geometry={geometry} renderOrder={1}>
+      <meshStandardMaterial
+        color="#3388ff"
+        transparent
+        opacity={0.30}
+        side={THREE.DoubleSide}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
+
+/** Support column — positioned at the correct z_bottom (not always build plate) */
 function Column({
   col, cx, cy, cz,
 }: {
   col: SupportColumn;
   cx: number; cy: number; cz: number;
 }) {
-  const height   = Math.max(col.z_top - col.z_bottom, 0.5);
-  const halfH    = height / 2;
-  // Column center is midpoint between z_bottom and z_top
-  const colCenterZ = col.z_bottom + halfH;
-  const [px, py, pz] = toThreePos(col.x, col.y, colCenterZ, cx, cy, cz);
+  const height = Math.max(col.z_top - col.z_bottom, 0.5);
+  const halfH  = height / 2;
+  // Column centre is midpoint in 3MF Z between z_bottom and z_top
+  const colCenterZ          = col.z_bottom + halfH;
+  const [px, py, pz]        = toThreePos(col.x, col.y, colCenterZ, cx, cy, cz);
 
   return (
     <mesh position={[px, py, pz]} renderOrder={1}>
@@ -99,33 +133,148 @@ function Column({
       <meshStandardMaterial
         color="#aaaaaa"
         transparent
-        opacity={0.30}
+        opacity={0.35}
         depthWrite={false}
       />
     </mesh>
   );
 }
 
+/** Small sphere — debug candidate point */
+function CandidatePoint({
+  x, y, z,
+  cx, cy, cz,
+  active,
+}: {
+  x: number; y: number; z: number;
+  cx: number; cy: number; cz: number;
+  active: boolean;
+}) {
+  const [px, py, pz] = toThreePos(x, y, z, cx, cy, cz);
+  return (
+    <mesh position={[px, py, pz]} renderOrder={3}>
+      <sphereGeometry args={[0.8, 6, 6]} />
+      <meshStandardMaterial
+        color={active ? "#22dd77" : "#dd2222"}
+        transparent
+        opacity={0.85}
+      />
+    </mesh>
+  );
+}
+
+// ── Debug layer renderer ──────────────────────────────────────────────────────
+
+type DebugLayers = {
+  showAllOverhangs: boolean;
+  showActiveCandidates: boolean;
+  showFilteredCandidates: boolean;
+};
+
+function DebugVisualization({
+  data, cx, cy, cz, layers,
+}: {
+  data: SupportDebugLayers;
+  cx: number; cy: number; cz: number;
+  layers: DebugLayers;
+}) {
+  const allOvPositions = useMemo(
+    () => transformBuffer(data.all_overhang_positions, cx, cy, cz),
+    [data.all_overhang_positions, cx, cy, cz],
+  );
+
+  const activePoints = useMemo(() => {
+    const pts: [number, number, number][] = [];
+    for (let i = 0; i < data.active_candidate_points.length; i += 3) {
+      pts.push([
+        data.active_candidate_points[i],
+        data.active_candidate_points[i + 1],
+        data.active_candidate_points[i + 2],
+      ]);
+    }
+    return pts;
+  }, [data.active_candidate_points]);
+
+  const filteredPoints = useMemo(() => {
+    const pts: [number, number, number][] = [];
+    for (let i = 0; i < data.filtered_candidate_points.length; i += 3) {
+      pts.push([
+        data.filtered_candidate_points[i],
+        data.filtered_candidate_points[i + 1],
+        data.filtered_candidate_points[i + 2],
+      ]);
+    }
+    return pts;
+  }, [data.filtered_candidate_points]);
+
+  return (
+    <group>
+      {layers.showAllOverhangs && allOvPositions.length > 0 && (
+        <AllOverhangMesh positions={allOvPositions} />
+      )}
+      {layers.showActiveCandidates && activePoints.map(([x, y, z], i) => (
+        <CandidatePoint key={`a${i}`} x={x} y={y} z={z} cx={cx} cy={cy} cz={cz} active />
+      ))}
+      {layers.showFilteredCandidates && filteredPoints.map(([x, y, z], i) => (
+        <CandidatePoint key={`f${i}`} x={x} y={y} z={z} cx={cx} cy={cy} cz={cz} active={false} />
+      ))}
+    </group>
+  );
+}
+
+// ── Props ─────────────────────────────────────────────────────────────────────
+
+export type SupportDebugLayerToggles = {
+  showAllOverhangs:       boolean;
+  showActiveCandidates:   boolean;
+  showFilteredCandidates: boolean;
+};
+
+interface SupportVisualizationProps {
+  jobId:       string;
+  /** Pass true to fetch ?debug=true and make debug layer data available */
+  debugMode?:  boolean;
+  /** When debugMode=true, controls which debug layers are visible */
+  debugLayers?: SupportDebugLayerToggles;
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function SupportVisualization({ jobId }: { jobId: string }) {
-  const [data, setData]       = useState<SupportPreviewData | null>(null);
+export function SupportVisualization({
+  jobId,
+  debugMode  = false,
+  debugLayers = {
+    showAllOverhangs:       false,
+    showActiveCandidates:   false,
+    showFilteredCandidates: false,
+  },
+}: SupportVisualizationProps) {
+  const [data,    setData]    = useState<SupportPreviewData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/analyze/${jobId}/support-preview`)
+    const url = `/api/analyze/${jobId}/support-preview${debugMode ? "?debug=true" : ""}`;
+    fetch(url)
       .then((r) => r.json())
-      .then((d: SupportPreviewData) => { if (!cancelled) { setData(d); setLoading(false); } })
+      .then((d: SupportPreviewData) => {
+        if (!cancelled) { setData(d); setLoading(false); }
+      })
       .catch(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [jobId]);
+  }, [jobId, debugMode]);
 
   if (loading || !data || !data.needs_supports) return null;
 
   const [cx, cy, cz] = data.model_center;
-  const positions = transformBuffer(data.overhang_positions, cx, cy, cz);
+  const positions    = transformBuffer(data.overhang_positions, cx, cy, cz);
+
+  const anyDebugLayer = debugMode && data.debug && (
+    debugLayers.showAllOverhangs ||
+    debugLayers.showActiveCandidates ||
+    debugLayers.showFilteredCandidates
+  );
 
   return (
     <group>
@@ -133,6 +282,13 @@ export function SupportVisualization({ jobId }: { jobId: string }) {
       {data.support_columns.map((col, i) => (
         <Column key={i} col={col} cx={cx} cy={cy} cz={cz} />
       ))}
+      {anyDebugLayer && data.debug && (
+        <DebugVisualization
+          data={data.debug}
+          cx={cx} cy={cy} cz={cz}
+          layers={debugLayers}
+        />
+      )}
     </group>
   );
 }

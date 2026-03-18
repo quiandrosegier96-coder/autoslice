@@ -514,6 +514,15 @@ export default function ViewerPage() {
   const [wireframe,    setWireframe]    = useState(false);
   const [resetKey,     setResetKey]     = useState(0);
 
+  // Debug mode: append ?debug=1 to the page URL to enable
+  const debugMode = typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("debug") === "1";
+  const [debugLayers, setDebugLayers] = useState({
+    showAllOverhangs:       false,
+    showActiveCandidates:   false,
+    showFilteredCandidates: false,
+  });
+
   useEffect(() => {
     if (!isLoggedIn()) { router.push("/login"); return; }
     apiAnalyze(jobId)
@@ -593,6 +602,8 @@ export default function ViewerPage() {
             wireframe={wireframe}
             className="w-full h-full absolute inset-0"
             resetKey={resetKey}
+            debugMode={debugMode}
+            debugLayers={debugLayers}
           />
 
           {/* Top-left: Reset View */}
@@ -609,7 +620,7 @@ export default function ViewerPage() {
             </button>
           </div>
 
-          {/* Top-right: toggles */}
+          {/* Top-right: standard toggles */}
           <div className="absolute top-3 right-3 z-10 flex gap-2">
             {geo?.overhang.has_overhangs && (
               <button
@@ -642,6 +653,32 @@ export default function ViewerPage() {
               Wireframe
             </button>
           </div>
+
+          {/* Bottom-left: debug layer panel — only visible with ?debug=1 */}
+          {debugMode && showSupports && (
+            <div className="absolute bottom-8 left-3 z-10 flex flex-col gap-1.5 bg-black/70 backdrop-blur-sm border border-white/10 rounded-lg p-3">
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-1">
+                Debug layers
+              </p>
+              {([
+                { key: "showAllOverhangs",       label: "All overhangs",        color: "text-blue-400" },
+                { key: "showActiveCandidates",   label: "Active candidates",    color: "text-green-400" },
+                { key: "showFilteredCandidates", label: "Filtered regions",     color: "text-red-400" },
+              ] as const).map(({ key, label, color }) => (
+                <label key={key} className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={debugLayers[key]}
+                    onChange={(e) =>
+                      setDebugLayers((l) => ({ ...l, [key]: e.target.checked }))
+                    }
+                    className="w-3 h-3 accent-brand"
+                  />
+                  <span className={`text-xs ${color}`}>{label}</span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── Right: Sidebar ────────────────────────────────────────────────── */}

@@ -282,7 +282,7 @@ async def analyze(job_id: str) -> AnalyzeResponse:
 
 
 @router.get("/analyze/{job_id}/support-preview", response_model=SupportPreviewData)
-async def support_preview(job_id: str) -> SupportPreviewData:
+async def support_preview(job_id: str, debug: bool = False) -> SupportPreviewData:
     """
     Compute and return support visualization data for the uploaded model.
     Result is cached in-process after the first call.
@@ -290,6 +290,11 @@ async def support_preview(job_id: str) -> SupportPreviewData:
     Positions are in 3MF coordinate space (Z-up, mm). The frontend applies
     the same -π/2 X rotation used by ThreeMFLoader, then subtracts model_center
     to align with the AutoCamera centering transform.
+
+    Query params:
+      debug=true  — attach SupportDebugLayers to the response (all overhang
+                    positions, active/filtered cluster centroids).  Intended
+                    for development; not needed in production.
     """
     job = find_job(job_id)
     if job is None:
@@ -313,4 +318,4 @@ async def support_preview(job_id: str) -> SupportPreviewData:
     except Exception as exc:
         raise HTTPException(status_code=422, detail=f"Failed to load mesh: {exc}")
 
-    return await loop.run_in_executor(None, get_support_preview, job_id, mesh)
+    return await loop.run_in_executor(None, get_support_preview, job_id, mesh, debug)
