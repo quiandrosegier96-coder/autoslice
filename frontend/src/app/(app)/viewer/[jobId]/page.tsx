@@ -5,6 +5,15 @@ import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { isLoggedIn } from "@/lib/auth";
 import { apiAnalyze, apiScoringReport, apiSupportPreview } from "@/lib/api";
+import type { TreeSupportResult } from "@/lib/tree-support/types";
+import type { ExtendedViewMode } from "@/components/viewer/TreeSupportPanel";
+import {
+  SupportDecisionCard,
+  TreeStatsCard,
+  OverhangAnalysisCard,
+  ViewerControlsCard as TreeViewerControlsCard,
+  DebugLegendCard,
+} from "@/components/viewer/TreeSupportPanel";
 
 const ModelViewer = dynamic(
   () => import("@/components/ModelViewer").then((m) => m.ModelViewer),
@@ -155,13 +164,8 @@ type SupportPreview = {
   tip_count:        number;  // tree: contact point count
 };
 
-// Viewer display mode
-type ViewMode =
-  | "model"                 // model only, no supports
-  | "model+supports"        // model + tree support overlay
-  | "supports"              // supports only (model hidden)
-  | "transparent+supports"  // semi-transparent model + supports
-  | "heatmap";              // overhang heatmap (no support geometry)
+// Viewer display mode — now unified with ExtendedViewMode
+type ViewMode = ExtendedViewMode;
 
 // Client-side G-code validation
 type GcodeValidationResult = {
@@ -1270,13 +1274,24 @@ export default function ViewerPage() {
   const [orientationFeedback, setOrientationFeedback] = useState<"idle" | "applied">("idle");
   const [gcodeResult, setGcodeResult]                 = useState<GcodeValidationResult | null>(null);
 
-  // Derived viewer props from viewMode
-  const showSupports   = viewMode !== "model";
+  // Tree support state
+  const [treeResult,        setTreeResult]        = useState<TreeSupportResult | null>(null);
+  const [animPlaying,       setAnimPlaying]       = useState(false);
+  const [animProgress,      setAnimProgress]      = useState(0);
+  const [animSpeed,         setAnimSpeed]         = useState(1);
+  const [selectedSegmentId, setSelectedSegmentId] = useState<number | null>(null);
+  const [selectedNodeId,    setSelectedNodeId]    = useState<number | null>(null);
+
+  // Derived viewer props from viewMode (kept for legacy backend viz)
+  const showSupports   = viewMode !== "model" && viewMode !== "debug-graph";
   const modelOpacity   = viewMode === "supports" ? 0.0 : viewMode === "transparent+supports" ? 0.18 : 1.0;
   const heatmapOnly    = viewMode === "heatmap";
 
   // Sync overhang zone debug toggle with view mode
   useEffect(() => { if (showOverhangZones) setViewMode(v => v === "model" ? "model+supports" : v); }, [showOverhangZones]);
+
+  // Animation auto-stop at end
+  useEffect(() => { if (animProgress >= 1) setAnimPlaying(false); }, [animProgress]);
 
   const debugMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("debug") === "1";
   const debugLayers = { showAllOverhangs: showOverhangZones, showActiveCandidates: false, showFilteredCandidates: false };
@@ -1393,6 +1408,7 @@ export default function ViewerPage() {
           <div className="flex-1 relative bg-[#111]">
             <ModelViewer
               jobId={jobId}
+              viewMode={viewMode}
               showSupports={showSupports}
               wireframe={wireframe}
               modelOpacity={modelOpacity}
@@ -1401,6 +1417,22 @@ export default function ViewerPage() {
               resetKey={resetKey}
               debugMode={debugMode}
               debugLayers={debugLayers}
+              // Client-side tree support
+              showClientTreeSupport={!!geo?.overhang.has_overhangs}
+              onClientSupportGenerated={(result) => {
+                setTreeResult(result);
+                if (viewMode === "model") setViewMode("model+supports");
+              }}
+              // Tree result + animation
+              treeResult={treeResult}
+              animPlaying={animPlaying}
+              animProgress={animProgress}
+              animSpeed={animSpeed}
+              onAnimProgress={setAnimProgress}
+              selectedSegmentId={selectedSegmentId}
+              selectedNodeId={selectedNodeId}
+              onSegmentClick={setSelectedSegmentId}
+              onNodeClick={setSelectedNodeId}
             />
 
             {/* Top-left controls */}
@@ -1418,10 +1450,12 @@ export default function ViewerPage() {
               {(geo?.overhang.has_overhangs ? (
                 [
                   { mode: "model"                as ViewMode, label: "Model",        activeClass: "bg-white/10 border-white/30 text-white"              },
-                  { mode: "model+supports"       as ViewMode, label: "+ Supports",   activeClass: "bg-orange-500/20 border-orange-500/40 text-orange-300" },
-                  { mode: "transparent+supports" as ViewMode, label: "Transparent",  activeClass: "bg-purple-500/20 border-purple-500/40 text-purple-300"  },
-                  { mode: "supports"             as ViewMode, label: "Supports only",activeClass: "bg-amber-500/20 border-amber-500/40 text-amber-300"    },
-                  { mode: "heatmap"              as ViewMode, label: "Heatmap",      activeClass: "bg-red-500/20 border-red-500/40 text-red-300"          },
+                  { mode: "model+supports"       as ViewMode, label: "+ Tree",        activeClass: "bg-orange-500/20 border-orange-500/40 text-orange-300" },
+                  { mode: "transparent+supports" as ViewMode, label: "X-ray",         activeClass: "bg-purple-500/20 border-purple-500/40 text-purple-300"  },
+                  { mode: "supports"             as ViewMode, label: "Tree only",     activeClass: "bg-amber-500/20 border-amber-500/40 text-amber-300"    },
+                  { mode: "heatmap"              as ViewMode, label: "Heatmap",       activeClass: "bg-red-500/20 border-red-500/40 text-red-300"          },
+                  { mode: "heatmap+supports"     as ViewMode, label: "Heat + Tree",   activeClass: "bg-rose-500/20 border-rose-500/40 text-rose-300"        },
+                  { mode: "debug-graph"          as ViewMode, label: "Debug",         activeClass: "bg-cyan-500/20 border-cyan-500/40 text-cyan-300"        },
                 ] satisfies { mode: ViewMode; label: string; activeClass: string }[]
               ) : (
                 [
@@ -1503,12 +1537,25 @@ export default function ViewerPage() {
                 </div>
               )}
 
-              {/* 3. Support Analysis */}
+              {/* 3. Support Analysis (backend summary) */}
               <SupportAnalysisCard
                 jobId={jobId}
                 showSupports={showSupports}
                 onShowSupports={(v) => setViewMode(v ? "model+supports" : "model")}
               />
+
+              {/* 3b. Tree Support Decision + Stats (client-side result) */}
+              {treeResult && (
+                <>
+                  <SupportDecisionCard
+                    stats={treeResult.stats}
+                    hasOverhangs={!!geo?.overhang.has_overhangs}
+                    needsSupport={treeResult.stats.tipCount > 0}
+                  />
+                  <TreeStatsCard stats={treeResult.stats} />
+                  <OverhangAnalysisCard clusters={treeResult.clusters} />
+                </>
+              )}
 
               {/* 4. Nozzle Collision Risk */}
               {analysis.nozzle_risk && (
@@ -1518,16 +1565,46 @@ export default function ViewerPage() {
               {/* 5. G-code Validator */}
               <GcodeValidationCard onResult={setGcodeResult} />
 
-              {/* 6. Viewer Controls */}
-              <ViewerControlsCard
-                showSupports={showSupports}     onShowSupports={(v) => setViewMode(v ? "model+supports" : "model")}
-                wireframe={wireframe}           onWireframe={setWireframe}
-                showOverhangZones={showOverhangZones} onShowOverhangZones={setShowOverhangZones}
-                hasOverhangs={!!geo?.overhang.has_overhangs}
-                onApplyOrientation={handleApplyOrientation}
-                orientationFeedback={orientationFeedback}
-                shouldRotate={analysis.orientation.should_rotate}
-              />
+              {/* 6. Tree Viewer Controls (replaces old viewer controls when tree result available) */}
+              {treeResult ? (
+                <TreeViewerControlsCard
+                  mode={viewMode}
+                  onMode={setViewMode}
+                  hasOverhangs={!!geo?.overhang.has_overhangs}
+                  treeResult={treeResult}
+                  animPlaying={animPlaying}
+                  animProgress={animProgress}
+                  animSpeed={animSpeed}
+                  onAnimPlay={() => {
+                    if (animProgress >= 1) setAnimProgress(0);
+                    setAnimPlaying(true);
+                  }}
+                  onAnimPause={() => setAnimPlaying(false)}
+                  onAnimReset={() => { setAnimPlaying(false); setAnimProgress(0); }}
+                  onAnimScrub={(p) => { setAnimPlaying(false); setAnimProgress(p); }}
+                  onAnimSpeedChange={setAnimSpeed}
+                  onCameraReset={() => setResetKey(k => k + 1)}
+                />
+              ) : (
+                <ViewerControlsCard
+                  showSupports={showSupports}     onShowSupports={(v) => setViewMode(v ? "model+supports" : "model")}
+                  wireframe={wireframe}           onWireframe={setWireframe}
+                  showOverhangZones={showOverhangZones} onShowOverhangZones={setShowOverhangZones}
+                  hasOverhangs={!!geo?.overhang.has_overhangs}
+                  onApplyOrientation={handleApplyOrientation}
+                  orientationFeedback={orientationFeedback}
+                  shouldRotate={analysis.orientation.should_rotate}
+                />
+              )}
+
+              {/* Debug graph legend (only in debug mode) */}
+              {treeResult && viewMode === "debug-graph" && (
+                <DebugLegendCard
+                  result={treeResult}
+                  selectedNodeId={selectedNodeId}
+                  selectedSegmentId={selectedSegmentId}
+                />
+              )}
 
               {/* 7. Export Preflight + CTA */}
               <ExportPreflightCard

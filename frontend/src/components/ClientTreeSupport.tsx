@@ -16,7 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { TreeSupportGenerator } from "@/lib/tree-support/TreeSupportGenerator";
-import type { SupportConfig, SupportStats } from "@/lib/tree-support/types";
+import type { SupportConfig, SupportStats, TreeSupportResult } from "@/lib/tree-support/types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,8 +25,8 @@ interface ClientTreeSupportLayerProps {
   object:      THREE.Object3D;
   /** Partial config — merged with DEFAULT_CONFIG. */
   config?:     Partial<SupportConfig>;
-  /** Called after generation completes. */
-  onGenerated?: (stats: SupportStats) => void;
+  /** Called after generation completes — receives full result. */
+  onGenerated?: (result: TreeSupportResult) => void;
   /** Show debug node spheres in addition to support mesh. */
   showDebug?:  boolean;
   /** Opacity of the support mesh. */
@@ -96,7 +96,7 @@ export function ClientTreeSupportLayer({
         }
 
         setGenerated(true);
-        onGenerated?.(result.stats);
+        onGenerated?.(result);
       } catch (err) {
         console.error("[ClientTreeSupport] Generation failed:", err);
       }
@@ -127,6 +127,7 @@ interface TreeSupportStatusProps {
   stats: SupportStats | null;
   generating: boolean;
 }
+export type { TreeSupportResult };
 
 export function TreeSupportStatus({ stats, generating }: TreeSupportStatusProps) {
   if (generating) {

@@ -1,13 +1,19 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Canvas, useLoader, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { ThreeMFLoader } from "three/examples/jsm/loaders/3MFLoader.js";
 import * as THREE from "three";
 import { SupportVisualization, SupportDebugLayerToggles } from "./SupportVisualization";
 import { ClientTreeSupportLayer, TreeSupportStatus } from "./ClientTreeSupport";
-import type { SupportConfig, SupportStats } from "@/lib/tree-support/types";
+import { SupportGrowthAnimation } from "./viewer/SupportGrowthAnimation";
+import { DebugGraphOverlay }      from "./viewer/DebugGraphOverlay";
+import type { SupportConfig }          from "@/lib/tree-support/types";
+import type { TreeSupportResult }      from "@/lib/tree-support/types";
+import type { ExtendedViewMode }       from "./viewer/TreeSupportPanel";
+
+// ── AutoCamera ────────────────────────────────────────────────────────────────
 
 function AutoCamera({ object }: { object: THREE.Group }) {
   const { camera } = useThree();
@@ -29,15 +35,45 @@ function AutoCamera({ object }: { object: THREE.Group }) {
   return null;
 }
 
+// ── CameraReset ───────────────────────────────────────────────────────────────
+
+function CameraReset({ resetKey }: { resetKey: number }) {
+  const { camera, controls } = useThree();
+  useEffect(() => {
+    if (!resetKey) return;
+    camera.position.set(0, 0, 200);
+    camera.lookAt(0, 0, 0);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (controls as any)?.reset?.();
+  }, [resetKey, camera, controls]);
+  return null;
+}
+
+// ── BuildPlateGrid ────────────────────────────────────────────────────────────
+
+function BuildPlateGrid({ plateY }: { plateY: number }) {
+  return (
+    <group position={[0, plateY, 0]}>
+      <gridHelper args={[200, 20, "#2a2a2a", "#1e1e1e"]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[200, 200]} />
+        <meshStandardMaterial color="#131313" roughness={1} metalness={0} />
+      </mesh>
+    </group>
+  );
+}
+
+// ── Model ─────────────────────────────────────────────────────────────────────
+
 function Model({
   url,
   wireframe = false,
   opacity   = 1,
   onObjectLoaded,
 }: {
-  url:       string;
-  wireframe?: boolean;
-  opacity?:   number;
+  url:             string;
+  wireframe?:      boolean;
+  opacity?:        number;
   onObjectLoaded?: (object: THREE.Group) => void;
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -49,13 +85,13 @@ function Model({
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
         mesh.material = new THREE.MeshStandardMaterial({
-          color:       wireframe ? "#888888" : "#cc2222",
+          color:      wireframe ? "#888888" : "#cc2222",
           wireframe,
-          roughness:   0.6,
-          metalness:   0.1,
+          roughness:  0.6,
+          metalness:  0.1,
           transparent,
           opacity,
-          depthWrite:  !transparent,
+          depthWrite: !transparent,
         });
         mesh.visible = opacity > 0.01;
       }
@@ -71,6 +107,31 @@ function Model({
   );
 }
 
+// ── Static support mesh ───────────────────────────────────────────────────────
+
+function StaticSupportMesh({
+  result,
+  opacity = 1,
+}: {
+  result:   TreeSupportResult;
+  opacity?: number;
+}) {
+  useEffect(() => {
+    result.supportMesh.traverse(child => {
+      if ((child as THREE.Mesh).isMesh) {
+        const m = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        m.transparent = opacity < 0.99;
+        m.opacity     = opacity;
+        m.depthWrite  = opacity >= 0.99;
+        m.needsUpdate = true;
+      }
+    });
+  }, [result, opacity]);
+  return <primitive object={result.supportMesh} />;
+}
+
+// ── Loading fallback ──────────────────────────────────────────────────────────
+
 function LoadingBox() {
   return (
     <mesh>
@@ -80,25 +141,39 @@ function LoadingBox() {
   );
 }
 
+// ── Props ─────────────────────────────────────────────────────────────────────
+
 interface ModelViewerProps {
-  jobId:          string;
-  showSupports?:  boolean;
-  wireframe?:     boolean;
-  /** 0 = model invisible (supports-only mode); 1 = fully opaque (default) */
-  modelOpacity?:  number;
-  /** When true only the overhang heatmap is rendered inside the support layer */
-  heatmapOnly?:   boolean;
-  className?:     string;
-  resetKey?:      number;
-  debugMode?:     boolean;
-  debugLayers?:   SupportDebugLayerToggles;
-  /** When true, run the client-side tree support generator on the loaded model */
-  showClientTreeSupport?: boolean;
-  /** Config overrides for the client-side tree support generator */
-  clientSupportConfig?:   Partial<SupportConfig>;
-  /** Called when the client-side generator finishes */
-  onClientSupportGenerated?: (stats: SupportStats) => void;
+  jobId:         string;
+  // Legacy mode support (maps to ExtendedViewMode)
+  showSupports?: boolean;
+  wireframe?:    boolean;
+  modelOpacity?: number;
+  heatmapOnly?:  boolean;
+  // Extended mode
+  viewMode?:     ExtendedViewMode;
+  // Client-side tree support
+  showClientTreeSupport?:    boolean;
+  clientSupportConfig?:      Partial<SupportConfig>;
+  onClientSupportGenerated?: (result: TreeSupportResult) => void;
+  // Animation controls (passed in from parent)
+  treeResult?:       TreeSupportResult | null;
+  animPlaying?:      boolean;
+  animProgress?:     number;
+  animSpeed?:        number;
+  onAnimProgress?:   (p: number) => void;
+  selectedSegmentId?: number | null;
+  selectedNodeId?:    number | null;
+  onSegmentClick?:    (id: number | null) => void;
+  onNodeClick?:       (id: number | null) => void;
+  // Legacy debug
+  className?:    string;
+  resetKey?:     number;
+  debugMode?:    boolean;
+  debugLayers?:  SupportDebugLayerToggles;
 }
+
+// ── Main exported component ───────────────────────────────────────────────────
 
 export function ModelViewer({
   jobId,
@@ -106,58 +181,111 @@ export function ModelViewer({
   wireframe    = false,
   modelOpacity = 1,
   heatmapOnly  = false,
+  viewMode,
+  showClientTreeSupport    = false,
+  clientSupportConfig,
+  onClientSupportGenerated,
+  treeResult,
+  animPlaying  = false,
+  animProgress = 0,
+  animSpeed    = 1,
+  onAnimProgress,
+  selectedSegmentId = null,
+  selectedNodeId    = null,
+  onSegmentClick,
+  onNodeClick,
   className    = "w-full h-72 bg-surface-card rounded-xl overflow-hidden border border-surface-border relative",
   resetKey,
   debugMode    = false,
   debugLayers,
-  showClientTreeSupport    = false,
-  clientSupportConfig,
-  onClientSupportGenerated,
 }: ModelViewerProps) {
   const url = `/api/upload/${jobId}/file`;
-  const [loadedObject, setLoadedObject]     = useState<THREE.Group | null>(null);
-  const [clientStats,  setClientStats]      = useState<SupportStats | null>(null);
-  const [generating,   setGenerating]       = useState(false);
+
+  // Resolve effective mode from either viewMode prop or legacy props
+  const effectiveMode: ExtendedViewMode = viewMode ?? (
+    heatmapOnly     ? "heatmap" :
+    !showSupports   ? "model"   :
+    modelOpacity < 0.1 ? "supports" :
+    modelOpacity < 0.5 ? "transparent+supports" :
+    "model+supports"
+  );
+
+  // Derive per-mode display settings
+  const effectiveModelOpacity =
+    effectiveMode === "supports"             ? 0.0  :
+    effectiveMode === "transparent+supports" ? 0.18 :
+    modelOpacity;
+
+  const showHeatmap  = effectiveMode === "heatmap" || effectiveMode === "heatmap+supports";
+  const showSupportM = effectiveMode !== "model" && effectiveMode !== "heatmap" && effectiveMode !== "debug-graph";
+  const showDebugGraph = effectiveMode === "debug-graph";
+  const showAnimation  = (animPlaying || animProgress > 0) && treeResult != null;
+
+  const [loadedObject, setLoadedObject] = useState<THREE.Group | null>(null);
+  const [clientStats,  setClientStats]  = useState<{ trunkCount: number; tipCount: number; clusterCount: number; estimatedVolumeMm3: number } | null>(null);
+  const [generating,   setGenerating]   = useState(false);
 
   function handleObjectLoaded(obj: THREE.Group) {
     setLoadedObject(obj);
     if (showClientTreeSupport) setGenerating(true);
   }
 
-  function handleClientGenerated(stats: SupportStats) {
-    setClientStats(stats);
+  function handleClientGenerated(result: TreeSupportResult) {
+    setClientStats(result.stats);
     setGenerating(false);
-    onClientSupportGenerated?.(stats);
+    onClientSupportGenerated?.(result);
   }
+
+  // ── Build plate Y (bottom of model, approximated at -1 for centered models)
+  const plateY = -1;
 
   return (
     <div className={className}>
-      <p className="absolute bottom-2 right-3 text-[10px] text-zinc-600 pointer-events-none select-none z-10">
-        drag to rotate · scroll to zoom
-      </p>
       {showClientTreeSupport && (
         <TreeSupportStatus stats={clientStats} generating={generating} />
       )}
-      <Canvas key={resetKey} camera={{ position: [0, 0, 200], fov: 45 }} gl={{ antialias: true }}>
-        <color attach="background" args={["#191919"]} />
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[10, 15, 10]} intensity={1.4} />
-        <directionalLight position={[-8, -5, -8]} intensity={0.3} />
+
+      <Canvas
+        key={resetKey}
+        camera={{ position: [0, 0, 200], fov: 45 }}
+        gl={{ antialias: true }}
+        shadows
+      >
+        <color attach="background" args={["#141414"]} />
+
+        {/* Lighting */}
+        <ambientLight intensity={0.45} />
+        <directionalLight position={[10, 20, 10]}  intensity={1.5} castShadow
+          shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+        <directionalLight position={[-8, -5, -8]}  intensity={0.25} />
+        <directionalLight position={[0,  -15, 5]}  intensity={0.15} />
+
+        {/* Build plate grid */}
+        <BuildPlateGrid plateY={plateY} />
+
+        {/* Camera reset helper */}
+        {resetKey !== undefined && <CameraReset resetKey={resetKey} />}
+
         <Suspense fallback={<LoadingBox />}>
+          {/* Model */}
           <Model
             url={url}
             wireframe={wireframe}
-            opacity={modelOpacity}
+            opacity={effectiveModelOpacity}
             onObjectLoaded={handleObjectLoaded}
           />
-          {(showSupports || heatmapOnly) && (
+
+          {/* Backend support visualization (heatmap + backend tree branches) */}
+          {(showHeatmap || (showSupportM && !treeResult && !showClientTreeSupport)) && (
             <SupportVisualization
               jobId={jobId}
               debugMode={debugMode}
               debugLayers={debugLayers}
-              heatmapOnly={heatmapOnly}
+              heatmapOnly={showHeatmap && !showSupportM}
             />
           )}
+
+          {/* Client-side tree generator (runs once, builds result) */}
           {showClientTreeSupport && loadedObject && (
             <ClientTreeSupportLayer
               object={loadedObject}
@@ -165,8 +293,41 @@ export function ModelViewer({
               onGenerated={handleClientGenerated}
             />
           )}
+
+          {/* Static support mesh (when not animating) */}
+          {treeResult && showSupportM && !showAnimation && (
+            <StaticSupportMesh
+              result={treeResult}
+              opacity={effectiveMode === "transparent+supports" ? 0.85 : 1}
+            />
+          )}
+
+          {/* Growth animation */}
+          {treeResult && showAnimation && (
+            <SupportGrowthAnimation
+              result={treeResult}
+              playing={animPlaying}
+              progress={animProgress}
+              speed={animSpeed}
+              onProgressUpdate={onAnimProgress ?? (() => {})}
+              selectedSegmentId={selectedSegmentId}
+              onSegmentClick={onSegmentClick ?? (() => {})}
+            />
+          )}
+
+          {/* Debug graph overlay */}
+          {treeResult && showDebugGraph && (
+            <DebugGraphOverlay
+              result={treeResult}
+              selectedSegmentId={selectedSegmentId}
+              selectedNodeId={selectedNodeId}
+              onSegmentClick={onSegmentClick ?? (() => {})}
+              onNodeClick={onNodeClick ?? (() => {})}
+            />
+          )}
         </Suspense>
-        <OrbitControls enableZoom enablePan enableRotate />
+
+        <OrbitControls makeDefault enableZoom enablePan enableRotate />
       </Canvas>
     </div>
   );

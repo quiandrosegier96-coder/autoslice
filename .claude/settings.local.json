@@ -147,7 +147,8 @@
       "Bash(python -c \"import json; print\\(json.load\\(open\\(''frontend/package.json''\\)\\)[''version'']\\)\")",
       "Bash(python scripts/version.py show)",
       "Bash(python scripts/version.py sync)",
-      "Bash(python scripts/version.py bump)"
+      "Bash(python scripts/version.py bump)",
+      "Bash(wc -l \"frontend/src/app/\\(app\\)/viewer/[jobId]/page.tsx\")"
     ]
   }
 }
