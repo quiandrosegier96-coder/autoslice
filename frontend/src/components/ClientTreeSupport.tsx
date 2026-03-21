@@ -56,17 +56,8 @@ export function ClientTreeSupportLayer({
     // Run generation asynchronously so it does not block the render loop
     const id = requestAnimationFrame(() => {
       try {
-        const gen = new TreeSupportGenerator(config ?? {});
-
-        // Find a representative mesh for collision avoidance
-        let targetMesh: THREE.Mesh | undefined;
-        object.traverse((child) => {
-          if (!targetMesh && (child as THREE.Mesh).isMesh) {
-            targetMesh = child as THREE.Mesh;
-          }
-        });
-
-        const result = gen.generate(object, targetMesh, showDebug);
+        const gen    = new TreeSupportGenerator(config ?? {});
+        const result = gen.generate(object, showDebug);
 
         // Apply opacity to all materials in the support mesh
         if (opacity < 0.99) {

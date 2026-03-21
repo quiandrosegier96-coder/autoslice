@@ -11,14 +11,14 @@
  * Usage
  * ─────
  *   const gen = new TreeSupportGenerator(config);
- *   const result = gen.generate(sceneObject, targetMesh);
+ *   const result = gen.generate(sceneObject);
  *   scene.add(result.supportMesh);
  */
 
 import * as THREE from "three";
 import type { SupportConfig, TreeSupportResult, SupportStats } from "./types";
 import { DEFAULT_CONFIG } from "./types";
-import { detectOverhangs, collectGeometries, computeFloorY } from "./overhangDetector";
+import { detectOverhangs, collectGeometries, computeFloorY, filterSupportedFaces } from "./overhangDetector";
 import { clusterOverhangs, groupClustersByXZ } from "./clusterizer";
 import { buildGraph, estimateVolume } from "./graphBuilder";
 import { avoidCollisions } from "./collisionAvoider";
@@ -40,14 +40,11 @@ export class TreeSupportGenerator {
    * Generate tree supports for a scene object.
    *
    * @param sceneObject  The model to support (THREE.Object3D — can be a Group).
-   * @param targetMesh   Optional: the specific THREE.Mesh to use for collision
-   *                     avoidance. If omitted, collision avoidance is skipped.
-   * @param showDebug    If true, include a debugGroup with node visualisation.
+   * @param showDebug    If true, populate result.debugFaces for overlay rendering.
    * @returns            Full TreeSupportResult.
    */
   generate(
     sceneObject: THREE.Object3D,
-    targetMesh?: THREE.Mesh,
     showDebug = false,
   ): TreeSupportResult {
     const config = this.config;
@@ -60,8 +57,18 @@ export class TreeSupportGenerator {
       detectOverhangs(geometry, matrixWorld, config.overhangAngleDeg, plateY),
     );
 
+    // ── 1b. Collect all model meshes (needed for raycast filter + collision) ─
+    const allMeshes: THREE.Mesh[] = [];
+    sceneObject.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) allMeshes.push(child as THREE.Mesh);
+    });
+
+    // ── 1c. Downward raycast filter — drop self-supported faces ─────────────
+    // Any face that has model geometry directly below it does not need support.
+    const supportedFaces = filterSupportedFaces(allFaces, allMeshes, plateY);
+
     // ── 2. Clustering ──────────────────────────────────────────────────────
-    const clusters = clusterOverhangs(allFaces, config);
+    const clusters = clusterOverhangs(supportedFaces, config);
 
     // Primary grouping: clusters that share a trunk
     const primaryGroups = groupClustersByXZ(clusters, config.mergeDistanceMm);
@@ -69,10 +76,8 @@ export class TreeSupportGenerator {
     // ── 3. Graph construction ──────────────────────────────────────────────
     const graphResult = buildGraph(primaryGroups, plateY, config);
 
-    // ── 4. Collision avoidance ─────────────────────────────────────────────
-    if (targetMesh) {
-      avoidCollisions(graphResult, targetMesh, config);
-    }
+    // ── 4. Collision avoidance against all model meshes ───────────────────
+    avoidCollisions(graphResult, sceneObject, config);
 
     // ── 5. Mesh generation ─────────────────────────────────────────────────
     const supportMesh = buildSupportMesh(graphResult.nodes, graphResult.segments, config);
@@ -108,6 +113,7 @@ export class TreeSupportGenerator {
 
     if (showDebug) {
       result.debugGroup = buildDebugGroup(graphResult.nodes);
+      result.debugFaces = { allOverhangs: allFaces, needsSupport: supportedFaces };
     }
 
     return result;
@@ -140,8 +146,7 @@ export class TreeSupportGenerator {
 export function generateTreeSupport(
   sceneObject: THREE.Object3D,
   config:      Partial<SupportConfig> = {},
-  targetMesh?: THREE.Mesh,
   showDebug = false,
 ): TreeSupportResult {
-  return new TreeSupportGenerator(config).generate(sceneObject, targetMesh, showDebug);
+  return new TreeSupportGenerator(config).generate(sceneObject, showDebug);
 }

@@ -29,7 +29,7 @@ export type {
 export { DEFAULT_CONFIG } from "./types";
 
 // ── Overhang detection ────────────────────────────────────────────────────────
-export { detectOverhangs, collectGeometries, computeFloorY } from "./overhangDetector";
+export { detectOverhangs, collectGeometries, computeFloorY, filterSupportedFaces } from "./overhangDetector";
 
 // ── Clustering ────────────────────────────────────────────────────────────────
 export { clusterOverhangs, groupClustersByXZ } from "./clusterizer";

@@ -24,21 +24,29 @@ const HIT_EPSILON = 0.5;   // mm — ignore hits closer than this to the ray ori
 
 /**
  * Mutate the GraphResult in-place: insert waypoints wherever branches
- * intersect `targetMesh`.
+ * intersect the model.  Accepts the full scene Object3D so all child meshes
+ * are checked, not just the first one.
  *
- * @param result      Graph to modify (nodes + segments).
- * @param targetMesh  The mesh to avoid (THREE.Mesh, must have geometry).
- * @param config      Support config — uses collisionMarginMm.
+ * @param result       Graph to modify (nodes + segments).
+ * @param targetObject Root Object3D of the model (multi-mesh safe).
+ * @param config       Support config — uses collisionMarginMm.
  */
 export function avoidCollisions(
-  result:     GraphResult,
-  targetMesh: THREE.Mesh,
-  config:     SupportConfig,
+  result:       GraphResult,
+  targetObject: THREE.Object3D,
+  config:       SupportConfig,
 ): void {
+  // Collect every mesh for ray intersection
+  const meshes: THREE.Mesh[] = [];
+  targetObject.traverse((child) => {
+    if ((child as THREE.Mesh).isMesh) meshes.push(child as THREE.Mesh);
+  });
+  if (meshes.length === 0) return;
+
   const margin = config.collisionMarginMm * 3.0;
 
-  // Bounding sphere centre — used as "outward" reference direction
-  const bbox   = new THREE.Box3().setFromObject(targetMesh);
+  // Bounding box centre — used as "outward" reference direction
+  const bbox   = new THREE.Box3().setFromObject(targetObject);
   const centre = bbox.getCenter(new THREE.Vector3());
 
   const raycaster = new THREE.Raycaster();
@@ -51,7 +59,7 @@ export function avoidCollisions(
   const originalSegments = [...result.segments];
 
   for (const seg of originalSegments) {
-    avoidSegment(seg, result, targetMesh, raycaster, centre, margin,
+    avoidSegment(seg, result, meshes, raycaster, centre, margin,
       nextNodeId, nextSegId, config);
     // Recompute next ids after possible insertions
     nextNodeId = Math.max(...result.nodes.keys()) + 1;
@@ -62,7 +70,7 @@ export function avoidCollisions(
 function avoidSegment(
   seg:        TreeSegment,
   result:     GraphResult,
-  mesh:       THREE.Mesh,
+  meshes:     THREE.Mesh[],
   raycaster:  THREE.Raycaster,
   centre:     THREE.Vector3,
   margin:     number,
@@ -81,7 +89,8 @@ function avoidSegment(
     dir.divideScalar(len);
 
     raycaster.set(a.position, dir);
-    const hits = raycaster.intersectObject(mesh, false);
+    // Test all meshes; take the closest hit
+    const hits = raycaster.intersectObjects(meshes, false);
     if (hits.length === 0) return;
 
     const hit = hits[0];

@@ -123,3 +123,53 @@ export function computeFloorY(object: THREE.Object3D): number {
   const box = new THREE.Box3().setFromObject(object);
   return box.min.y;
 }
+
+/**
+ * Remove overhang faces that are already supported by model geometry below.
+ *
+ * For each face, cast a ray straight down (-Y) from just below the centroid.
+ * If the ray hits any part of the model before reaching plateY, the face is
+ * self-supported → exclude it.  Only faces with clear air all the way to the
+ * build plate truly need a support structure.
+ *
+ * @param faces       Overhang faces from detectOverhangs().
+ * @param meshes      All mesh instances to cast against.
+ * @param plateY      Build plate Y — rays that reach here indicate a support need.
+ * @param selfEpsilon Offset below centroid to avoid self-intersection (mm).
+ */
+export function filterSupportedFaces(
+  faces:       OverhangFace[],
+  meshes:      THREE.Mesh[],
+  plateY:      number,
+  selfEpsilon: number = 0.4,
+): OverhangFace[] {
+  if (meshes.length === 0) return faces;
+
+  const DOWN      = new THREE.Vector3(0, -1, 0);
+  const raycaster = new THREE.Raycaster();
+  raycaster.firstHitOnly = true;
+
+  return faces.filter((face) => {
+    // Start the ray slightly below the centroid to avoid hitting the face itself
+    const origin   = face.centroid.clone();
+    origin.y      -= selfEpsilon;
+    const clearance = origin.y - plateY;
+
+    // Face centroid is already at or below the plate — not a real overhang
+    if (clearance <= 0) return false;
+
+    raycaster.set(origin, DOWN);
+
+    // Test against every mesh; stop as soon as we find a hit well above the plate
+    for (const mesh of meshes) {
+      const hits = raycaster.intersectObject(mesh, false);
+      if (hits.length > 0 && hits[0].distance < clearance - selfEpsilon) {
+        // Solid geometry exists below this face → already supported
+        return false;
+      }
+    }
+
+    // Nothing below → needs a support column
+    return true;
+  });
+}

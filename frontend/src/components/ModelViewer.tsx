@@ -9,6 +9,7 @@ import { SupportVisualization, SupportDebugLayerToggles } from "./SupportVisuali
 import { ClientTreeSupportLayer, TreeSupportStatus } from "./ClientTreeSupport";
 import { SupportGrowthAnimation } from "./viewer/SupportGrowthAnimation";
 import { DebugGraphOverlay }      from "./viewer/DebugGraphOverlay";
+import { DebugFaceOverlay }       from "./viewer/DebugFaceOverlay";
 import { BedPlate }               from "./viewer/BedPlate";
 import type { BedPlateType }           from "./viewer/BedPlate";
 import type { SupportConfig, SupportStats, TreeSupportResult } from "@/lib/tree-support/types";
@@ -20,15 +21,18 @@ function AutoCamera({ object }: { object: THREE.Group }) {
   const { camera } = useThree();
   useEffect(() => {
     const box    = new THREE.Box3().setFromObject(object);
-    const center = box.getCenter(new THREE.Vector3());
     const size   = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
-    object.position.sub(center);
+    // Centre X/Z; align bottom to Y = 0 so model always sits on the build plate
+    object.position.x -= (box.min.x + box.max.x) / 2;
+    object.position.z -= (box.min.z + box.max.z) / 2;
+    object.position.y -= box.min.y;          // lift so min.y = 0
+    const modelCenterY = size.y / 2;
     const cam = camera as THREE.PerspectiveCamera;
     const fov = cam.fov * (Math.PI / 180);
     const dist = (maxDim / 2) / Math.tan(fov / 2) * 1.8;
-    camera.position.set(dist * 0.6, dist * 0.45, dist);
-    camera.lookAt(0, 0, 0);
+    camera.position.set(dist * 0.6, modelCenterY + dist * 0.45, dist);
+    camera.lookAt(0, modelCenterY, 0);
     cam.near = dist * 0.001;
     cam.far  = dist * 10;
     cam.updateProjectionMatrix();
@@ -230,8 +234,8 @@ export function ModelViewer({
     onClientSupportGenerated?.(result);
   }
 
-  // ── Build plate Y (bottom of model, approximated at -1 for centered models)
-  const plateY = -1;
+  // Build plate is always at Y = 0 (AutoCamera lifts the model to sit on it)
+  const plateY = 0;
 
   return (
     <div className={className}>
@@ -285,6 +289,7 @@ export function ModelViewer({
               object={loadedObject}
               config={clientSupportConfig}
               onGenerated={handleClientGenerated}
+              showDebug={debugMode}
             />
           )}
 
@@ -318,6 +323,11 @@ export function ModelViewer({
               onSegmentClick={onSegmentClick ?? (() => {})}
               onNodeClick={onNodeClick ?? (() => {})}
             />
+          )}
+
+          {/* Debug face overlay — coloured face layers (red/orange/yellow/green) */}
+          {treeResult && showDebugGraph && (
+            <DebugFaceOverlay result={treeResult} />
           )}
         </Suspense>
 

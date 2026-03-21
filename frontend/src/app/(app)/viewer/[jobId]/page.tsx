@@ -7,8 +7,8 @@ import { isLoggedIn } from "@/lib/auth";
 import { apiAnalyze, apiScoringReport, apiSupportPreview } from "@/lib/api";
 import type { TreeSupportResult } from "@/lib/tree-support/types";
 import type { ExtendedViewMode } from "@/components/viewer/TreeSupportPanel";
-import { BED_PLATE_CONFIGS }     from "@/components/viewer/BedPlate";
-import type { BedPlateType }     from "@/components/viewer/BedPlate";
+import { BED_PLATE_CONFIGS }                    from "@/components/viewer/BedPlate";
+import type { BedPlateType, BedPlateConfig }   from "@/components/viewer/BedPlate";
 import {
   SupportDecisionCard,
   TreeStatsCard,
@@ -1104,6 +1104,38 @@ function NozzleRiskCard({ report }: { report: NozzleRiskReport }) {
   );
 }
 
+// ─── Bed plate picker (shared between viewer controls card and standalone card) ─
+
+function BedPlatePicker({ value, onChange }: { value: BedPlateType; onChange: (t: BedPlateType) => void }) {
+  return (
+    <div className="grid grid-cols-2 gap-1.5">
+      {(Object.values(BED_PLATE_CONFIGS) as BedPlateConfig[]).map((cfg) => (
+        <button
+          key={cfg.id}
+          onClick={() => onChange(cfg.id)}
+          className={`flex items-center gap-2 px-2.5 py-2 rounded-xl border text-left transition-all duration-150 ${
+            value === cfg.id
+              ? "border-white/20 bg-white/[0.06] text-zinc-200"
+              : "border-surface-border bg-surface-elevated text-zinc-500 hover:text-zinc-300 hover:border-zinc-600"
+          }`}
+        >
+          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: cfg.color }} />
+          <span className="text-[10px] font-medium leading-none">{cfg.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function BedPlateSidebarCard({ bedPlateType, onBedPlate }: { bedPlateType: BedPlateType; onBedPlate: (t: BedPlateType) => void }) {
+  return (
+    <div className="bg-surface-card border border-surface-border rounded-2xl p-4">
+      <SectionLabel>Build Surface</SectionLabel>
+      <BedPlatePicker value={bedPlateType} onChange={onBedPlate} />
+    </div>
+  );
+}
+
 // ─── Card: Viewer Controls ─────────────────────────────────────────────────────
 
 function ViewerControlsCard({
@@ -1111,12 +1143,14 @@ function ViewerControlsCard({
   wireframe, onWireframe,
   showOverhangZones, onShowOverhangZones,
   hasOverhangs,
+  bedPlateType, onBedPlate,
   onApplyOrientation, orientationFeedback, shouldRotate,
 }: {
   showSupports: boolean; onShowSupports: (v: boolean) => void;
   wireframe: boolean; onWireframe: (v: boolean) => void;
   showOverhangZones: boolean; onShowOverhangZones: (v: boolean) => void;
   hasOverhangs: boolean;
+  bedPlateType: BedPlateType; onBedPlate: (t: BedPlateType) => void;
   onApplyOrientation: () => void; orientationFeedback: "idle" | "applied"; shouldRotate: boolean;
 }) {
   return (
@@ -1131,6 +1165,10 @@ function ViewerControlsCard({
           <Toggle label="Show overhang zones" sublabel="Blue overlay on overhang faces" checked={showOverhangZones} onChange={onShowOverhangZones} />
         )}
         <Toggle label="Show bounding box" sublabel="Coming soon" checked={false} onChange={() => {}} disabled />
+      </div>
+      <div className="mt-3 pt-3 border-t border-surface-border">
+        <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest mb-2.5">Build Surface</p>
+        <BedPlatePicker value={bedPlateType} onChange={onBedPlate} />
       </div>
       <div className="mt-4 pt-4 border-t border-surface-border">
         <button
@@ -1479,28 +1517,6 @@ export default function ViewerPage() {
               drag · scroll · right-drag to pan
             </p>
 
-            {/* Bed plate selector — bottom-left */}
-            <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5">
-              {(Object.values(BED_PLATE_CONFIGS) as typeof BED_PLATE_CONFIGS[BedPlateType][]).map((cfg) => {
-                const active = bedPlateType === cfg.id;
-                return (
-                  <button
-                    key={cfg.id}
-                    onClick={() => setBedPlateType(cfg.id)}
-                    title={cfg.label}
-                    className={[
-                      "h-6 px-2.5 rounded-md border text-[10px] font-medium tracking-wide transition-all duration-150",
-                      active
-                        ? "bg-white/10 border-white/30 text-white"
-                        : "bg-black/40 border-white/10 text-zinc-500 hover:text-zinc-300 hover:border-white/20",
-                    ].join(" ")}
-                  >
-                    {cfg.label}
-                  </button>
-                );
-              })}
-            </div>
-
             {/* Debug layer panel (?debug=1 only) */}
             {debugMode && showSupports && (
               <div className="absolute bottom-8 left-3 z-10 flex flex-col gap-1.5 bg-black/70 backdrop-blur-sm border border-white/10 rounded-xl p-3">
@@ -1591,7 +1607,10 @@ export default function ViewerPage() {
               {/* 5. G-code Validator */}
               <GcodeValidationCard onResult={setGcodeResult} />
 
-              {/* 6. Tree Viewer Controls (replaces old viewer controls when tree result available) */}
+              {/* 6. Viewer Controls */}
+              {treeResult && (
+                <BedPlateSidebarCard bedPlateType={bedPlateType} onBedPlate={setBedPlateType} />
+              )}
               {treeResult ? (
                 <TreeViewerControlsCard
                   mode={viewMode}
@@ -1617,6 +1636,7 @@ export default function ViewerPage() {
                   wireframe={wireframe}           onWireframe={setWireframe}
                   showOverhangZones={showOverhangZones} onShowOverhangZones={setShowOverhangZones}
                   hasOverhangs={!!geo?.overhang.has_overhangs}
+                  bedPlateType={bedPlateType}     onBedPlate={setBedPlateType}
                   onApplyOrientation={handleApplyOrientation}
                   orientationFeedback={orientationFeedback}
                   shouldRotate={analysis.orientation.should_rotate}

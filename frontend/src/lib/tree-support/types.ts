@@ -111,6 +111,13 @@ export interface TreeSupportResult {
   supportMesh:  THREE.Group;
   debugGroup?:  THREE.Group;
   stats:        SupportStats;
+  /** Populated only when showDebug = true. Used by DebugFaceOverlay. */
+  debugFaces?: {
+    /** All downward-facing faces (shown red). */
+    allOverhangs: OverhangFace[];
+    /** Faces that pass the downward raycast filter (shown orange). */
+    needsSupport: OverhangFace[];
+  };
 }
 
 // ── Defaults ──────────────────────────────────────────────────────────────────
