@@ -5,3 +5,5 @@ INFO:     Started server process [14212]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     127.0.0.1:60149 - "GET /health HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'app\main.py'. Reloading...
+ 
