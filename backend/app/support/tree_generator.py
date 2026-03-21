@@ -473,7 +473,7 @@ def _avoid_collisions(
             locs, _, _ = mesh.ray.intersects_location(
                 ray_origins   = [origin],
                 ray_directions = [direction],
-                multiple_hits  = False,
+                multiple_hits  = True,
             )
         except Exception:
             continue
@@ -481,9 +481,15 @@ def _avoid_collisions(
         if len(locs) == 0:
             continue
 
-        hit_dist = float(np.linalg.norm(
-            np.asarray(locs[0], dtype=float) - origin
-        ))
+        # Sort by distance and take the first hit that is not a self-hit
+        # (within _RAY_NUDGE of the origin).
+        dists = [float(np.linalg.norm(np.asarray(l, dtype=float) - origin))
+                 for l in locs]
+        valid = [(d, l) for d, l in sorted(zip(dists, locs))
+                 if d > _RAY_NUDGE * 2]
+        if not valid:
+            continue
+        hit_dist = valid[0][0]
 
         # Hit is past the branch endpoint → not a collision for this branch
         if hit_dist > length - _RAY_NUDGE + _COL_MARGIN:

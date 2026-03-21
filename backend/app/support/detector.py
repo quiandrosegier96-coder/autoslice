@@ -39,21 +39,28 @@ _COS_45 = math.cos(math.radians(45.0))   # 0.7071  overhang threshold
 _COS_55 = math.cos(math.radians(55.0))   # 0.5736  mild / moderate boundary
 _COS_65 = math.cos(math.radians(65.0))   # 0.4226  moderate / severe boundary
 
-# XY cluster resolution — 3 mm is a good trade-off between column count and
-# spatial accuracy.  2 mm generates too many thin columns; 5 mm merges regions
-# that should stay separate.
-GRID_CELL_MM = 3.0
+# XY cluster resolution — 6 mm keeps column count manageable.
+# 3 mm produced one column per 9 mm² → spaghetti on large overhangs.
+# 6 mm → one column per 36 mm², ~4× fewer columns before the hard cap.
+GRID_CELL_MM = 6.0
 
 MAX_OVERHANG_TRI     = 3000   # cap on triangles sent for visualization
-MAX_COLUMNS          = 300    # with raycasting each column is more meaningful
+MAX_COLUMNS          = 120    # hard cap; tree-merge further reduces visible trunks
 
-# Offset ray origin slightly below the overhang centroid so the ray does not
-# self-intersect the face it started on.
-RAY_OFFSET_MM = 0.05
+# Ray origin is placed this far below the overhang centroid.
+# 0.05 mm was too small — adjacent coplanar faces caused self-intersection.
+# 0.5 mm reliably clears the source triangle and its immediate neighbours.
+RAY_OFFSET_MM = 0.5
 
-# If existing geometry is within this gap below an overhang centroid, the face
-# is considered already supported and no column is generated.
-SELF_SUPPORT_GAP_MM = 1.0
+# Clearance between overhang and nearest geometry directly below it.
+# If the gap is smaller than this the face is already self-supported.
+# 1.0 mm was too tight — it generated columns in narrow slots/cavities.
+# 3.0 mm matches typical layer-height-scaled support spacing.
+SELF_SUPPORT_GAP_MM = 3.0
+
+# Minimum number of overhang faces a cluster must contain.
+# Clusters with fewer faces are stray triangles, not real overhangs.
+MIN_CLUSTER_FACES = 2
 
 # Faces whose centroid is within this distance of z_min are treated as
 # resting on the build plate and excluded from overhang detection.
@@ -63,7 +70,7 @@ FLOOR_MARGIN_MIN_MM = 0.5     # minimum, mm
 # ── Cache (in-process, per uvicorn worker) ────────────────────────────────────
 
 _cache: dict[str, SupportPreviewData] = {}
-_CACHE_VERSION = "v4"   # bump this to invalidate all in-process cache entries
+_CACHE_VERSION = "v5"   # bump this to invalidate all in-process cache entries
 
 
 def get_support_preview(
@@ -137,9 +144,11 @@ def _compute(
         )
         grid[cell].append(i)
 
-    # One candidate dict per cluster
+    # One candidate dict per cluster — skip cells with too few faces (noise)
     clusters: list[dict] = []
     for indices in grid.values():
+        if len(indices) < MIN_CLUSTER_FACES:
+            continue
         pts    = ov_centroids[indices]              # (k, 3)
         cx     = float(pts[:, 0].mean())
         cy     = float(pts[:, 1].mean())
@@ -148,16 +157,36 @@ def _compute(
         min_nz = float(ov_nz[indices].min())
         clusters.append(dict(cx=cx, cy=cy, z_top=z_top, count=count, min_nz=min_nz))
 
-    # ── 4. Downward raycasting — one ray per cluster ──────────────────────────
-    # Each ray origin is placed RAY_OFFSET_MM below the cluster's lowest
-    # overhang point.  The offset prevents the ray from self-intersecting the
-    # very face whose centroid we computed the origin from.
+    # ── 4. Inside-mesh filter ─────────────────────────────────────────────────
+    # Cluster centroids that are inside a closed mesh volume correspond to
+    # interior downward-facing surfaces (hollow models, cavities).  A support
+    # column placed there would be invisible from outside and would appear to
+    # float inside solid geometry.  Discard them.
     #
-    # We use multiple_hits=True and then select the HIGHEST hit Z that is
-    # strictly below the origin.  This correctly handles concave geometry where
-    # the nearest hit going downward might otherwise be on the model's outer
-    # shell above an internal cavity.
+    # trimesh.contains() casts a ray and counts mesh crossings (winding number).
+    # It is reliable for watertight meshes and returns a conservative False for
+    # open/degenerate geometry (safe — we keep the candidate in that case).
+    try:
+        cluster_pts = np.array([[c['cx'], c['cy'], c['z_top']] for c in clusters])
+        inside_mask = mesh.contains(cluster_pts)     # bool array, shape (n,)
+        clusters    = [c for c, ins in zip(clusters, inside_mask) if not ins]
+    except Exception:
+        pass  # fall through — keep all clusters if the query fails
+
+    # ── 5. Downward raycasting — one ray per cluster ──────────────────────────
+    # Ray origin is placed RAY_OFFSET_MM below the cluster's lowest overhang
+    # point.  The 0.5 mm offset reliably clears the source face and its
+    # immediate neighbours; 0.05 mm was too small.
+    #
+    # multiple_hits=True + HIGHEST-hit logic: we want the closest geometry
+    # BELOW the overhang.  The highest Z hit that is strictly below the origin
+    # is that closest surface, correctly handling concave geometry where the
+    # nearest downward hit on the outer shell might otherwise shadow a more
+    # relevant internal surface.
     n  = len(clusters)
+    if n == 0:
+        return _no_supports(job_id, center, z_min)
+
     ray_origins = np.array(
         [[c['cx'], c['cy'], c['z_top'] - RAY_OFFSET_MM] for c in clusters],
         dtype=float,
@@ -183,7 +212,7 @@ def _compute(
         # Ray module unavailable or mesh degeneracy — fall back to z_min for all
         pass
 
-    # ── 5. Build support columns ──────────────────────────────────────────────
+    # ── 6. Build support columns ──────────────────────────────────────────────
     columns:              list[SupportColumn] = []
     debug_active_pts:     list[float]         = []
     debug_filtered_pts:   list[float]         = []
@@ -193,10 +222,12 @@ def _compute(
         h_hit = hit_z.get(i)
 
         if h_hit is not None:
-            # Gap between the overhang and the nearest geometry below it
-            gap = (z_top - RAY_OFFSET_MM) - h_hit
+            # True gap: distance from overhang surface to nearest geometry below.
+            # Previously subtracted RAY_OFFSET_MM from z_top here, which was
+            # wrong — the gap should be measured from the overhang, not the ray.
+            gap = z_top - h_hit
             if gap < SELF_SUPPORT_GAP_MM:
-                # Close enough — existing geometry supports this face
+                # Geometry is close enough below — face is already supported
                 if debug:
                     debug_filtered_pts += [cl['cx'], cl['cy'], z_top]
                 continue
