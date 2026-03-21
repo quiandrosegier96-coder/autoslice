@@ -55,7 +55,7 @@ export function avoidCollisions(
       nextNodeId, nextSegId, config);
     // Recompute next ids after possible insertions
     nextNodeId = Math.max(...result.nodes.keys()) + 1;
-    nextSegId  = result.segments.reduce((m, s) => Math.max(m, s.id), 0) + 1;
+    nextSegId  = result.segments.reduce((m: number, s: TreeSegment) => Math.max(m, s.id), 0) + 1;
   }
 }
 
@@ -115,7 +115,7 @@ function avoidSegment(
       type:     "waypoint",
     };
     result.nodes.set(waypoint.id, waypoint);
-    a.childIds = a.childIds.map(id => id === b.id ? waypoint.id : id);
+    a.childIds = a.childIds.map((id: number) => id === b.id ? waypoint.id : id);
     b.parentId = waypoint.id;
 
     // Replace original segment with two new segments

@@ -7,6 +7,8 @@ import { isLoggedIn } from "@/lib/auth";
 import { apiAnalyze, apiScoringReport, apiSupportPreview } from "@/lib/api";
 import type { TreeSupportResult } from "@/lib/tree-support/types";
 import type { ExtendedViewMode } from "@/components/viewer/TreeSupportPanel";
+import { BED_PLATE_CONFIGS }     from "@/components/viewer/BedPlate";
+import type { BedPlateType }     from "@/components/viewer/BedPlate";
 import {
   SupportDecisionCard,
   TreeStatsCard,
@@ -1281,6 +1283,7 @@ export default function ViewerPage() {
   const [animSpeed,         setAnimSpeed]         = useState(1);
   const [selectedSegmentId, setSelectedSegmentId] = useState<number | null>(null);
   const [selectedNodeId,    setSelectedNodeId]    = useState<number | null>(null);
+  const [bedPlateType,      setBedPlateType]      = useState<BedPlateType>("smooth_pei");
 
   // Derived viewer props from viewMode (kept for legacy backend viz)
   const showSupports   = viewMode !== "model" && viewMode !== "debug-graph";
@@ -1413,6 +1416,7 @@ export default function ViewerPage() {
               wireframe={wireframe}
               modelOpacity={modelOpacity}
               heatmapOnly={heatmapOnly}
+              bedPlateType={bedPlateType}
               className="w-full h-full absolute inset-0"
               resetKey={resetKey}
               debugMode={debugMode}
@@ -1474,6 +1478,28 @@ export default function ViewerPage() {
             <p className="absolute bottom-3 right-3 z-10 text-[10px] text-zinc-700 pointer-events-none select-none">
               drag · scroll · right-drag to pan
             </p>
+
+            {/* Bed plate selector — bottom-left */}
+            <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5">
+              {(Object.values(BED_PLATE_CONFIGS) as typeof BED_PLATE_CONFIGS[BedPlateType][]).map((cfg) => {
+                const active = bedPlateType === cfg.id;
+                return (
+                  <button
+                    key={cfg.id}
+                    onClick={() => setBedPlateType(cfg.id)}
+                    title={cfg.label}
+                    className={[
+                      "h-6 px-2.5 rounded-md border text-[10px] font-medium tracking-wide transition-all duration-150",
+                      active
+                        ? "bg-white/10 border-white/30 text-white"
+                        : "bg-black/40 border-white/10 text-zinc-500 hover:text-zinc-300 hover:border-white/20",
+                    ].join(" ")}
+                  >
+                    {cfg.label}
+                  </button>
+                );
+              })}
+            </div>
 
             {/* Debug layer panel (?debug=1 only) */}
             {debugMode && showSupports && (

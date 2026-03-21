@@ -9,8 +9,9 @@ import { SupportVisualization, SupportDebugLayerToggles } from "./SupportVisuali
 import { ClientTreeSupportLayer, TreeSupportStatus } from "./ClientTreeSupport";
 import { SupportGrowthAnimation } from "./viewer/SupportGrowthAnimation";
 import { DebugGraphOverlay }      from "./viewer/DebugGraphOverlay";
-import type { SupportConfig }          from "@/lib/tree-support/types";
-import type { TreeSupportResult }      from "@/lib/tree-support/types";
+import { BedPlate }               from "./viewer/BedPlate";
+import type { BedPlateType }           from "./viewer/BedPlate";
+import type { SupportConfig, SupportStats, TreeSupportResult } from "@/lib/tree-support/types";
 import type { ExtendedViewMode }       from "./viewer/TreeSupportPanel";
 
 // ── AutoCamera ────────────────────────────────────────────────────────────────
@@ -49,19 +50,7 @@ function CameraReset({ resetKey }: { resetKey: number }) {
   return null;
 }
 
-// ── BuildPlateGrid ────────────────────────────────────────────────────────────
-
-function BuildPlateGrid({ plateY }: { plateY: number }) {
-  return (
-    <group position={[0, plateY, 0]}>
-      <gridHelper args={[200, 20, "#2a2a2a", "#1e1e1e"]} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[200, 200]} />
-        <meshStandardMaterial color="#131313" roughness={1} metalness={0} />
-      </mesh>
-    </group>
-  );
-}
+// BuildPlateGrid is replaced by the BedPlate component from ./viewer/BedPlate.
 
 // ── Model ─────────────────────────────────────────────────────────────────────
 
@@ -143,6 +132,8 @@ function LoadingBox() {
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
+export type { BedPlateType };
+
 interface ModelViewerProps {
   jobId:         string;
   // Legacy mode support (maps to ExtendedViewMode)
@@ -152,6 +143,8 @@ interface ModelViewerProps {
   heatmapOnly?:  boolean;
   // Extended mode
   viewMode?:     ExtendedViewMode;
+  // Bed plate
+  bedPlateType?: BedPlateType;
   // Client-side tree support
   showClientTreeSupport?:    boolean;
   clientSupportConfig?:      Partial<SupportConfig>;
@@ -182,6 +175,7 @@ export function ModelViewer({
   modelOpacity = 1,
   heatmapOnly  = false,
   viewMode,
+  bedPlateType = "smooth_pei",
   showClientTreeSupport    = false,
   clientSupportConfig,
   onClientSupportGenerated,
@@ -222,7 +216,7 @@ export function ModelViewer({
   const showAnimation  = (animPlaying || animProgress > 0) && treeResult != null;
 
   const [loadedObject, setLoadedObject] = useState<THREE.Group | null>(null);
-  const [clientStats,  setClientStats]  = useState<{ trunkCount: number; tipCount: number; clusterCount: number; estimatedVolumeMm3: number } | null>(null);
+  const [clientStats,  setClientStats]  = useState<SupportStats | null>(null);
   const [generating,   setGenerating]   = useState(false);
 
   function handleObjectLoaded(obj: THREE.Group) {
@@ -260,8 +254,8 @@ export function ModelViewer({
         <directionalLight position={[-8, -5, -8]}  intensity={0.25} />
         <directionalLight position={[0,  -15, 5]}  intensity={0.15} />
 
-        {/* Build plate grid */}
-        <BuildPlateGrid plateY={plateY} />
+        {/* Build plate — visually distinct per bed type */}
+        <BedPlate plateY={plateY} bedType={bedPlateType} />
 
         {/* Camera reset helper */}
         {resetKey !== undefined && <CameraReset resetKey={resetKey} />}

@@ -97,6 +97,12 @@ export interface SupportStats {
   nodeCount:           number;
 }
 
+/** Minimal graph interface shared between generator and collision avoider. */
+export interface GraphResult {
+  nodes:    Map<number, TreeNode>;
+  segments: TreeSegment[];
+}
+
 export interface TreeSupportResult {
   supportType:  "tree";
   clusters:     OverhangCluster[];

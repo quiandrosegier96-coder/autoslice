@@ -148,7 +148,12 @@
       "Bash(python scripts/version.py show)",
       "Bash(python scripts/version.py sync)",
       "Bash(python scripts/version.py bump)",
-      "Bash(wc -l \"frontend/src/app/\\(app\\)/viewer/[jobId]/page.tsx\")"
+      "Bash(wc -l \"frontend/src/app/\\(app\\)/viewer/[jobId]/page.tsx\")",
+      "Bash(find c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src -name *.tsx)",
+      "Bash(find c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/lib -name *.ts)",
+      "Bash(grep -n \"NozzleRisk\\\\|nozzle_risk\\\\|nozzleRisk\" c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(app\\\\\\)/viewer/[jobId]/page.tsx)",
+      "Bash(grep -n \"bedPlate\\\\|bed_plate\\\\|BedPlate\\\\|BuildPlate\\\\|plateY\\\\|printers\\\\|printer_id\\\\|printerId\\\\|bed_type\\\\|bedType\" c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(app\\\\\\)/viewer/[jobId]/page.tsx)",
+      "Bash(grep -n \"ModelViewer\\\\|viewMode\\\\|<Model\" c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(app\\\\\\)/viewer/[jobId]/page.tsx)"
     ]
   }
 }
