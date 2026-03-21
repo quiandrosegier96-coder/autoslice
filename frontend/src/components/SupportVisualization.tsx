@@ -45,6 +45,8 @@ type SupportPreviewData = {
   trunk_count:        number;
   tip_count:          number;
   model_center:       [number, number, number];
+  /** 3MF Z floor — used for the Three.js Y offset after the bottom-align fix. */
+  model_floor_z:      number;
   overhang_area_mm2:  number;
   column_count:       number;
   debug:              SupportDebugLayers | null;
@@ -64,12 +66,12 @@ type SupportPreviewData = {
 
 function transformBuffer(
   raw: number[],
-  cx: number, cy: number, cz: number,
+  cx: number, cy: number, floorZ: number,
 ): Float32Array {
   const out = new Float32Array(raw.length);
   for (let i = 0; i < raw.length; i += 3) {
     out[i]     = raw[i]     - cx;
-    out[i + 1] = raw[i + 2] - cz;
+    out[i + 1] = raw[i + 2] - floorZ;
     out[i + 2] = cy - raw[i + 1];
   }
   return out;
@@ -77,9 +79,9 @@ function transformBuffer(
 
 function toThreePos(
   x: number, y: number, z: number,
-  cx: number, cy: number, cz: number,
+  cx: number, cy: number, floorZ: number,
 ): [number, number, number] {
-  return [x - cx, z - cz, cy - y];
+  return [x - cx, z - floorZ, cy - y];
 }
 
 // ── Shared Y-axis constant ────────────────────────────────────────────────────
@@ -133,10 +135,10 @@ function AllOverhangMesh({ positions }: { positions: Float32Array }) {
 }
 
 /** Legacy straight cylinder (used for normal/non-tree support type) */
-function Column({ col, cx, cy, cz }: { col: SupportColumn; cx: number; cy: number; cz: number }) {
+function Column({ col, cx, cy, floorZ }: { col: SupportColumn; cx: number; cy: number; floorZ: number }) {
   const height = Math.max(col.z_top - col.z_bottom, 0.5);
   const colCenterZ = col.z_bottom + height / 2;
-  const [px, py, pz] = toThreePos(col.x, col.y, colCenterZ, cx, cy, cz);
+  const [px, py, pz] = toThreePos(col.x, col.y, colCenterZ, cx, cy, floorZ);
   return (
     <mesh position={[px, py, pz]} renderOrder={1}>
       <cylinderGeometry args={[col.radius, col.radius * 1.1, height, 8, 1]} />
@@ -158,13 +160,13 @@ const MAT_TIP    = { color: "#FF6600", roughness: 0.40, metalness: 0.10 };  // b
  * Fully opaque so tree supports are clearly visible through the model.
  */
 function TreeBranchSegment({
-  branch, cx, cy, cz,
+  branch, cx, cy, floorZ,
 }: {
   branch: TreeBranch;
-  cx: number; cy: number; cz: number;
+  cx: number; cy: number; floorZ: number;
 }) {
-  const [sx, sy, sz] = toThreePos(branch.start_x, branch.start_y, branch.start_z, cx, cy, cz);
-  const [ex, ey, ez] = toThreePos(branch.end_x,   branch.end_y,   branch.end_z,   cx, cy, cz);
+  const [sx, sy, sz] = toThreePos(branch.start_x, branch.start_y, branch.start_z, cx, cy, floorZ);
+  const [ex, ey, ez] = toThreePos(branch.end_x,   branch.end_y,   branch.end_z,   cx, cy, floorZ);
 
   const start = new THREE.Vector3(sx, sy, sz);
   const end   = new THREE.Vector3(ex, ey, ez);
@@ -223,13 +225,13 @@ function TreeBranchSegment({
 // ── Debug candidates ──────────────────────────────────────────────────────────
 
 function CandidatePoint({
-  x, y, z, cx, cy, cz, active,
+  x, y, z, cx, cy, floorZ, active,
 }: {
   x: number; y: number; z: number;
-  cx: number; cy: number; cz: number;
+  cx: number; cy: number; floorZ: number;
   active: boolean;
 }) {
-  const [px, py, pz] = toThreePos(x, y, z, cx, cy, cz);
+  const [px, py, pz] = toThreePos(x, y, z, cx, cy, floorZ);
   return (
     <mesh position={[px, py, pz]} renderOrder={3}>
       <sphereGeometry args={[0.8, 6, 6]} />
@@ -251,15 +253,15 @@ export type SupportDebugLayerToggles = {
 };
 
 function DebugVisualization({
-  data, cx, cy, cz, layers,
+  data, cx, cy, floorZ, layers,
 }: {
   data: SupportDebugLayers;
-  cx: number; cy: number; cz: number;
+  cx: number; cy: number; floorZ: number;
   layers: SupportDebugLayerToggles;
 }) {
   const allOvPositions = useMemo(
-    () => transformBuffer(data.all_overhang_positions, cx, cy, cz),
-    [data.all_overhang_positions, cx, cy, cz],
+    () => transformBuffer(data.all_overhang_positions, cx, cy, floorZ),
+    [data.all_overhang_positions, cx, cy, floorZ],
   );
 
   const activePoints = useMemo(() => {
@@ -284,10 +286,10 @@ function DebugVisualization({
         <AllOverhangMesh positions={allOvPositions} />
       )}
       {layers.showActiveCandidates && activePoints.map(([x, y, z], i) => (
-        <CandidatePoint key={`a${i}`} x={x} y={y} z={z} cx={cx} cy={cy} cz={cz} active />
+        <CandidatePoint key={`a${i}`} x={x} y={y} z={z} cx={cx} cy={cy} floorZ={floorZ} active />
       ))}
       {layers.showFilteredCandidates && filteredPoints.map(([x, y, z], i) => (
-        <CandidatePoint key={`f${i}`} x={x} y={y} z={z} cx={cx} cy={cy} cz={cz} active={false} />
+        <CandidatePoint key={`f${i}`} x={x} y={y} z={z} cx={cx} cy={cy} floorZ={floorZ} active={false} />
       ))}
     </group>
   );
@@ -331,9 +333,9 @@ export function SupportVisualization({
 
   if (loading || !data || !data.needs_supports) return null;
 
-  const [cx, cy, cz] = data.model_center;
-  const positions    = transformBuffer(data.overhang_positions, cx, cy, cz);
-  const isTree       = data.support_type === "tree";
+  const [cx, cy]  = data.model_center;
+  const floorZ    = data.model_floor_z;
+  const positions = transformBuffer(data.overhang_positions, cx, cy, floorZ);
 
   const anyDebugLayer = debugMode && data.debug && (
     debugLayers.showAllOverhangs ||
@@ -356,13 +358,13 @@ export function SupportVisualization({
               <TreeBranchSegment
                 key={branch.id}
                 branch={branch}
-                cx={cx} cy={cy} cz={cz}
+                cx={cx} cy={cy} floorZ={floorZ}
               />
             ))
           ) : (
             // ── Fallback: straight cylinders (only if no tree data) ───────────
             data.support_columns.map((col, i) => (
-              <Column key={i} col={col} cx={cx} cy={cy} cz={cz} />
+              <Column key={i} col={col} cx={cx} cy={cy} floorZ={floorZ} />
             ))
           )}
         </>
@@ -371,7 +373,7 @@ export function SupportVisualization({
       {anyDebugLayer && data.debug && (
         <DebugVisualization
           data={data.debug}
-          cx={cx} cy={cy} cz={cz}
+          cx={cx} cy={cy} floorZ={floorZ}
           layers={debugLayers}
         />
       )}

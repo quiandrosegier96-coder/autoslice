@@ -117,7 +117,7 @@ def _compute(
     overhang_mask = (nz < -_COS_45) & (face_centroids[:, 2] > floor_z)
 
     if not overhang_mask.any():
-        return _no_supports(job_id, center)
+        return _no_supports(job_id, center, z_min)
 
     ov_nz        = nz[overhang_mask]
     ov_tris      = face_vertices[overhang_mask]       # (M, 3, 3)
@@ -223,7 +223,7 @@ def _compute(
             debug_active_pts += [cl['cx'], cl['cy'], z_top]
 
     if not columns:
-        return _no_supports(job_id, center)
+        return _no_supports(job_id, center, z_min)
 
     # ── 6. Visualization triangles ────────────────────────────────────────────
     # Sort by severity (most severe = most negative nz first), cap at limit.
@@ -279,6 +279,7 @@ def _compute(
         trunk_count=trunk_count,
         tip_count=tip_count,
         model_center=center,
+        model_floor_z=z_min,
         overhang_area_mm2=overhang_area,
         column_count=len(columns_capped),
         debug=debug_obj,
@@ -299,7 +300,7 @@ def _classify_severity(nz_values: np.ndarray) -> list[str]:
     return out
 
 
-def _no_supports(job_id: str, center: list[float]) -> SupportPreviewData:
+def _no_supports(job_id: str, center: list[float], floor_z: float = 0.0) -> SupportPreviewData:
     return SupportPreviewData(
         job_id=job_id,
         needs_supports=False,
@@ -312,6 +313,7 @@ def _no_supports(job_id: str, center: list[float]) -> SupportPreviewData:
         trunk_count=0,
         tip_count=0,
         model_center=center,
+        model_floor_z=floor_z,
         overhang_area_mm2=0.0,
         column_count=0,
         debug=None,

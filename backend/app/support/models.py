@@ -85,9 +85,12 @@ class SupportPreviewData(BaseModel):
     trunk_count:        int = 0   # number of root trunks (parent_id is None)
     tip_count:          int = 0   # number of model-contact tips (is_tip=True)
 
-    # Bounding-box center in 3MF space — frontend converts to Three.js space and subtracts
-    # this to match the centering that AutoCamera applies to the loaded model.
+    # Bounding-box center in 3MF space — used for X and Z (3MF Y) offsets.
     model_center:       list[float]   # [cx, cy, cz]
+
+    # 3MF Z floor (= z_min).  After the bottom-align AutoCamera fix the Three.js
+    # Y position of any 3MF point is (z - model_floor_z), not (z - cz).
+    model_floor_z:      float = 0.0
 
     overhang_area_mm2:  float
     column_count:       int
