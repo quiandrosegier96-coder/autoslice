@@ -6,4 +6,13 @@ INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     127.0.0.1:60149 - "GET /health HTTP/1.1" 200 OK
 WARNING:  WatchFiles detected changes in 'app\main.py'. Reloading...
- 
+ WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+INFO:     195.184.76.153:34143 - "GET / HTTP/1.1" 404 Not Found
+INFO:     195.184.76.77:37071 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+INFO:     66.132.153.116:32690 - "GET / HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+INFO:     66.132.153.116:31900 - "GET /sitemap.xml HTTP/1.1" 404 Not Found
