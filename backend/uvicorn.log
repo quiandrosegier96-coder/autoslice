@@ -16,3 +16,23 @@ INFO:     66.132.153.116:32690 - "GET / HTTP/1.1" 404 Not Found
 WARNING:  Invalid HTTP request received.
 WARNING:  Invalid HTTP request received.
 INFO:     66.132.153.116:31900 - "GET /sitemap.xml HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+INFO:     216.218.206.69:2584 - "GET / HTTP/1.1" 404 Not Found
+INFO:     216.218.206.105:6663 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     216.218.206.77:18885 - "GET /?format=json HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+INFO:     16.58.56.214:45570 - "GET / HTTP/1.1" 404 Not Found
+INFO:     16.58.56.214:54308 - "GET / HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+INFO:     185.247.137.236:55753 - "GET / HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+INFO:     91.196.152.146:38953 - "GET / HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+INFO:     91.196.152.70:53077 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+WARNING:  Invalid HTTP request received.
+INFO:     211.244.240.132:59975 - "GET / HTTP/1.0" 404 Not Found
+INFO:     205.210.31.39:62326 - "GET / HTTP/1.1" 404 Not Found
