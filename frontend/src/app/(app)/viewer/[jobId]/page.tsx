@@ -1323,6 +1323,37 @@ export default function ViewerPage() {
   const [selectedNodeId,    setSelectedNodeId]    = useState<number | null>(null);
   const [bedPlateType,      setBedPlateType]      = useState<BedPlateType>("smooth_pei");
 
+  // Pipeline action handlers registered by ModelViewer via onPipelineReady
+  const [pipelineHandlers, setPipelineHandlers] = useState<{
+    generateSupports: () => void;
+    exportSTL:        () => void;
+  } | null>(null);
+  const handlePipelineReady = useCallback((handlers: {
+    generateSupports: () => void;
+    exportSTL:        () => void;
+  }) => { setPipelineHandlers(handlers); }, []);
+
+  const [treeSupportOpts, setTreeSupportOpts] = useState({
+    clusterDistance:   8,
+    trunkRadius:       1.2,
+    branchRadius:      0.7,
+    tipRadius:         0.3,
+    maxBranchAngleDeg: 45,
+  });
+
+  const [previewEnabled, setPreviewEnabled] = useState(false);
+  const [previewMode,    setPreviewMode]    = useState<"current" | "cumulative">("current");
+  const [selectedLayer,  setSelectedLayer]  = useState(0);
+  const [layerHeight,    setLayerHeight]    = useState(0.2);
+  const [layerCount,     setLayerCount]     = useState(0);
+  const handleLayerPreviewReady = useCallback(
+    (info: { layerCount: number; minY: number; maxY: number }) => {
+      setLayerCount(info.layerCount);
+      setSelectedLayer(0);
+    },
+    [],
+  );
+
   // Derived viewer props from viewMode (kept for legacy backend viz)
   const showSupports   = viewMode !== "model" && viewMode !== "debug-graph";
   const modelOpacity   = viewMode === "supports" ? 0.0 : viewMode === "transparent+supports" ? 0.18 : 1.0;
@@ -1475,6 +1506,13 @@ export default function ViewerPage() {
               selectedNodeId={selectedNodeId}
               onSegmentClick={setSelectedSegmentId}
               onNodeClick={setSelectedNodeId}
+              onPipelineReady={handlePipelineReady}
+              treeSupportOptions={treeSupportOpts}
+              previewEnabled={previewEnabled}
+              previewMode={previewMode}
+              selectedLayer={selectedLayer}
+              layerHeight={layerHeight}
+              onLayerPreviewReady={handleLayerPreviewReady}
             />
 
             {/* Top-left controls */}
@@ -1651,6 +1689,115 @@ export default function ViewerPage() {
                   selectedSegmentId={selectedSegmentId}
                 />
               )}
+
+              {/* 6b. Pipeline actions */}
+              <div className="bg-surface-card border border-surface-border rounded-2xl p-4">
+                <SectionLabel>3D Pipeline</SectionLabel>
+                <div className="space-y-2 mb-3 text-xs text-zinc-400">
+                  {(
+                    [
+                      { key: "clusterDistance",   label: "Cluster distance", min: 2,   max: 30,  step: 1,   unit: "mm" },
+                      { key: "trunkRadius",        label: "Trunk radius",     min: 0.4, max: 4,   step: 0.1, unit: "mm" },
+                      { key: "branchRadius",       label: "Branch radius",    min: 0.2, max: 3,   step: 0.1, unit: "mm" },
+                      { key: "tipRadius",          label: "Tip radius",       min: 0.1, max: 1.5, step: 0.1, unit: "mm" },
+                      { key: "maxBranchAngleDeg",  label: "Max branch angle", min: 10,  max: 70,  step: 5,   unit: "°"  },
+                    ] as const
+                  ).map(({ key, label, min, max, step, unit }) => (
+                    <div key={key}>
+                      <div className="flex justify-between mb-0.5">
+                        <span>{label}</span>
+                        <span className="text-zinc-300">{treeSupportOpts[key]}{unit}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={min} max={max} step={step}
+                        value={treeSupportOpts[key]}
+                        onChange={e => setTreeSupportOpts(o => ({ ...o, [key]: parseFloat(e.target.value) }))}
+                        className="w-full accent-amber-500"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => pipelineHandlers?.generateSupports()}
+                    disabled={!pipelineHandlers}
+                    className="flex-1 rounded-lg px-3 py-1.5 text-sm font-medium bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
+                  >
+                    Generate Supports
+                  </button>
+                  <button
+                    onClick={() => pipelineHandlers?.exportSTL()}
+                    disabled={!pipelineHandlers}
+                    className="flex-1 rounded-lg px-3 py-1.5 text-sm font-medium bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors"
+                  >
+                    Export STL
+                  </button>
+                </div>
+              </div>
+
+              {/* 6c. Layer Preview */}
+              <div className="bg-surface-card border border-surface-border rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <SectionLabel>Layer Preview</SectionLabel>
+                  <button
+                    onClick={() => setPreviewEnabled(v => !v)}
+                    className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${
+                      previewEnabled
+                        ? "bg-sky-600 hover:bg-sky-500 text-white"
+                        : "bg-white/10 hover:bg-white/15 text-zinc-300"
+                    }`}
+                  >
+                    {previewEnabled ? "On" : "Off"}
+                  </button>
+                </div>
+                <div className="space-y-2 text-xs text-zinc-400">
+                  <div>
+                    <div className="flex justify-between mb-0.5">
+                      <span>Layer height</span>
+                      <span className="text-zinc-300">{layerHeight}mm</span>
+                    </div>
+                    <input
+                      type="range" min={0.05} max={1.0} step={0.05}
+                      value={layerHeight}
+                      disabled={!previewEnabled}
+                      onChange={e => setLayerHeight(parseFloat(e.target.value))}
+                      className="w-full accent-sky-500 disabled:opacity-40"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-0.5">
+                      <span>Layer</span>
+                      <span className="text-zinc-300">
+                        {previewEnabled && layerCount > 0 ? `${selectedLayer + 1} / ${layerCount}` : "—"}
+                      </span>
+                    </div>
+                    <input
+                      type="range" min={0} max={Math.max(0, layerCount - 1)} step={1}
+                      value={selectedLayer}
+                      disabled={!previewEnabled || layerCount === 0}
+                      onChange={e => setSelectedLayer(parseInt(e.target.value, 10))}
+                      className="w-full accent-sky-500 disabled:opacity-40"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-0.5">
+                    {(["current", "cumulative"] as const).map(m => (
+                      <button
+                        key={m}
+                        onClick={() => setPreviewMode(m)}
+                        disabled={!previewEnabled}
+                        className={`flex-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                          previewMode === m
+                            ? "bg-sky-600 text-white"
+                            : "bg-white/10 hover:bg-white/15 text-zinc-300"
+                        }`}
+                      >
+                        {m === "current" ? "Current layer" : "Up to layer"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
               {/* 7. Export Preflight + CTA */}
               <ExportPreflightCard

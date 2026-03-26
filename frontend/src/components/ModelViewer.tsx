@@ -6,6 +6,16 @@ import { OrbitControls } from "@react-three/drei";
 import { ThreeMFLoader } from "three/examples/jsm/loaders/3MFLoader.js";
 import * as THREE from "three";
 import { SupportVisualization, SupportDebugLayerToggles } from "./SupportVisualization";
+import { processModel }          from "@/lib/processModel";
+import { detectOverhangFaces }   from "@/lib/detectOverhangFaces";
+import { generateTreeSupports }       from "@/lib/generateTreeSupports";
+import type { TreeSupportOptions }    from "@/lib/generateTreeSupports";
+import { exportSTL }             from "@/lib/exportSTL";
+import {
+  generateLayerPreview,
+  disposeLayerPreview,
+} from "@/lib/generateLayerPreview";
+import type { LayerPreviewResult } from "@/lib/generateLayerPreview";
 import { ClientTreeSupportLayer, TreeSupportStatus } from "./ClientTreeSupport";
 import { SupportGrowthAnimation } from "./viewer/SupportGrowthAnimation";
 import { DebugGraphOverlay }      from "./viewer/DebugGraphOverlay";
@@ -134,6 +144,42 @@ function LoadingBox() {
   );
 }
 
+// ── Layer preview renderer ────────────────────────────────────────────────────
+
+function LayerPreview({
+  result,
+  selectedLayer,
+  mode,
+}: {
+  result:        LayerPreviewResult;
+  selectedLayer: number;
+  mode:          "current" | "cumulative";
+}) {
+  const idx    = Math.max(0, Math.min(selectedLayer, result.layerCount - 1));
+  const layers = mode === "current"
+    ? (result.layers[idx] ? [result.layers[idx]] : [])
+    : result.layers.slice(0, idx + 1);
+
+  return (
+    <>
+      {layers.map(layer => (
+        <group key={layer.index}>
+          {layer.modelSegments && (
+            <lineSegments geometry={layer.modelSegments}>
+              <lineBasicMaterial color="#e05555" />
+            </lineSegments>
+          )}
+          {layer.supportsSegments && (
+            <lineSegments geometry={layer.supportsSegments}>
+              <lineBasicMaterial color="#aaaaaa" />
+            </lineSegments>
+          )}
+        </group>
+      ))}
+    </>
+  );
+}
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 export type { BedPlateType };
@@ -168,6 +214,18 @@ interface ModelViewerProps {
   resetKey?:     number;
   debugMode?:    boolean;
   debugLayers?:  SupportDebugLayerToggles;
+  // Pipeline callbacks — optional, does not affect existing behavior
+  onPipelineReady?: (handlers: {
+    generateSupports: () => void;
+    exportSTL:        () => void;
+  }) => void;
+  treeSupportOptions?: TreeSupportOptions;
+  // Layer preview
+  previewEnabled?: boolean;
+  previewMode?:    "current" | "cumulative";
+  selectedLayer?:  number;
+  layerHeight?:    number;
+  onLayerPreviewReady?: (info: { layerCount: number; minY: number; maxY: number }) => void;
 }
 
 // ── Main exported component ───────────────────────────────────────────────────
@@ -196,6 +254,13 @@ export function ModelViewer({
   resetKey,
   debugMode    = false,
   debugLayers,
+  onPipelineReady,
+  treeSupportOptions,
+  previewEnabled = false,
+  previewMode    = "current",
+  selectedLayer  = 0,
+  layerHeight    = 0.2,
+  onLayerPreviewReady,
 }: ModelViewerProps) {
   const url = `/api/upload/${jobId}/file`;
 
@@ -219,14 +284,72 @@ export function ModelViewer({
   const showDebugGraph = effectiveMode === "debug-graph";
   const showAnimation  = (animPlaying || animProgress > 0) && treeResult != null;
 
-  const [loadedObject, setLoadedObject] = useState<THREE.Group | null>(null);
-  const [clientStats,  setClientStats]  = useState<SupportStats | null>(null);
-  const [generating,   setGenerating]   = useState(false);
+  const [loadedObject,     setLoadedObject]     = useState<THREE.Group | null>(null);
+  const [clientStats,      setClientStats]      = useState<SupportStats | null>(null);
+  const [generating,       setGenerating]       = useState(false);
+  const [pipelineMesh,     setPipelineMesh]     = useState<THREE.Mesh | null>(null);
+  const [pipelineSupports, setPipelineSupports] = useState<THREE.Group | null>(null);
+  const [layerPreview,     setLayerPreview]     = useState<LayerPreviewResult | null>(null);
+
+  // Generate layer preview whenever inputs or settings change
+  useEffect(() => {
+    if (!previewEnabled || !pipelineMesh) {
+      setLayerPreview(null);
+      return;
+    }
+    const id = setTimeout(() => {
+      setLayerPreview(prev => {
+        if (prev) disposeLayerPreview(prev);
+        const result = generateLayerPreview(
+          pipelineMesh,
+          pipelineSupports ?? undefined,
+          { layerHeight },
+        );
+        onLayerPreviewReady?.({ layerCount: result.layerCount, minY: result.minY, maxY: result.maxY });
+        return result;
+      });
+    }, 0);
+    return () => clearTimeout(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewEnabled, pipelineMesh, pipelineSupports, layerHeight, onLayerPreviewReady]);
+
+  // Dispose geometries when preview is replaced or component unmounts
+  useEffect(() => () => { if (layerPreview) disposeLayerPreview(layerPreview); }, [layerPreview]);
 
   function handleObjectLoaded(obj: THREE.Group) {
     setLoadedObject(obj);
     if (showClientTreeSupport) setGenerating(true);
+    // Run pipeline off the render thread; result used for supports + export
+    setTimeout(() => {
+      const { mesh } = processModel(obj);
+      setPipelineMesh(mesh);
+      setPipelineSupports(null);
+    }, 0);
   }
+
+  function handleGenerateSupports() {
+    if (!pipelineMesh) return;
+    const faces = detectOverhangFaces(pipelineMesh.geometry, 50);
+    const group = generateTreeSupports(faces, pipelineMesh, treeSupportOptions);
+    setPipelineSupports(group);
+  }
+
+  function handleExportSTL() {
+    if (!pipelineMesh) return;
+    exportSTL(pipelineMesh, pipelineSupports, {
+      modelFilename:    "model.stl",
+      supportsFilename: "supports.stl",
+    });
+  }
+
+  // Expose handlers to parent via callback (does not affect existing behavior)
+  useEffect(() => {
+    onPipelineReady?.({
+      generateSupports: handleGenerateSupports,
+      exportSTL:        handleExportSTL,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pipelineMesh, pipelineSupports, onPipelineReady]);
 
   function handleClientGenerated(result: TreeSupportResult) {
     setClientStats(result.stats);
@@ -328,6 +451,20 @@ export function ModelViewer({
           {/* Debug face overlay — coloured face layers (red/orange/yellow/green) */}
           {treeResult && showDebugGraph && (
             <DebugFaceOverlay result={treeResult} />
+          )}
+
+          {/* Pipeline supports — hidden when layer preview is active */}
+          {pipelineSupports && !previewEnabled && (
+            <primitive object={pipelineSupports} />
+          )}
+
+          {/* Layer preview — replaces solid supports when active */}
+          {previewEnabled && layerPreview && (
+            <LayerPreview
+              result={layerPreview}
+              selectedLayer={selectedLayer}
+              mode={previewMode}
+            />
           )}
         </Suspense>
 

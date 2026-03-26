@@ -7,7 +7,7 @@ import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { processModel }         from "@/lib/processModel";
 import { detectOverhangFaces } from "@/lib/detectOverhangFaces";
-import { generateBasicSupports }        from "@/lib/generateBasicSupports";
+import { generateTreeSupports }         from "@/lib/generateTreeSupports";
 import { exportSTL }                    from "@/lib/exportSTL";
 
 // ── Materials ──────────────────────────────────────────────────────────────────
@@ -190,7 +190,8 @@ export function StandaloneModelViewer() {
 
       URL.revokeObjectURL(url);
 
-      const { mesh, supports: initialSupports } = processModel(root, scene);
+      const { mesh, supports: initialSupports } = processModel(root);
+      scene.add(mesh);
 
       setModel(mesh);
       setSupports(initialSupports);
@@ -228,7 +229,7 @@ export function StandaloneModelViewer() {
       return;
     }
 
-    const group = generateBasicSupports(faces, { material: SUPPORT_MATERIAL.clone() });
+    const group = generateTreeSupports(faces, model, { material: SUPPORT_MATERIAL.clone() });
     scene.add(group);
     setSupports(group);
     setStatus(`Generated ${group.children.length} support pillars from ${faces.length} overhang faces.`);

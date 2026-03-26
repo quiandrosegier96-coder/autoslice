@@ -16,20 +16,17 @@ export type ProcessModelResult = {
 
 /**
  * Flatten, orient and place a loaded scene onto the print bed.
- * Adds the resulting mesh to `threeScene` and returns it.
+ * Does NOT mutate any Three.js scene — caller renders declaratively.
  * Supports are not generated here — call generateBasicSupports() separately.
  */
 export function processModel(
   loadedScene: THREE.Object3D,
-  threeScene:  THREE.Scene,
 ): ProcessModelResult {
   let geometry = flattenModelToSingleGeometry(loadedScene);
   geometry     = autoOrientGeometry(geometry);
 
   const mesh = new THREE.Mesh(geometry, MODEL_MATERIAL.clone());
   normalizeModelOnBed(mesh);
-
-  threeScene.add(mesh);
 
   return { mesh, supports: null };
 }
