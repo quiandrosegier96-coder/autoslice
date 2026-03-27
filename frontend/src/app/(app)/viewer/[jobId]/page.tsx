@@ -1341,11 +1341,13 @@ export default function ViewerPage() {
     maxBranchAngleDeg: 45,
   });
 
-  const [previewEnabled, setPreviewEnabled] = useState(false);
-  const [previewMode,    setPreviewMode]    = useState<"current" | "cumulative">("current");
-  const [selectedLayer,  setSelectedLayer]  = useState(0);
-  const [layerHeight,    setLayerHeight]    = useState(0.2);
-  const [layerCount,     setLayerCount]     = useState(0);
+  const [previewEnabled,    setPreviewEnabled]    = useState(false);
+  const [previewMode,       setPreviewMode]       = useState<"current" | "cumulative">("current");
+  const [selectedLayer,     setSelectedLayer]     = useState(0);
+  const [layerHeight,       setLayerHeight]       = useState(0.2);
+  const [layerCount,        setLayerCount]        = useState(0);
+  const [showModelLayers,   setShowModelLayers]   = useState(true);
+  const [showSupportLayers, setShowSupportLayers] = useState(true);
   const handleLayerPreviewReady = useCallback(
     (info: { layerCount: number; minY: number; maxY: number }) => {
       setLayerCount(info.layerCount);
@@ -1513,6 +1515,8 @@ export default function ViewerPage() {
               selectedLayer={selectedLayer}
               layerHeight={layerHeight}
               onLayerPreviewReady={handleLayerPreviewReady}
+              showModelLayers={showModelLayers}
+              showSupportLayers={showSupportLayers}
             />
 
             {/* Top-left controls */}
@@ -1795,6 +1799,32 @@ export default function ViewerPage() {
                         {m === "current" ? "Current layer" : "Up to layer"}
                       </button>
                     ))}
+                  </div>
+
+                  {/* Layer visibility toggles */}
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      onClick={() => setShowModelLayers(v => !v)}
+                      disabled={!previewEnabled}
+                      className={`flex-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                        showModelLayers
+                          ? "bg-red-700 hover:bg-red-600 text-white"
+                          : "bg-white/10 hover:bg-white/15 text-zinc-400"
+                      }`}
+                    >
+                      Model
+                    </button>
+                    <button
+                      onClick={() => setShowSupportLayers(v => !v)}
+                      disabled={!previewEnabled}
+                      className={`flex-1 rounded-lg px-2 py-1 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                        showSupportLayers
+                          ? "bg-blue-700 hover:bg-blue-600 text-white"
+                          : "bg-white/10 hover:bg-white/15 text-zinc-400"
+                      }`}
+                    >
+                      Supports
+                    </button>
                   </div>
                 </div>
               </div>

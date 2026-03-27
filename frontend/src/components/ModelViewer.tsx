@@ -146,14 +146,40 @@ function LoadingBox() {
 
 // ── Layer preview renderer ────────────────────────────────────────────────────
 
+// Slicer-style coloring helpers
+
+/** Rainbow gradient hue: deep blue (bottom) → cyan → yellow (near current). */
+function modelHue(layerIdx: number, selectedIdx: number): number {
+  const t = selectedIdx > 0 ? layerIdx / selectedIdx : 0;
+  return Math.round(220 - t * 160); // 220° blue → 60° yellow
+}
+
+function modelColor(layerIdx: number, selectedIdx: number): string {
+  if (layerIdx === selectedIdx) return "#ff4444";
+  return `hsl(${modelHue(layerIdx, selectedIdx)},85%,55%)`;
+}
+
+function supportColor(isCurrent: boolean): string {
+  return isCurrent ? "#44aaff" : "#1e3a5f";
+}
+
+function prevOpacity(layerIdx: number, selectedIdx: number): number {
+  const t = selectedIdx > 0 ? layerIdx / selectedIdx : 0;
+  return 0.08 + t * 0.28;
+}
+
 function LayerPreview({
   result,
   selectedLayer,
   mode,
+  showModelLayers   = true,
+  showSupportLayers = true,
 }: {
-  result:        LayerPreviewResult;
-  selectedLayer: number;
-  mode:          "current" | "cumulative";
+  result:             LayerPreviewResult;
+  selectedLayer:      number;
+  mode:               "current" | "cumulative";
+  showModelLayers?:   boolean;
+  showSupportLayers?: boolean;
 }) {
   const idx    = Math.max(0, Math.min(selectedLayer, result.layerCount - 1));
   const layers = mode === "current"
@@ -162,20 +188,34 @@ function LayerPreview({
 
   return (
     <>
-      {layers.map(layer => (
-        <group key={layer.index}>
-          {layer.modelSegments && (
-            <lineSegments geometry={layer.modelSegments}>
-              <lineBasicMaterial color="#e05555" />
-            </lineSegments>
-          )}
-          {layer.supportsSegments && (
-            <lineSegments geometry={layer.supportsSegments}>
-              <lineBasicMaterial color="#aaaaaa" />
-            </lineSegments>
-          )}
-        </group>
-      ))}
+      {layers.map(layer => {
+        const isCurrent = layer.index === idx;
+        const mOpacity  = isCurrent ? 1.0 : prevOpacity(layer.index, idx);
+        const sOpacity  = isCurrent ? 1.0 : prevOpacity(layer.index, idx) * 0.65;
+
+        return (
+          <group key={layer.index}>
+            {showModelLayers && layer.modelSegments && (
+              <lineSegments geometry={layer.modelSegments}>
+                <lineBasicMaterial
+                  color={modelColor(layer.index, idx)}
+                  transparent={!isCurrent}
+                  opacity={mOpacity}
+                />
+              </lineSegments>
+            )}
+            {showSupportLayers && layer.supportsSegments && (
+              <lineSegments geometry={layer.supportsSegments}>
+                <lineBasicMaterial
+                  color={supportColor(isCurrent)}
+                  transparent={!isCurrent}
+                  opacity={sOpacity}
+                />
+              </lineSegments>
+            )}
+          </group>
+        );
+      })}
     </>
   );
 }
@@ -226,6 +266,8 @@ interface ModelViewerProps {
   selectedLayer?:  number;
   layerHeight?:    number;
   onLayerPreviewReady?: (info: { layerCount: number; minY: number; maxY: number }) => void;
+  showModelLayers?:   boolean;
+  showSupportLayers?: boolean;
 }
 
 // ── Main exported component ───────────────────────────────────────────────────
@@ -261,6 +303,8 @@ export function ModelViewer({
   selectedLayer  = 0,
   layerHeight    = 0.2,
   onLayerPreviewReady,
+  showModelLayers   = true,
+  showSupportLayers = true,
 }: ModelViewerProps) {
   const url = `/api/upload/${jobId}/file`;
 
@@ -464,6 +508,8 @@ export function ModelViewer({
               result={layerPreview}
               selectedLayer={selectedLayer}
               mode={previewMode}
+              showModelLayers={showModelLayers}
+              showSupportLayers={showSupportLayers}
             />
           )}
         </Suspense>

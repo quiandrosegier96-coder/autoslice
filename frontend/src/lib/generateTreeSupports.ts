@@ -11,14 +11,25 @@ function isValidVec3(v: THREE.Vector3): boolean {
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export type TreeSupportOptions = {
-  trunkRadius?:     number;   // mm, default 1.2
-  branchRadius?:    number;   // mm, default 0.7
-  tipRadius?:       number;   // mm, default 0.3
-  maxBranchAngleDeg?: number; // default 45
-  clusterDistance?: number;   // mm, default 8
-  radialSegments?:  number;   // cylinder resolution, default 8
-  material?:        THREE.Material;
-  debug?:           boolean;  // attach debug group as child named "__debug__"
+  trunkRadius?:       number;   // mm, default 1.2
+  branchRadius?:      number;   // mm, default 0.7
+  tipRadius?:         number;   // mm, default 0.3
+  maxBranchAngleDeg?: number;   // default 45
+  clusterDistance?:   number;   // mm, default 8
+  radialSegments?:    number;   // cylinder resolution, default 8
+  material?:          THREE.Material;
+  debug?:             boolean;  // attach debug group as child named "__debug__"
+  baseFlare?:         boolean;  // add flared skirt at bed for adhesion, default true
+  baseFlareRadius?:   number;   // multiplier on trunkRadius, default 2.2
+  baseFlareHeight?:   number;   // mm, default 1.5
+  // ── Printability validation ────────────────────────────────────────────────
+  /** Minimum diameter (mm) of any branch or tip member. Default 0.8. */
+  minimumBranchThickness?:   number;
+  /** Maximum branch length (mm) before the branch is skipped as unprintable. Default 40. */
+  maximumUnsupportedLength?: number;
+  /** XZ radius (mm) one tip is assumed to "cover". Tips within this radius of a
+   *  higher-priority tip are suppressed before clustering. Default = clusterDistance/2. */
+  supportCoverageRadius?:    number;
 };
 
 type Cluster = {
@@ -73,6 +84,35 @@ function clusterPoints(
   }
 
   return clusters;
+}
+
+// ── Cluster merging ────────────────────────────────────────────────────────────
+//
+// After the initial greedy pass, iteratively merge any two clusters whose XZ
+// centroids are within mergeDistance.  Keeps trunk count low in dense areas.
+
+function mergeClusters(clusters: Cluster[], mergeDistance: number): Cluster[] {
+  const out = clusters.slice();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    outer: for (let i = 0; i < out.length; i++) {
+      for (let j = i + 1; j < out.length; j++) {
+        const dx = out[i].centroid.x - out[j].centroid.x;
+        const dz = out[i].centroid.z - out[j].centroid.z;
+        if (Math.sqrt(dx * dx + dz * dz) < mergeDistance) {
+          out[i].points.push(...out[j].points);
+          out[i].centroid.set(0, 0, 0);
+          for (const p of out[i].points) out[i].centroid.add(p);
+          out[i].centroid.divideScalar(out[i].points.length);
+          out.splice(j, 1);
+          changed = true;
+          break outer;
+        }
+      }
+    }
+  }
+  return out;
 }
 
 // ── Geometry builders ──────────────────────────────────────────────────────────
@@ -254,7 +294,18 @@ export function generateTreeSupports(
     radialSegments    = 8,
     material          = defaultMaterial(),
     debug             = false,
+    baseFlare         = true,
+    baseFlareRadius   = 2.2,
+    baseFlareHeight   = 1.5,
+    minimumBranchThickness   = 0.8,
+    maximumUnsupportedLength = 40,
+    supportCoverageRadius,
   } = options;
+
+  // Effective radii after applying minimumBranchThickness floor
+  const minR          = minimumBranchThickness / 2;
+  const effBranchR    = Math.max(branchRadius, minR);
+  const effTipR       = Math.max(tipRadius,    minR);
 
   const group = new THREE.Group();
   group.name  = "tree-supports";
@@ -269,19 +320,28 @@ export function generateTreeSupports(
   }
 
   // 1. Collect + deduplicate tip positions.
+  //    Dedup spacing = max(tipDiam, 80% of branchRadius) — suppresses dense areas.
   const rawTips = overhangFaces.map(f => f.center.clone());
   rawTips.sort((a, b) => b.y - a.y);
-  const tips = deduplicateTips(rawTips, tipRadius * 2);
+  // Wider dedup: one tip per coverage radius suppresses overhang load redundancy
+  const coverageR    = supportCoverageRadius ?? (clusterDistance / 2);
+  const dedupSpacing = Math.max(effTipR * 3, effBranchR * 1.4, coverageR);
+  const tips = deduplicateTips(rawTips, dedupSpacing);
 
-  // 2. Cluster by XZ proximity
-  const clusters = clusterPoints(tips, clusterDistance);
+  // 2. Cluster by XZ proximity, then merge surviving nearby clusters
+  const clusters = mergeClusters(
+    clusterPoints(tips, clusterDistance),
+    clusterDistance * 0.6,   // more aggressive merge → fewer trunks
+  );
 
   for (const cluster of clusters) {
     const { points } = cluster;
 
-    // Trunk base — always clamped to build plate Y=0
-    const trunkBase = new THREE.Vector3(cluster.centroid.x, 0, cluster.centroid.z);
-    trunkBase.y = 0;
+    // Trunk base — XZ position weighted by tip height so tall overhangs
+    // pull the trunk toward the area needing the most support.
+    let wx = 0, wz = 0, wSum = 0;
+    for (const p of points) { const w = p.y + 0.1; wx += p.x * w; wz += p.z * w; wSum += w; }
+    const trunkBase = new THREE.Vector3(wx / wSum, 0, wz / wSum);
 
     // Debug: cluster centroid marker (yellow)
     if (dbg) dbg.add(dbgSphere(trunkBase, 1.0, 0xffff00));
@@ -309,11 +369,24 @@ export function generateTreeSupports(
     const trunk = makeCylinder(effectiveTrunkTop, trunkBase, trunkRadius * 0.8, trunkRadius, radialSegments, material);
     if (trunk) group.add(trunk);
 
+    // Base flare — short cone at Y=0 for better bed adhesion
+    if (baseFlare) {
+      const flareTopY = Math.min(baseFlareHeight, Math.max(0.4, effectiveTrunkTopY * 0.2));
+      const flareTop  = trunkBase.clone().setY(flareTopY);
+      const flare     = makeCylinder(flareTop, trunkBase, trunkRadius, trunkRadius * baseFlareRadius, radialSegments, material);
+      if (flare) group.add(flare);
+    }
+
     // Debug: trunk path line (cyan)
     if (dbg) { const l = dbgLine(trunkBase, effectiveTrunkTop, 0x00ffff); if (l) dbg.add(l); }
 
-    // 4. Branches — one per tip
-    for (const tip of points) {
+    // 4. Branches — deduplicate within cluster by XZ proximity, then one branch per tip
+    const intraDedup = Math.max(effBranchR * 2.0, trunkRadius * 0.9);
+    const keptPoints = deduplicateTips(
+      [...points].sort((a, b) => b.y - a.y), // highest-priority tips first
+      intraDedup,
+    );
+    for (const tip of keptPoints) {
       if (!isValidVec3(tip)) continue;
 
       // Skip tips inside model
@@ -333,15 +406,22 @@ export function generateTreeSupports(
         continue;
       }
 
-      // Raycast along branch path — shorten on collision, skip if too short
-      let effectiveTip = tip;
+      // Angle sanity: branch must rise upward — downward paths are never printable
+      if (tip.y < branchBase.y - 0.1) {
+        if (dbg) dbg.add(dbgSphere(tip, 0.4, 0xff6600)); // downward rejection: amber
+        continue;
+      }
+
+      // Raycast along branch path — shorten on collision, skip if too short.
+      // Pull back by exactly effTipR so the contact sphere just kisses the surface.
+      let effectiveTip = tip.clone();
       if (modelMesh) {
         const hitDist = raycastBranchPath(branchBase, tip, modelMesh);
         if (hitDist !== null) {
           const branchDir = new THREE.Vector3().subVectors(tip, branchBase).normalize();
           // Debug: branch collision hit point (orange)
           if (dbg) dbg.add(dbgSphere(branchBase.clone().addScaledVector(branchDir, hitDist), 0.5, 0xff8800));
-          const shortLen = hitDist - tipRadius * 2;
+          const shortLen = hitDist - effTipR; // contact sanity: stop one radius short of surface
           if (shortLen < 1.0) {
             if (dbg) dbg.add(dbgSphere(tip, 0.4, 0xff0000)); // too-short rejection: red
             continue;
@@ -356,13 +436,44 @@ export function generateTreeSupports(
         continue;
       }
 
-      const branch = makeCylinder(effectiveTip, branchBase, tipRadius, branchRadius, radialSegments, material);
-      if (branch) group.add(branch);
+      // Slenderness check: skip branches too long for their minimum cross-section.
+      // Grounded trunks are exempt — only cantilevered branches are checked here.
+      if (branchLen > maximumUnsupportedLength) {
+        if (dbg) dbg.add(dbgSphere(tip, 0.5, 0xff00ff)); // slenderness rejection: magenta
+        continue;
+      }
 
-      // Debug: branch path line (magenta)
-      if (dbg) { const l = dbgLine(branchBase, effectiveTip, 0xff00ff); if (l) dbg.add(l); }
+      // Two-segment elbow: base→elbow (thick) + elbow→tip (thin) + joint sphere
+      // Bow magnitude scales with horizontal reach so angled branches arc naturally
+      const horizDist2D = Math.hypot(
+        effectiveTip.x - branchBase.x,
+        effectiveTip.z - branchBase.z,
+      );
+      const elbowT = 0.60;
+      const midR   = effBranchR + (effTipR - effBranchR) * elbowT;
+      const elbow  = new THREE.Vector3().lerpVectors(branchBase, effectiveTip, elbowT);
+      elbow.y     += Math.min(horizDist2D * 0.15, branchLen * 0.12); // horizon-weighted bow
 
-      const cap = makeSphere(effectiveTip, tipRadius * 1.1, material);
+      // Island/floating invariant: every branch attaches to a trunk that is
+      // grounded at Y=0 via trunkBase — floating geometry is impossible here.
+      const seg1  = makeCylinder(elbow,       branchBase, midR,      effBranchR, radialSegments, material);
+      const seg2  = makeCylinder(effectiveTip, elbow,     effTipR,   midR,       radialSegments, material);
+      const joint = makeSphere(elbow, midR * 1.05, material);
+      if (seg1)  group.add(seg1);
+      if (seg2)  group.add(seg2);
+      if (joint) group.add(joint);
+
+      // Debug: two-segment branch path (magenta)
+      if (dbg) {
+        const l1 = dbgLine(branchBase, elbow,       0xff00ff);
+        const l2 = dbgLine(elbow,      effectiveTip, 0xff00ff);
+        if (l1) dbg.add(l1);
+        if (l2) dbg.add(l2);
+      }
+
+      // Contact sanity: cap sphere must not exceed branch radius (no oversized contacts)
+      const capR = Math.min(effTipR * 1.1, effBranchR * 0.8);
+      const cap  = makeSphere(effectiveTip, capR, material);
       if (cap) group.add(cap);
     }
   }
