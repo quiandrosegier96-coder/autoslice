@@ -1333,6 +1333,12 @@ export default function ViewerPage() {
     exportSTL:        () => void;
   }) => { setPipelineHandlers(handlers); }, []);
 
+  const SUPPORT_PRESETS = {
+    light:  { clusterDistance: 12, trunkRadius: 0.9, branchRadius: 0.5, tipRadius: 0.25, maxBranchAngleDeg: 40 },
+    normal: { clusterDistance:  8, trunkRadius: 1.2, branchRadius: 0.7, tipRadius: 0.3,  maxBranchAngleDeg: 45 },
+    strong: { clusterDistance:  5, trunkRadius: 1.6, branchRadius: 1.0, tipRadius: 0.4,  maxBranchAngleDeg: 50 },
+  } as const;
+
   const [treeSupportOpts, setTreeSupportOpts] = useState({
     clusterDistance:   8,
     trunkRadius:       1.2,
@@ -1697,6 +1703,22 @@ export default function ViewerPage() {
               {/* 6b. Pipeline actions */}
               <div className="bg-surface-card border border-surface-border rounded-2xl p-4">
                 <SectionLabel>3D Pipeline</SectionLabel>
+                <div className="flex gap-1.5 mb-3">
+                  {(["light", "normal", "strong"] as const).map(preset => (
+                    <button
+                      key={preset}
+                      onClick={() => setTreeSupportOpts({ ...treeSupportOpts, ...SUPPORT_PRESETS[preset] })}
+                      className={`flex-1 rounded-lg px-2 py-1 text-xs font-medium capitalize transition-colors ${
+                        JSON.stringify({ clusterDistance: treeSupportOpts.clusterDistance, trunkRadius: treeSupportOpts.trunkRadius, branchRadius: treeSupportOpts.branchRadius, tipRadius: treeSupportOpts.tipRadius, maxBranchAngleDeg: treeSupportOpts.maxBranchAngleDeg }) ===
+                        JSON.stringify(SUPPORT_PRESETS[preset])
+                          ? "bg-amber-600 text-white"
+                          : "bg-white/10 hover:bg-white/15 text-zinc-300"
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
                 <div className="space-y-2 mb-3 text-xs text-zinc-400">
                   {(
                     [

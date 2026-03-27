@@ -328,6 +328,28 @@ export function generateTreeSupports(
   const dedupSpacing = Math.max(effTipR * 3, effBranchR * 1.4, coverageR);
   const tips = deduplicateTips(rawTips, dedupSpacing);
 
+  // Debug: coverage visualization — kept tips (lime) vs removed redundant tips (gray)
+  // Disks on the bed show the effective XZ coverage radius of each kept tip.
+  if (dbg) {
+    const keptSet = new Set(tips); // same object refs — safe for Set lookup
+    const diskMat = new THREE.MeshBasicMaterial({
+      color: 0x00ff44, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide,
+    });
+    for (const t of rawTips) {
+      if (keptSet.has(t)) {
+        dbg.add(dbgSphere(t, effTipR * 0.9, 0x00ff88));                           // lime: kept tip
+        const disk = new THREE.Mesh(
+          new THREE.CylinderGeometry(dedupSpacing, dedupSpacing, 0.05, 20),
+          diskMat,
+        );
+        disk.position.set(t.x, 0.03, t.z);                                        // projected to bed
+        dbg.add(disk);
+      } else {
+        dbg.add(dbgSphere(t, effTipR * 0.5, 0x555555));                           // gray: removed redundant
+      }
+    }
+  }
+
   // 2. Cluster by XZ proximity, then merge surviving nearby clusters
   const clusters = mergeClusters(
     clusterPoints(tips, clusterDistance),
