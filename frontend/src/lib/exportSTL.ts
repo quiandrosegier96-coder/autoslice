@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 // ── Binary STL format ─────────────────────────────────────────────────────────
 //
@@ -68,7 +69,7 @@ function collectTriangles(
 
 function collectFromObject(root: THREE.Object3D): Triangle[] {
   const triangles: Triangle[] = [];
-  root.updateMatrixWorld(true);
+  root.updateWorldMatrix(true, true);
 
   root.traverse((child) => {
     const mesh = child as THREE.Mesh;
@@ -78,6 +79,63 @@ function collectFromObject(root: THREE.Object3D): Triangle[] {
   });
 
   return triangles;
+}
+
+/**
+ * Traverse `root`, bake every mesh's world transform into a cloned geometry,
+ * then merge all pieces into one unified BufferGeometry.
+ *
+ * This ensures the exported model is a single coherent mesh body rather than
+ * a collection of disconnected sub-meshes that slicers split into separate parts.
+ *
+ * Returns null if the object contains no mesh geometry.
+ */
+function mergeObjectGeometries(root: THREE.Object3D): THREE.BufferGeometry | null {
+  root.updateWorldMatrix(true, true);
+
+  const pieces: THREE.BufferGeometry[] = [];
+
+  root.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.geometry) return;
+
+    // Clone and bake the world transform so all pieces share the same space
+    const g = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
+
+    // Strip every attribute except position — mergeGeometries requires
+    // homogeneous attribute sets, and normals will be recomputed below
+    for (const key of Object.keys(g.attributes)) {
+      if (key !== "position") g.deleteAttribute(key);
+    }
+
+    pieces.push(g);
+  });
+
+  console.log(`[exportSTL] mergeObjectGeometries: found ${pieces.length} mesh node(s)`);
+
+  if (pieces.length === 0) {
+    console.warn("[exportSTL] mergeObjectGeometries: no mesh geometry found — returning null");
+    return null;
+  }
+
+  const merged = mergeGeometries(pieces, false);
+  pieces.forEach((g) => g.dispose());
+
+  if (!merged) {
+    console.error("[exportSTL] mergeObjectGeometries: mergeGeometries() returned null — merge failed");
+    return null;
+  }
+
+  // Recompute per-vertex normals on the unified geometry
+  merged.computeVertexNormals();
+
+  const vertexCount   = merged.attributes.position.count;
+  const triangleCount = merged.index
+    ? merged.index.count / 3
+    : vertexCount / 3;
+  console.log(`[exportSTL] mergeObjectGeometries: merge succeeded — ${vertexCount} vertices, ${triangleCount} triangles`);
+
+  return merged;
 }
 
 // ── Binary STL writer ─────────────────────────────────────────────────────────
@@ -162,7 +220,20 @@ export function exportSTL(
     combinedFilename = "model_with_supports.stl",
   } = options;
 
-  const modelTriangles    = collectFromObject(model);
+  // Merge all model sub-meshes into one unified geometry so slicers receive
+  // a single solid body. Fall back to per-mesh traversal if merge fails.
+  const mergedModelGeo = mergeObjectGeometries(model);
+  let modelTriangles: Triangle[];
+  if (mergedModelGeo) {
+    console.log("[exportSTL] exportSTL: using merged geometry for model export");
+    modelTriangles = collectTriangles(mergedModelGeo, new THREE.Matrix4()); // identity — transform already baked
+    mergedModelGeo.dispose();
+  } else {
+    console.warn("[exportSTL] exportSTL: falling back to collectFromObject for model (merge unavailable)");
+    modelTriangles = collectFromObject(model);
+  }
+
+  // Supports stay separate by design
   const supportsTriangles = supports ? collectFromObject(supports) : [];
 
   const modelBuffer    = writeBinarySTL(modelTriangles);
@@ -189,5 +260,11 @@ export function exportSTL(
  * a download.  Useful for server upload or further processing.
  */
 export function geometryToSTLBuffer(object: THREE.Object3D): ArrayBuffer {
+  const merged = mergeObjectGeometries(object);
+  if (merged) {
+    const buf = writeBinarySTL(collectTriangles(merged, new THREE.Matrix4()));
+    merged.dispose();
+    return buf;
+  }
   return writeBinarySTL(collectFromObject(object));
 }

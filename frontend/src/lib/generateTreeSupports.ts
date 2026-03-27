@@ -30,6 +30,9 @@ export type TreeSupportOptions = {
   /** XZ radius (mm) one tip is assumed to "cover". Tips within this radius of a
    *  higher-priority tip are suppressed before clustering. Default = clusterDistance/2. */
   supportCoverageRadius?:    number;
+  /** Distance (mm) to pull the branch endpoint back from the model surface along
+   *  the hit normal, so the tip sphere never penetrates the mesh. Default 0.3. */
+  tipClearance?:             number;
 };
 
 type Cluster = {
@@ -196,24 +199,35 @@ function clampBranchBase(
 
 const _raycaster = new THREE.Raycaster(); // reused — avoid per-call allocation
 
+type RayHit = {
+  distance: number;
+  /** World-space outward face normal at the hit point. */
+  normal:   THREE.Vector3;
+};
+
 /**
  * Cast a ray from `from` toward `to` against modelMesh.
- * Returns the distance to the first non-self hit, or null if path is clear.
+ * Returns distance + world-space normal of the first non-self hit, or null if clear.
  */
 function raycastBranchPath(
   from:       THREE.Vector3,
   to:         THREE.Vector3,
   modelMesh:  THREE.Mesh,
   selfEps = 0.1,
-): number | null {
+): RayHit | null {
   const dir = new THREE.Vector3().subVectors(to, from);
   const len = dir.length();
   if (len < 0.001) return null;
-  _raycaster.set(from, dir.divideScalar(len));
+  _raycaster.set(from, dir.clone().divideScalar(len));
   _raycaster.near = selfEps;
   _raycaster.far  = len;
   const hits = _raycaster.intersectObject(modelMesh, false);
-  return hits.length > 0 ? hits[0].distance : null;
+  if (hits.length === 0) return null;
+  const hit    = hits[0];
+  const normal = hit.face
+    ? hit.face.normal.clone().transformDirection(modelMesh.matrixWorld).normalize()
+    : dir.clone().negate().normalize(); // fallback: reverse approach direction
+  return { distance: hit.distance, normal };
 }
 
 /**
@@ -300,6 +314,7 @@ export function generateTreeSupports(
     minimumBranchThickness   = 0.8,
     maximumUnsupportedLength = 40,
     supportCoverageRadius,
+    tipClearance             = 0.3,
   } = options;
 
   // Effective radii after applying minimumBranchThickness floor
@@ -378,11 +393,11 @@ export function generateTreeSupports(
     // 3. Trunk — shorten if model obstructs the vertical path
     let effectiveTrunkTopY = trunkTopY;
     if (modelMesh) {
-      const hitDist = raycastBranchPath(trunkBase, trunkTop, modelMesh, 0.01);
-      if (hitDist !== null) {
-        effectiveTrunkTopY = Math.min(trunkTopY, hitDist - trunkRadius);
+      const hit = raycastBranchPath(trunkBase, trunkTop, modelMesh, 0.01);
+      if (hit !== null) {
+        effectiveTrunkTopY = Math.min(trunkTopY, hit.distance - trunkRadius);
         // Debug: trunk collision hit point (orange)
-        if (dbg) dbg.add(dbgSphere(trunkBase.clone().setY(hitDist), 0.6, 0xff8800));
+        if (dbg) dbg.add(dbgSphere(trunkBase.clone().setY(hit.distance), 0.6, 0xff8800));
       }
     }
     const effectiveTrunkTop = new THREE.Vector3(trunkBase.x, effectiveTrunkTopY, trunkBase.z);
@@ -434,22 +449,45 @@ export function generateTreeSupports(
         continue;
       }
 
-      // Raycast along branch path — shorten on collision, skip if too short.
-      // Pull back by exactly effTipR so the contact sphere just kisses the surface.
-      let effectiveTip = tip.clone();
+      const branchDir = new THREE.Vector3().subVectors(tip, branchBase).normalize();
+
+      // Compute effectiveTip: the branch endpoint pulled back from the model surface.
+      //
+      //  Case A — intermediate collision along the branch path:
+      //    hitPoint = branchBase + branchDir * hit.distance
+      //    endpoint = hitPoint + hit.normal * tipClearance   (normal pushes away from surface)
+      //
+      //  Case B — no intermediate collision (tip IS on the model surface):
+      //    Cast a short confirmation ray from tip along the approach direction to
+      //    recover the local surface normal; then apply the same pullback.
+      //    Fallback: pull back along the reverse branch direction if no hit found.
+      let effectiveTip: THREE.Vector3;
       if (modelMesh) {
-        const hitDist = raycastBranchPath(branchBase, tip, modelMesh);
-        if (hitDist !== null) {
-          const branchDir = new THREE.Vector3().subVectors(tip, branchBase).normalize();
-          // Debug: branch collision hit point (orange)
-          if (dbg) dbg.add(dbgSphere(branchBase.clone().addScaledVector(branchDir, hitDist), 0.5, 0xff8800));
-          const shortLen = hitDist - effTipR; // contact sanity: stop one radius short of surface
-          if (shortLen < 1.0) {
+        const hit = raycastBranchPath(branchBase, tip, modelMesh);
+        if (hit !== null) {
+          const hitPoint = branchBase.clone().addScaledVector(branchDir, hit.distance);
+          if (dbg) dbg.add(dbgSphere(hitPoint, 0.5, 0xff8800)); // orange: collision point
+          // Pull back along hit normal so tip sphere stays clear of the surface
+          effectiveTip = hitPoint.clone().addScaledVector(hit.normal, tipClearance);
+          if (hitPoint.distanceTo(branchBase) < 1.0) {
             if (dbg) dbg.add(dbgSphere(tip, 0.4, 0xff0000)); // too-short rejection: red
             continue;
           }
-          effectiveTip = branchBase.clone().addScaledVector(branchDir, shortLen);
+        } else {
+          // Tip is on the model surface — confirm with a short inward ray to get normal
+          const confirmHit = raycastBranchPath(
+            tip.clone().addScaledVector(branchDir, 0.05), // start just past surface
+            tip.clone().addScaledVector(branchDir.clone().negate(), tipClearance * 4),
+            modelMesh, 0.001,
+          );
+          const surfaceNormal = confirmHit
+            ? confirmHit.normal
+            : branchDir.clone().negate(); // fallback: reverse approach
+          effectiveTip = tip.clone().addScaledVector(surfaceNormal, tipClearance);
         }
+      } else {
+        // No model mesh — use tip as-is (no penetration risk without a mesh)
+        effectiveTip = tip.clone();
       }
 
       const branchLen = effectiveTip.distanceTo(branchBase);
