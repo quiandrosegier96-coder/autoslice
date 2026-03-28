@@ -157,7 +157,13 @@
       "Bash(python -c \"import ast, sys; files=[''app/support/detector.py'',''app/support/tree_generator.py'']; [print\\(f+'': OK''\\) or ast.parse\\(open\\(f\\).read\\(\\)\\) for f in files]\")",
       "Bash(find /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice -type f \\\\\\(-name *.ts -o -name *.tsx -o -name *.py \\\\\\) -path */frontend/* -o -path */backend/*)",
       "Bash(grep -r \"email\\\\|mail\\\\|smtp\\\\|nodemailer\" /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend --include=*.py)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/docs)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/docs)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(tasklist)",
+      "Bash(pm2 list:*)",
+      "Bash(wmic process:*)",
+      "Bash(curl -s http://localhost:3000/forgot-password)"
     ]
   }
 }

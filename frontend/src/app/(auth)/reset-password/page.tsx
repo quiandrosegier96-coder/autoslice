@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiPost } from "@/lib/api";
 import { useLang } from "@/contexts/LangContext";
 import { LANGS, type Lang } from "@/lib/i18n";
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const { lang, setLang, t } = useLang();
@@ -130,5 +130,13 @@ export default function ResetPasswordPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }
