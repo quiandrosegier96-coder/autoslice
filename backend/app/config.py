@@ -37,7 +37,8 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
-    email_from: str = "AutoSlice <admin@autoslice.be>"
+    from_email: str = "admin@autoslice.be"
+    from_name: str = "Autoslice"
     app_base_url: str = "http://localhost:3000"
 
     @property

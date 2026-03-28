@@ -52,7 +52,7 @@ def send_password_reset_email(to_email: str, reset_link: str) -> None:
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "Reset your AutoSlice password"
-    msg["From"]    = settings.email_from
+    msg["From"]    = f"{settings.from_name} <{settings.from_email}>"
     msg["To"]      = to_email
     msg.attach(MIMEText(plain, "plain"))
     msg.attach(MIMEText(html, "html"))
