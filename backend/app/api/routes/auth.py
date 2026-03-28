@@ -8,6 +8,8 @@ from pydantic import BaseModel, EmailStr
 from app.auth.service import register_user, login_user, create_access_token, create_reset_token, reset_password
 from app.auth.dependencies import get_current_user
 from app.database import ADMIN_EMAILS, get_connection
+from app.config import settings
+from app.email_service import send_password_reset_email
 
 router = APIRouter()
 
@@ -71,9 +73,12 @@ class ResetPasswordRequest(BaseModel):
 
 @router.post("/auth/forgot-password")
 def forgot_password(req: ForgotPasswordRequest) -> dict:
-    # Always return the same message for security (don't reveal if email exists)
-    create_reset_token(req.email)
-    return {"message": "If this email is registered, a reset code has been generated. Contact your admin to retrieve it."}
+    # Always return the same message — never reveal whether the email exists
+    raw_token = create_reset_token(req.email)
+    if raw_token:
+        reset_link = f"{settings.app_base_url}/reset-password?token={raw_token}"
+        send_password_reset_email(req.email, reset_link)
+    return {"message": "If this email is registered, a reset link has been sent."}
 
 
 @router.post("/auth/reset-password")

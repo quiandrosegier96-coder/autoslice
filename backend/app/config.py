@@ -32,6 +32,14 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_hours: int = 24
 
+    # Email (Brevo SMTP relay)
+    smtp_host: str = "smtp-relay.brevo.com"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    email_from: str = "AutoSlice <admin@autoslice.be>"
+    app_base_url: str = "http://localhost:3000"
+
     @property
     def max_upload_bytes(self) -> int:
         return self.max_upload_size_mb * 1024 * 1024

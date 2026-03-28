@@ -65,13 +65,10 @@ export default function ForgotPasswordPage() {
             <p className="text-zinc-500 text-sm mb-2">{t("fp_received_body")}</p>
             <p className="text-zinc-600 text-xs mb-6">{t("fp_admin_note")}</p>
             <Link
-              href="/reset-password"
+              href="/login"
               className="block w-full py-2.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg text-sm text-center transition-colors"
             >
               {t("fp_enter_code")}
-            </Link>
-            <Link href="/login" className="block mt-3 text-xs text-zinc-600 hover:text-zinc-400 transition-colors text-center">
-              {t("fp_back")}
             </Link>
           </div>
         ) : (

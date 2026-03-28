@@ -154,7 +154,9 @@
       "Bash(grep -n \"NozzleRisk\\\\|nozzle_risk\\\\|nozzleRisk\" c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(app\\\\\\)/viewer/[jobId]/page.tsx)",
       "Bash(grep -n \"bedPlate\\\\|bed_plate\\\\|BedPlate\\\\|BuildPlate\\\\|plateY\\\\|printers\\\\|printer_id\\\\|printerId\\\\|bed_type\\\\|bedType\" c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(app\\\\\\)/viewer/[jobId]/page.tsx)",
       "Bash(grep -n \"ModelViewer\\\\|viewMode\\\\|<Model\" c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(app\\\\\\)/viewer/[jobId]/page.tsx)",
-      "Bash(python -c \"import ast, sys; files=[''app/support/detector.py'',''app/support/tree_generator.py'']; [print\\(f+'': OK''\\) or ast.parse\\(open\\(f\\).read\\(\\)\\) for f in files]\")"
+      "Bash(python -c \"import ast, sys; files=[''app/support/detector.py'',''app/support/tree_generator.py'']; [print\\(f+'': OK''\\) or ast.parse\\(open\\(f\\).read\\(\\)\\) for f in files]\")",
+      "Bash(find /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice -type f \\\\\\(-name *.ts -o -name *.tsx -o -name *.py \\\\\\) -path */frontend/* -o -path */backend/*)",
+      "Bash(grep -r \"email\\\\|mail\\\\|smtp\\\\|nodemailer\" /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend --include=*.py)"
     ]
   }
 }

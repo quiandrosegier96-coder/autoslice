@@ -2,15 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { apiPost } from "@/lib/api";
 import { useLang } from "@/contexts/LangContext";
 import { LANGS, type Lang } from "@/lib/i18n";
 
 export default function ResetPasswordPage() {
-  const router = useRouter();
+  const router       = useRouter();
+  const searchParams = useSearchParams();
   const { lang, setLang, t } = useLang();
-  const [token, setToken] = useState("");
+  const urlToken     = searchParams.get("token") ?? "";
+  const [token, setToken] = useState(urlToken);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
@@ -69,19 +71,21 @@ export default function ResetPasswordPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
-              {t("rp_code")}
-            </label>
-            <input
-              type="text"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder={t("rp_code_ph")}
-              required
-              className="font-mono text-sm"
-            />
-          </div>
+          {!urlToken && (
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
+                {t("rp_code")}
+              </label>
+              <input
+                type="text"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder={t("rp_code_ph")}
+                required
+                className="font-mono text-sm"
+              />
+            </div>
+          )}
           <div>
             <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
               {t("rp_new_pw")}

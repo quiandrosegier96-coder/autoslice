@@ -71,39 +71,45 @@ def register_user(username: str, email: str, password: str) -> dict:
 
 
 def create_reset_token(email: str) -> str | None:
-    """Create a 24h reset token for the given email. Returns token or None if email unknown."""
+    """
+    Create a 1h reset token for the given email.
+    Stores a SHA-256 hash of the token — never the raw token.
+    Returns the raw token (to be emailed) or None if email is unknown.
+    """
     from datetime import datetime, timezone
     with get_connection() as conn:
         user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
         if not user:
             return None
-        token = secrets.token_urlsafe(24)
+        raw_token  = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
         created_at = datetime.now(timezone.utc).isoformat()
         conn.execute(
             "INSERT INTO reset_tokens (email, token, created_at) VALUES (?,?,?)",
-            (email, token, created_at),
+            (email, token_hash, created_at),
         )
         conn.commit()
-    return token
+    return raw_token
 
 
 def reset_password(token: str, new_password: str) -> None:
     """Apply password reset. Raises ValueError on invalid/expired/used token."""
     from datetime import datetime, timedelta, timezone
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
     with get_connection() as conn:
         row = conn.execute(
-            "SELECT email, created_at, used FROM reset_tokens WHERE token = ?", (token,)
+            "SELECT email, created_at, used FROM reset_tokens WHERE token = ?", (token_hash,)
         ).fetchone()
         if not row:
-            raise ValueError("Invalid or expired reset code.")
+            raise ValueError("Invalid or expired reset link.")
         if row["used"]:
-            raise ValueError("This reset code has already been used.")
+            raise ValueError("This reset link has already been used.")
         created = datetime.fromisoformat(row["created_at"])
-        if datetime.now(timezone.utc) - created > timedelta(hours=24):
-            raise ValueError("Reset code has expired (valid for 24 hours).")
+        if datetime.now(timezone.utc) - created > timedelta(hours=1):
+            raise ValueError("Reset link has expired (valid for 1 hour).")
         new_hash = hash_password(new_password)
         conn.execute("UPDATE users SET password_hash = ? WHERE email = ?", (new_hash, row["email"]))
-        conn.execute("UPDATE reset_tokens SET used = 1 WHERE token = ?", (token,))
+        conn.execute("UPDATE reset_tokens SET used = 1 WHERE token = ?", (token_hash,))
         conn.commit()
 
 
