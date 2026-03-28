@@ -155,7 +155,7 @@ export const translations = {
     // Forgot password
     fp_subtitle:       "Wachtwoord opnieuw instellen",
     fp_heading:        "Wachtwoord vergeten",
-    fp_body:           "Voer je e-mailadres in. Je beheerder geeft je een resetcode.",
+    fp_body:           "Voer je e-mailadres in. We sturen je een resetlink per e-mail.",
     fp_email:          "E-mail",
     fp_submit:         "Resetcode aanvragen",
     fp_submitting:     "Verzenden…",
@@ -313,7 +313,7 @@ export const translations = {
 
     fp_subtitle:       "Reset your password",
     fp_heading:        "Forgot password",
-    fp_body:           "Enter your email address. Your admin will provide a reset code.",
+    fp_body:           "Enter your email address. We'll send you a reset link.",
     fp_email:          "Email",
     fp_submit:         "Request reset code",
     fp_submitting:     "Sending…",
@@ -470,7 +470,7 @@ export const translations = {
 
     fp_subtitle:       "Réinitialiser votre mot de passe",
     fp_heading:        "Mot de passe oublié",
-    fp_body:           "Entrez votre adresse e-mail. Votre administrateur vous fournira un code.",
+    fp_body:           "Entrez votre adresse e-mail. Nous vous enverrons un lien de réinitialisation.",
     fp_email:          "E-mail",
     fp_submit:         "Demander un code de réinitialisation",
     fp_submitting:     "Envoi…",
@@ -627,7 +627,7 @@ export const translations = {
 
     fp_subtitle:       "Passwort zurücksetzen",
     fp_heading:        "Passwort vergessen",
-    fp_body:           "Geben Sie Ihre E-Mail-Adresse ein. Ihr Admin gibt Ihnen den Reset-Code.",
+    fp_body:           "Geben Sie Ihre E-Mail-Adresse ein. Wir senden Ihnen einen Reset-Link.",
     fp_email:          "E-Mail",
     fp_submit:         "Reset-Code anfordern",
     fp_submitting:     "Wird gesendet…",
