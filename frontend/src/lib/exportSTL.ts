@@ -24,6 +24,42 @@ type Triangle = {
   c:      THREE.Vector3;
 };
 
+function collectTrianglesFromGeometry(geometry: THREE.BufferGeometry): Triangle[] {
+  const triangles: Triangle[] = [];
+  const pos   = geometry.getAttribute("position");
+  const index = geometry.getIndex();
+
+  if (!pos) return triangles;
+
+  const a  = new THREE.Vector3();
+  const b  = new THREE.Vector3();
+  const c  = new THREE.Vector3();
+  const ab = new THREE.Vector3();
+  const ac = new THREE.Vector3();
+
+  if (index) {
+    for (let i = 0; i < index.count; i += 3) {
+      a.fromBufferAttribute(pos, index.getX(i));
+      b.fromBufferAttribute(pos, index.getX(i + 1));
+      c.fromBufferAttribute(pos, index.getX(i + 2));
+      ab.subVectors(b, a);
+      ac.subVectors(c, a);
+      triangles.push({ normal: new THREE.Vector3().crossVectors(ab, ac).normalize(), a: a.clone(), b: b.clone(), c: c.clone() });
+    }
+  } else {
+    for (let i = 0; i < pos.count; i += 3) {
+      a.fromBufferAttribute(pos, i);
+      b.fromBufferAttribute(pos, i + 1);
+      c.fromBufferAttribute(pos, i + 2);
+      ab.subVectors(b, a);
+      ac.subVectors(c, a);
+      triangles.push({ normal: new THREE.Vector3().crossVectors(ab, ac).normalize(), a: a.clone(), b: b.clone(), c: c.clone() });
+    }
+  }
+
+  return triangles;
+}
+
 function collectTriangles(
   geometry: THREE.BufferGeometry,
   matrix:   THREE.Matrix4,
@@ -67,16 +103,53 @@ function collectTriangles(
   return triangles;
 }
 
-function collectFromObject(root: THREE.Object3D): Triangle[] {
-  const triangles: Triangle[] = [];
+function collectFromObject(
+  root:       THREE.Object3D,
+  triangles:  Triangle[]    = [],
+  baseMatrix: THREE.Matrix4 = new THREE.Matrix4(),
+): Triangle[] {
   root.updateWorldMatrix(true, true);
+
+  const geometries: THREE.BufferGeometry[] = [];
 
   root.traverse((child) => {
     const mesh = child as THREE.Mesh;
-    if (mesh.isMesh && mesh.geometry) {
-      triangles.push(...collectTriangles(mesh.geometry, mesh.matrixWorld));
+    if (!mesh.isMesh || !mesh.geometry) return;
+
+    const cloned = mesh.geometry.clone();
+    const position = cloned.getAttribute("position");
+    if (!position) return;
+
+    const clean = new THREE.BufferGeometry();
+    clean.setAttribute("position", position.clone());
+
+    if (cloned.index) {
+      clean.setIndex(cloned.index.clone());
     }
+
+    const combinedMatrix = baseMatrix.clone().multiply(mesh.matrixWorld);
+    clean.applyMatrix4(combinedMatrix);
+    clean.computeVertexNormals();
+    clean.computeBoundingBox();
+    clean.computeBoundingSphere();
+
+    geometries.push(clean);
   });
+
+  if (!geometries.length) {
+    return triangles;
+  }
+
+  const merged = mergeGeometries(geometries, true);
+  if (!merged) {
+    return triangles;
+  }
+
+  merged.computeVertexNormals();
+  merged.computeBoundingBox();
+  merged.computeBoundingSphere();
+
+  triangles.push(...collectTrianglesFromGeometry(merged));
 
   return triangles;
 }
@@ -99,16 +172,27 @@ function mergeObjectGeometries(root: THREE.Object3D): THREE.BufferGeometry | nul
     const mesh = child as THREE.Mesh;
     if (!mesh.isMesh || !mesh.geometry) return;
 
-    // Clone and bake the world transform so all pieces share the same space
-    const g = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
+    const cloned = mesh.geometry.clone();
 
-    // Strip every attribute except position — mergeGeometries requires
-    // homogeneous attribute sets, and normals will be recomputed below
-    for (const key of Object.keys(g.attributes)) {
-      if (key !== "position") g.deleteAttribute(key);
+    const position = cloned.getAttribute("position");
+    if (!position) return;
+
+    // Build a clean geometry with only position + index — homogeneous for mergeGeometries
+    const clean = new THREE.BufferGeometry();
+    clean.setAttribute("position", position.clone());
+    if (cloned.index) {
+      clean.setIndex(cloned.index.clone());
     }
 
-    pieces.push(g);
+    // Bake world transform into vertex positions
+    clean.applyMatrix4(mesh.matrixWorld);
+
+    clean.computeVertexNormals();
+    clean.computeBoundingBox();
+    clean.computeBoundingSphere();
+
+    pieces.push(clean);
+    cloned.dispose();
   });
 
   console.log(`[exportSTL] mergeObjectGeometries: found ${pieces.length} mesh node(s)`);
@@ -118,7 +202,7 @@ function mergeObjectGeometries(root: THREE.Object3D): THREE.BufferGeometry | nul
     return null;
   }
 
-  const merged = mergeGeometries(pieces, false);
+  const merged = mergeGeometries(pieces, true);
   pieces.forEach((g) => g.dispose());
 
   if (!merged) {
@@ -126,8 +210,9 @@ function mergeObjectGeometries(root: THREE.Object3D): THREE.BufferGeometry | nul
     return null;
   }
 
-  // Recompute per-vertex normals on the unified geometry
   merged.computeVertexNormals();
+  merged.computeBoundingBox();
+  merged.computeBoundingSphere();
 
   const vertexCount   = merged.attributes.position.count;
   const triangleCount = merged.index
