@@ -156,7 +156,8 @@
       "Bash(grep -n \"ModelViewer\\\\|viewMode\\\\|<Model\" c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(app\\\\\\)/viewer/[jobId]/page.tsx)",
       "Bash(python -c \"import ast, sys; files=[''app/support/detector.py'',''app/support/tree_generator.py'']; [print\\(f+'': OK''\\) or ast.parse\\(open\\(f\\).read\\(\\)\\) for f in files]\")",
       "Bash(find /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice -type f \\\\\\(-name *.ts -o -name *.tsx -o -name *.py \\\\\\) -path */frontend/* -o -path */backend/*)",
-      "Bash(grep -r \"email\\\\|mail\\\\|smtp\\\\|nodemailer\" /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend --include=*.py)"
+      "Bash(grep -r \"email\\\\|mail\\\\|smtp\\\\|nodemailer\" /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend --include=*.py)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/docs)"
     ]
   }
 }
