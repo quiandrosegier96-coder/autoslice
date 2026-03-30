@@ -9,6 +9,17 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "500mb",
     },
   },
+  async headers() {
+    return [
+      {
+        // Prevent CDN/proxy caching of all auth pages
+        source: "/(login|register|forgot-password|reset-password)",
+        headers: [
+          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate" },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return [
       // /api/convert is handled by the Next.js route handler (src/app/api/convert/route.ts)
