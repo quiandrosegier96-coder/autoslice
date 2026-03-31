@@ -9,7 +9,8 @@ from app.models.print_settings import PrintSettings
 
 _FILAMENT_OVERRIDES: dict[FilamentType, dict] = {
     FilamentType.PLA: {
-        "nozzle_temp_c": 220,
+        "nozzle_temp_c": 200,
+        "first_layer_nozzle_temp_c": 220,
         "bed_temp_c": 60,
         "fan_first_layer": False,
         "_fan_min": 100,

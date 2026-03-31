@@ -199,6 +199,8 @@ def _make_process_config(settings: PrintSettings) -> dict:
 def _make_filament_config(settings: PrintSettings, filament: FilamentType) -> dict:
     filament_display = _FILAMENT_TYPE_DISPLAY.get(filament.value, filament.value.upper())
     bed = str(settings.bed_temp_c)
+    nozzle      = str(settings.nozzle_temp_c)
+    nozzle_fl   = str(settings.first_layer_nozzle_temp_c or settings.nozzle_temp_c)
     # Set all plate temperature keys — Anycubic Slicer uses whichever matches the active plate
     return {
         "from": "project",
@@ -206,8 +208,12 @@ def _make_filament_config(settings: PrintSettings, filament: FilamentType) -> di
         "filament_settings_id": [f"Generic {filament_display}"],
         "filament_type": [filament_display],
         "filament_diameter": [str(settings.filament_diameter_mm)],
-        "nozzle_temperature": [str(settings.nozzle_temp_c)],
-        "nozzle_temperature_initial_layer": [str(settings.nozzle_temp_c)],
+        "nozzle_temperature": [nozzle],
+        "nozzle_temperature_initial_layer": [nozzle_fl],
+        # Plain bed temp keys (OrcaSlicer / Anycubic Slicer Next primary keys)
+        "bed_temperature": [bed],
+        "bed_temperature_initial_layer": [bed],
+        # Plate-specific keys (fallback for older versions)
         "hot_plate_temp": [bed],
         "hot_plate_temp_initial_layer": [bed],
         "textured_plate_temp": [bed],

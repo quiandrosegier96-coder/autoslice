@@ -34,6 +34,7 @@ class PrintSettings:
 
     # --- Temperatures ---
     nozzle_temp_c: int
+    first_layer_nozzle_temp_c: int = 0   # 0 = same as nozzle_temp_c
     bed_temp_c: int
 
     # --- Speed ---
