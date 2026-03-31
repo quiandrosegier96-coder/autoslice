@@ -10,6 +10,8 @@ services:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
     volumes:
       - db-data:/data
+    networks:
+      - internal
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s
@@ -27,9 +29,15 @@ services:
       - "3000:3000"
     environment:
       - BACKEND_URL=http://backend:8000
+    networks:
+      - internal
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
 
 volumes:
   db-data:
+
+networks:
+  internal:
+    driver: bridge
