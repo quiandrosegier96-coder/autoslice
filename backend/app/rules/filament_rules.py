@@ -27,6 +27,7 @@ _FILAMENT_OVERRIDES: dict[FilamentType, dict] = {
     },
     FilamentType.PETG: {
         "nozzle_temp_c": 240,
+        "first_layer_nozzle_temp_c": 245,
         "bed_temp_c": 80,
         "fan_first_layer": False,
         "_fan_min": 30,
@@ -47,6 +48,7 @@ _FILAMENT_OVERRIDES: dict[FilamentType, dict] = {
     },
     FilamentType.TPU: {
         "nozzle_temp_c": 230,
+        "first_layer_nozzle_temp_c": 235,
         "bed_temp_c": 40,
         "fan_first_layer": False,
         "_fan_min": 20,
@@ -113,7 +115,7 @@ def apply_filament_rules(
                              f"{fil} is flexible — supports cause more harm than good",
                              "supports_enabled", before, False)
         elif not key.startswith("_"):
-            before = getattr(settings, key)
+            before = getattr(settings, key, None)
             setattr(settings, key, value)
             if trace:
                 trace.record(f"filament.{key}.{fil}",

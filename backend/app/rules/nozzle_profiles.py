@@ -89,12 +89,15 @@ def apply_nozzle_profile(
         if key == "nozzle_temp_offset_c":
             before = settings.nozzle_temp_c
             settings.nozzle_temp_c += value
+            # Apply offset to first-layer temp too if it's set separately
+            if settings.first_layer_nozzle_temp_c:
+                settings.first_layer_nozzle_temp_c += value
             if trace:
                 trace.record(f"nozzle.temp_offset.{tag}",
                              f"{tag} nozzle: temp +{value}°C for small melt zone",
                              "nozzle_temp_c", before, settings.nozzle_temp_c)
         else:
-            before = getattr(settings, key)
+            before = getattr(settings, key, None)
             setattr(settings, key, value)
             if trace:
                 trace.record(f"nozzle.{key}.{tag}",
