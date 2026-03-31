@@ -327,13 +327,13 @@ def build_settings_configs(
     merged["filament_settings_id"] = slot_types_id
     merged["filament_diameter"] = [str(settings.filament_diameter_mm)] * color_count
 
-    # Multi-color flush routing — route purge material into infill/support to save filament
+    # Multi-color: keep dedicated flush tower (do not route into infill/support)
     if color_count > 1:
-        process["flush_into_infill"] = "1"
-        process["flush_into_support"] = "1"
+        process["flush_into_infill"] = "0"
+        process["flush_into_support"] = "0"
         process["flush_into_objects"] = "0"
-        merged["flush_into_infill"] = "1"
-        merged["flush_into_support"] = "1"
+        merged["flush_into_infill"] = "0"
+        merged["flush_into_support"] = "0"
         merged["flush_into_objects"] = "0"
 
     configs["Metadata/project_settings.config"] = json.dumps(merged, indent=2)
