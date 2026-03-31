@@ -35,11 +35,13 @@ class PrintSettings:
     # --- Temperatures ---
     nozzle_temp_c: int
     bed_temp_c: int
-    first_layer_nozzle_temp_c: int = 0   # 0 = same as nozzle_temp_c
 
     # --- Speed ---
     print_speed_mm_s: int
     first_layer_speed_mm_s: int
+
+    # --- Optional first-layer nozzle override ---
+    first_layer_nozzle_temp_c: int = 0   # 0 = same as nozzle_temp_c
 
     # --- Retraction ---
     retract_length_mm: float = 0.8    # direct drive default
