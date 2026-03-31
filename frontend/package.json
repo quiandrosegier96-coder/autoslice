@@ -1,6 +1,6 @@
 {
   "name": "autoslice-frontend",
-  "version": "1.3.27",
+  "version": "1.3.28",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",
