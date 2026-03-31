@@ -189,7 +189,10 @@
       "Bash(xargs ls:*)",
       "Bash(/tmp/check_fields.txt:*)",
       "Read(//tmp/**)",
-      "Bash(grep -n \"/ \\\\|\\\\.get\\(\" /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/app/rules/*.py)"
+      "Bash(grep -n \"/ \\\\|\\\\.get\\(\" /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/app/rules/*.py)",
+      "Bash(ls -la /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(app\\\\\\)/)",
+      "Bash(wc -l /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(app\\\\\\)/convert/page.tsx)",
+      "Bash(ls -la /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(auth\\\\\\)/)"
     ]
   }
 }
