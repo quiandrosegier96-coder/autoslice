@@ -1,14 +1,6 @@
+   ▲ Next.js 15.5.12
+   - Local:        http://localhost:3000
+   - Network:      http://0.0.0.0:3000
 
-> autoslice-frontend@1.3.20 start
-> next start
-
- ⨯ Failed to start server
-Error: listen EADDRINUSE: address already in use :::3000
-    at <unknown> (Error: listen EADDRINUSE: address already in use :::3000)
-    at new Promise (<anonymous>) {
-  code: 'EADDRINUSE',
-  errno: -4091,
-  syscall: 'listen',
-  address: '::',
-  port: 3000
-}
+ ✓ Starting...
+ ✓ Ready in 152ms

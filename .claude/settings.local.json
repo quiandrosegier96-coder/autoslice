@@ -163,7 +163,28 @@
       "Bash(tasklist)",
       "Bash(pm2 list:*)",
       "Bash(wmic process:*)",
-      "Bash(curl -s http://localhost:3000/forgot-password)"
+      "Bash(curl -s http://localhost:3000/forgot-password)",
+      "Bash(tasklist /FI \"IMAGENAME eq nginx.exe\")",
+      "Bash(tasklist /FI \"IMAGENAME eq caddy.exe\")",
+      "Bash(tasklist /FI \"IMAGENAME eq node.exe\")",
+      "Bash(curl -s -I https://www.autoslice.be/forgot-password)",
+      "Bash(find /c /d /e 2)",
+      "Bash(/dev/null -name Caddyfile)",
+      "Read(//c/Users/**)",
+      "Bash(/dev/null -name caddy* -o -name Caddyfile)",
+      "Bash(curl -s http://localhost:2019/config/)",
+      "Bash(wsl -e sh -c \"pgrep -a caddy 2>/dev/null; find / -name Caddyfile 2>/dev/null | head -5\")",
+      "Bash(node node_modules/.bin/next build)",
+      "Bash(cmd.exe /c \"npm run build\")",
+      "Bash(cmd.exe /c \"cd C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\frontend && npm run build\")",
+      "Bash(cmd.exe /c \"cd C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\frontend && npm run build 2>&1\")",
+      "Bash(npx --yes next build)",
+      "Bash(cp -r .next/static .next/standalone/.next/static)",
+      "Bash(cp -r public .next/standalone/public)",
+      "Bash(systemctl status:*)",
+      "Bash(caddy version:*)",
+      "Bash(find /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice -name Caddyfile -o -name docker-compose*)",
+      "Bash(curl -s https://www.autoslice.be/forgot-password)"
     ]
   }
 }
