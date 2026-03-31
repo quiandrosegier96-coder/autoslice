@@ -192,7 +192,15 @@
       "Bash(grep -n \"/ \\\\|\\\\.get\\(\" /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/app/rules/*.py)",
       "Bash(ls -la /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(app\\\\\\)/)",
       "Bash(wc -l /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(app\\\\\\)/convert/page.tsx)",
-      "Bash(ls -la /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(auth\\\\\\)/)"
+      "Bash(ls -la /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(auth\\\\\\)/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://www.autoslice.be/api/health)",
+      "Bash(curl -s https://www.autoslice.be/api/health)",
+      "Bash(curl -s https://www.autoslice.be/health)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{time_total}s\\\\n\" -X POST https://www.autoslice.be/api/auth/login -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"test\"\",\"\"password\"\":\"\"test\"\"}')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{time_total}s\\\\n\" https://www.autoslice.be/api/printers)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{time_total}s\\\\n\" https://www.autoslice.be/api/ratings/average)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)"
     ]
   }
 }
