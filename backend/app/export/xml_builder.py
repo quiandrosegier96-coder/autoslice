@@ -89,6 +89,13 @@ _INFILL_MAP = {
     "rectilinear": "rectilinear",
 }
 
+_SEAM_MAP = {
+    "aligned": "aligned",
+    "rear":    "back",    # OrcaSlicer uses "back", not "rear"
+    "random":  "random",
+    "nearest": "nearest",
+}
+
 _FILAMENT_TYPE_DISPLAY = {
     "pla": "PLA",
     "petg": "PETG",
@@ -110,7 +117,8 @@ def _make_process_config(settings: PrintSettings) -> dict:
     solid_infill_speed= str(max(30, int(spd * 0.80)))   # 80% — top/bottom layers
     top_surface_speed = str(max(20, int(spd * 0.40)))   # 40% — most visible surface
     support_speed     = str(max(30, int(spd * 0.60)))   # 60% — support stability
-    return {
+    bridge_speed      = str(max(20, int(spd * 0.30)))   # 30% — unsupported bridges
+    cfg = {
         "from": "project",
         "inherits": "",
         "layer_height": str(settings.layer_height_mm),
@@ -124,9 +132,11 @@ def _make_process_config(settings: PrintSettings) -> dict:
         "support_type": support_type,
         "support_threshold_angle": str(settings.support_angle_threshold_deg),
         "support_on_build_plate_only": "1" if settings.support_placement == "buildplate_only" else "0",
+        "support_density": f"{settings.support_density_percent}%",
         "brim_type": brim_type,
         "brim_width": str(settings.brim_width_mm if settings.brim_enabled else 0),
         "skirt_loops": str(settings.skirt_loops),
+        "skirt_distance": "2",
         "outer_wall_speed": outer_wall_speed,
         "inner_wall_speed": inner_wall_speed,
         "sparse_infill_speed": infill_speed,
@@ -143,6 +153,16 @@ def _make_process_config(settings: PrintSettings) -> dict:
         "infill_line_width": str(settings.infill_line_width_mm),
         "top_surface_line_width": str(settings.line_width_mm),
         "support_line_width": str(settings.line_width_mm),
+        # Bridge settings — slow + full fan + reduced flow for best bridging
+        "bridge_speed": bridge_speed,
+        "bridge_flow": "0.9",
+        "enable_overhang_bridge_fan": "1",
+        # Overhang wall detection — graduated slowdown as overhang increases
+        "detect_overhang_wall": "1",
+        "overhang_3_4_speed": str(max(15, int(spd * 0.30))),
+        "overhang_4_4_speed": str(max(10, int(spd * 0.20))),
+        # Wall generator — Arachne produces variable-width walls for better surface quality
+        "wall_generator": "arachne",
         # Support gaps
         "support_top_z_distance": str(settings.support_top_z_distance_mm),
         "support_bottom_z_distance": str(settings.support_bottom_z_distance_mm),
@@ -156,14 +176,24 @@ def _make_process_config(settings: PrintSettings) -> dict:
         "ironing_type": "top_surface" if settings.ironing_enabled else "no_ironing",
         "ironing_speed": str(max(15, settings.print_speed_mm_s // 5)),
         "top_surface_pattern": settings.top_surface_pattern,
-        # Seam
-        "seam_position": settings.seam_position,
+        # Seam — map "rear" → "back" (OrcaSlicer spelling)
+        "seam_position": _SEAM_MAP.get(settings.seam_position, settings.seam_position),
+        # First layer quality
+        "elefant_foot_compensation": "0.1",
+        # Arc fitting — smoother curves in G-code, less file size
+        "enable_arc_fitting": "1",
         # Retraction
         "retraction_length": [str(settings.retract_length_mm)],
         "retraction_speed": [str(settings.retract_speed_mm_s)],
         "z_hop": [str(settings.z_hop_mm)],
         "z_hop_types": ["Slope Lift"],
     }
+    # Tree support extras
+    if settings.support_type == "tree":
+        cfg["support_style"] = "tree_slim"
+        cfg["tree_support_branch_angle"] = "40"
+        cfg["tree_support_wall_count"] = "1"
+    return cfg
 
 
 def _make_filament_config(settings: PrintSettings, filament: FilamentType) -> dict:
@@ -191,6 +221,7 @@ def _make_filament_config(settings: PrintSettings, filament: FilamentType) -> di
         "close_fan_the_first_x_layers": ["0" if settings.fan_first_layer else "1"],
         "slow_down_layer_time": [str(settings.min_layer_time_s)],
         "pressure_advance": [str(settings.pressure_advance)],
+        "enable_pressure_advance": ["1" if settings.pressure_advance > 0 else "0"],
         "wipe_before_change": ["1" if settings.wipe_on_retract else "0"],
         "coast_at_end_distance": [str(settings.coast_at_end_mm)],
     }
@@ -295,6 +326,15 @@ def build_settings_configs(
     merged["filament_type"] = slot_types_display
     merged["filament_settings_id"] = slot_types_id
     merged["filament_diameter"] = [str(settings.filament_diameter_mm)] * color_count
+
+    # Multi-color flush routing — route purge material into infill/support to save filament
+    if color_count > 1:
+        process["flush_into_infill"] = "1"
+        process["flush_into_support"] = "1"
+        process["flush_into_objects"] = "0"
+        merged["flush_into_infill"] = "1"
+        merged["flush_into_support"] = "1"
+        merged["flush_into_objects"] = "0"
 
     configs["Metadata/project_settings.config"] = json.dumps(merged, indent=2)
     configs["Metadata/process_settings_1.config"] = json.dumps(process, indent=2)
