@@ -184,7 +184,12 @@
       "Bash(systemctl status:*)",
       "Bash(caddy version:*)",
       "Bash(find /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice -name Caddyfile -o -name docker-compose*)",
-      "Bash(curl -s https://www.autoslice.be/forgot-password)"
+      "Bash(curl -s https://www.autoslice.be/forgot-password)",
+      "Bash(grep -r \"3MF\\\\|3mf\" /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice --include=*.ts --include=*.tsx --include=*.py --include=*.txt --include=*.md -l)",
+      "Bash(xargs ls:*)",
+      "Bash(/tmp/check_fields.txt:*)",
+      "Read(//tmp/**)",
+      "Bash(grep -n \"/ \\\\|\\\\.get\\(\" /c/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/app/rules/*.py)"
     ]
   }
 }
