@@ -205,7 +205,7 @@ def _make_filament_config(settings: PrintSettings, filament: FilamentType) -> di
     return {
         "from": "project",
         "inherits": "",
-        "filament_settings_id": [f"Generic {filament_display}"],
+        "filament_settings_id": [f"AutoSlice {filament_display}"],
         "filament_type": [filament_display],
         "filament_diameter": [str(settings.filament_diameter_mm)],
         "nozzle_temperature": [nozzle],
@@ -236,7 +236,7 @@ def _make_filament_config(settings: PrintSettings, filament: FilamentType) -> di
 def _make_machine_config(settings: PrintSettings, printer: PrinterProfile, color_count: int = 1) -> dict:
     # Anycubic Slicer Next (OrcaSlicer) uses "<Display Name> <nozzle> nozzle" as the profile ID
     nozzle_str = str(settings.nozzle_size_mm).rstrip("0").rstrip(".")
-    printer_settings_id = f"{printer.display_name} {nozzle_str} nozzle"
+    printer_settings_id = f"AutoSlice {nozzle_str}mm"
     cfg = {
         "from": "project",
         "inherits": "",
@@ -320,7 +320,7 @@ def build_settings_configs(
         slot_colors.append(color)
         display = _FILAMENT_TYPE_DISPLAY.get(slot_filament.value, slot_filament.value.upper())
         slot_types_display.append(display)
-        slot_types_id.append(f"Generic {display}")
+        slot_types_id.append(f"AutoSlice {display}")
         configs[f"Metadata/filament_settings_{slot + 1}.config"] = json.dumps(fil, indent=2)
 
     merged: dict = {}
