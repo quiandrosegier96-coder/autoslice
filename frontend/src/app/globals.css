@@ -3,63 +3,68 @@
 @tailwind utilities;
 
 :root {
-  --bg: #080808;
-  --surface: #191919;
-  --brand: #dc2626;
+  --bg: #070709;
+  --surface: #0f0f12;
+  --brand: #e02424;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background-color: var(--bg);
-  color: #f5f5f5;
+  color: #e4e4e8;
   font-family: Inter, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-image: radial-gradient(ellipse 70% 40% at 50% -10%, rgba(224,36,36,0.06) 0%, transparent 65%);
 }
 
 ::selection {
-  background: #dc2626;
+  background: rgba(224, 36, 36, 0.3);
   color: #fff;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #111;
-}
-::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #dc2626;
-}
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #242428; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #e02424; }
 
-/* Input base styles */
+/* ── Inputs ── */
 input[type="email"],
 input[type="password"],
 input[type="text"],
 input[type="number"],
 select {
-  background: #191919;
-  border: 1px solid #2a2a2a;
-  color: #f5f5f5;
-  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: #e4e4e8;
+  border-radius: 8px;
   padding: 10px 14px;
   width: 100%;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   font-size: 14px;
+  font-family: inherit;
 }
 
 input:focus,
 select:focus {
-  border-color: #dc2626;
+  border-color: rgba(224, 36, 36, 0.6);
+  box-shadow: 0 0 0 3px rgba(224, 36, 36, 0.08);
 }
 
 input::placeholder {
-  color: #555;
+  color: #3a3a42;
+}
+
+select option {
+  background: #131316;
+  color: #e4e4e8;
 }

@@ -1,13 +1,18 @@
 export function Footer() {
   return (
-    <footer className="border-t border-surface-border bg-surface py-5 px-6">
-      <p className="text-center text-xs text-zinc-600">
-        © {new Date().getFullYear()} AutoSlice —{" "}
-        Designed by{" "}
-        <span className="text-zinc-500">Quiandro Segier</span>
-        {" "}in cooperation with{" "}
-        <span className="text-zinc-500">Yoni Smets</span>
-      </p>
+    <footer className="border-t border-surface-border/50 bg-surface py-4 px-6">
+      <div className="flex items-center justify-center gap-1.5 flex-wrap">
+        <span className="text-[11px] text-zinc-700">
+          © {new Date().getFullYear()} AutoSlice
+        </span>
+        <span className="text-zinc-800">·</span>
+        <span className="text-[11px] text-zinc-700">
+          Designed by{" "}
+          <span className="text-zinc-600">Quiandro Segier</span>
+          {" & "}
+          <span className="text-zinc-600">Yoni Smets</span>
+        </span>
+      </div>
     </footer>
   );
 }

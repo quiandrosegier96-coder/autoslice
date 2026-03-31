@@ -53,18 +53,19 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center px-4">
 
-      {/* Reset notice modal */}
+      {/* Notice modal */}
       {showNotice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-surface-card border border-surface-border rounded-xl p-7 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/70 backdrop-blur-md">
+          <div className="w-full max-w-md bg-surface-card border border-surface-border rounded-2xl p-7
+                          shadow-[0_24px_64px_rgba(0,0,0,0.6)]">
             <div className="flex items-center gap-3 mb-5">
-              <div className="w-8 h-8 rounded-full bg-brand/15 border border-brand/30 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
                 <svg className="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z"/>
                 </svg>
               </div>
-              <h2 className="text-base font-semibold text-white">Mededeling</h2>
+              <h2 className="text-[15px] font-semibold text-white">Mededeling</h2>
             </div>
             <p className="text-sm text-zinc-300 leading-relaxed mb-1">Beste gebruiker,</p>
             <p className="text-sm text-zinc-400 leading-relaxed mb-5">
@@ -75,33 +76,34 @@ export default function LoginPage() {
               <br /><br />
               Bedankt voor uw begrip en vertrouwen.
             </p>
-            <p className="text-xs text-zinc-500 mb-5 font-medium">— Team AutoSlice —</p>
+            <p className="text-xs text-zinc-600 mb-5 font-medium tracking-wide">— Team AutoSlice —</p>
             <button onClick={dismissNotice}
-              className="w-full py-2.5 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg
-                         transition-colors duration-150 text-sm">
+              className="w-full py-2.5 bg-brand-gradient hover:opacity-90 text-white font-semibold rounded-xl
+                         transition-opacity duration-150 text-sm shadow-[0_2px_8px_rgba(224,36,36,0.3)]">
               Begrepen
             </button>
           </div>
         </div>
       )}
 
-      {/* Logo + lang switcher */}
-      <div className="mb-8 text-center">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <div className="w-8 h-8 bg-brand rounded-sm flex items-center justify-center">
+      {/* Logo */}
+      <div className="mb-10 text-center">
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <div className="w-10 h-10 bg-brand rounded-xl flex items-center justify-center
+                          shadow-[0_0_20px_rgba(224,36,36,0.35)]">
             <svg viewBox="0 0 24 24" fill="white" className="w-5 h-5">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
             </svg>
           </div>
-          <span className="text-2xl font-bold text-white tracking-tight">
+          <span className="text-[26px] font-bold text-white tracking-tight">
             Auto<span className="text-brand">Slice</span>
           </span>
         </div>
-        <p className="text-zinc-500 text-sm mb-3">{t("login_subtitle")}</p>
-        <div className="flex items-center justify-center gap-1">
+        <p className="text-zinc-500 text-sm mb-4">{t("login_subtitle")}</p>
+        <div className="inline-flex items-center gap-0.5 bg-surface-card border border-surface-border rounded-lg px-2 py-1.5">
           {LANGS.map(({ code, label }) => (
             <button key={code} onClick={() => setLang(code as Lang)}
-              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+              className={`px-2 py-0.5 rounded-md text-xs font-semibold transition-colors ${
                 lang === code ? "text-brand" : "text-zinc-600 hover:text-zinc-400"
               }`}>
               {label}
@@ -111,61 +113,81 @@ export default function LoginPage() {
       </div>
 
       {/* Card */}
-      <div className="w-full max-w-sm bg-surface-card border border-surface-border rounded-xl p-8">
-        <h1 className="text-xl font-semibold text-white mb-6">{t("login_welcome")}</h1>
+      <div className="w-full max-w-sm bg-surface-card border border-surface-border rounded-2xl p-8
+                      shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
+
+        <h1 className="text-xl font-semibold text-white mb-1">{t("login_welcome")}</h1>
+        <p className="text-sm text-zinc-500 mb-6">{t("login_subtitle")}</p>
 
         {error && (
-          <div className="mb-4 p-3 bg-brand/10 border border-brand/30 rounded-lg text-brand text-sm">
+          <div className="mb-5 p-3.5 bg-brand/8 border border-brand/20 rounded-xl text-brand text-sm flex items-center gap-2.5">
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            </svg>
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
+            <label className="block text-[11px] font-semibold text-zinc-500 mb-2 uppercase tracking-widest">
               {t("login_email")}
             </label>
             <input type="text" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com or username" required autoComplete="username" />
+              placeholder="you@example.com" required autoComplete="username" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">
-              {t("login_password")}
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-[11px] font-semibold text-zinc-500 uppercase tracking-widest">
+                {t("login_password")}
+              </label>
+              <Link href="/forgot-password"
+                className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors">
+                {t("login_forgot")}
+              </Link>
+            </div>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••" required autoComplete="current-password" />
           </div>
           <button type="submit" disabled={loading}
-            className="w-full mt-2 py-2.5 px-4 bg-brand hover:bg-brand-dark disabled:opacity-50
-                       disabled:cursor-not-allowed text-white font-semibold rounded-lg
-                       transition-colors duration-150 text-sm">
-            {loading ? t("login_submitting") : t("login_submit")}
+            className="w-full mt-2 py-2.5 px-4 bg-brand hover:bg-brand-dark disabled:opacity-40
+                       disabled:cursor-not-allowed text-white font-semibold rounded-xl
+                       transition-all duration-150 text-sm
+                       shadow-[0_2px_8px_rgba(224,36,36,0.25)] hover:shadow-[0_4px_16px_rgba(224,36,36,0.35)]
+                       hover:-translate-y-px active:translate-y-0">
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                {t("login_submitting")}
+              </span>
+            ) : t("login_submit")}
           </button>
         </form>
 
-        <div className="mt-6 flex flex-col gap-2 text-center">
+        <div className="mt-6 pt-5 border-t border-surface-border text-center">
           <p className="text-sm text-zinc-500">
             {t("login_no_account")}{" "}
-            <Link href="/register" className="text-brand hover:text-brand-light transition-colors">
+            <Link href="/register" className="text-brand hover:text-brand-light transition-colors font-medium">
               {t("login_create")}
             </Link>
           </p>
-          <Link href="/forgot-password" className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
-            {t("login_forgot")}
-          </Link>
         </div>
       </div>
 
       {avgRating && avgRating.total > 0 && (
-        <div className="mt-6 flex items-center gap-2 text-sm text-zinc-500">
-          <span className="text-yellow-400 text-base">{"★".repeat(Math.round(avgRating.average))}{"☆".repeat(5 - Math.round(avgRating.average))}</span>
-          <span className="font-medium text-zinc-400">{avgRating.average.toFixed(1)}/5</span>
-          <span>— {t("rating_avg")} {avgRating.total} {t("rating_reviews")}</span>
+        <div className="mt-8 flex items-center gap-2 text-xs text-zinc-600">
+          <span className="text-yellow-400/80 tracking-tight">
+            {"★".repeat(Math.round(avgRating.average))}{"☆".repeat(5 - Math.round(avgRating.average))}
+          </span>
+          <span className="text-zinc-500 font-medium">{avgRating.average.toFixed(1)}</span>
+          <span className="text-zinc-700">·</span>
+          <span>{avgRating.total} {t("rating_reviews")}</span>
         </div>
       )}
 
-      <p className="mt-4 text-xs text-zinc-700">
-        AutoSlice v1.3.34 © {new Date().getFullYear()} — Bambu to Anycubic converter
+      <p className="mt-4 text-[11px] text-zinc-800 tracking-wide">
+        © {new Date().getFullYear()} AutoSlice — Bambu to Anycubic
       </p>
     </div>
   );
