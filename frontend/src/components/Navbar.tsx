@@ -19,6 +19,7 @@ export function Navbar({ showAdmin = false }: { showAdmin?: boolean }) {
 
   const NAV_LINKS = [
     { href: "/convert", label: t("nav_convert") },
+    { href: "/community", label: t("nav_community") },
     { href: "/history", label: t("nav_history") },
   ];
 

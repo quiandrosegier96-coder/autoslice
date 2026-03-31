@@ -87,6 +87,60 @@ export async function apiValidateGcode(gcode: string): Promise<{
   return apiPost("/gcode/validate", { gcode }, true);
 }
 
+export async function apiCommunityList(): Promise<CommunityPrint[]> {
+  return apiGet<CommunityPrint[]>("/community", true);
+}
+
+export async function apiCommunityUpload(
+  title: string,
+  description: string,
+  filamentType: string,
+  printerName: string,
+  file: File,
+  photo: File,
+): Promise<{ id: number; message: string }> {
+  const form = new FormData();
+  form.append("title", title);
+  form.append("description", description);
+  form.append("filament_type", filamentType);
+  form.append("printer_name", printerName);
+  form.append("file", file);
+  form.append("photo", photo);
+  const res = await fetch(`${BASE}/community/upload`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || `Upload failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function apiCommunityRate(
+  printId: number,
+  stars: number,
+): Promise<{ avg_rating: number; rating_count: number }> {
+  return apiPost(`/community/${printId}/rate`, { stars }, true);
+}
+
+export interface CommunityPrint {
+  id: number;
+  user_id: number;
+  username: string;
+  title: string;
+  description: string;
+  filament_type: string;
+  printer_name: string;
+  photo_filename: string;
+  download_count: number;
+  created_at: string;
+  avg_rating: number | null;
+  rating_count: number;
+  user_rating: number | null;
+}
+
 export async function apiConvertDownload(
   jobId: string,
   printerId: string,

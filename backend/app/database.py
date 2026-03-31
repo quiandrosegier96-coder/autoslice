@@ -101,6 +101,31 @@ def init_db() -> None:
                 created_at  TEXT NOT NULL
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS community_prints (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id        INTEGER NOT NULL,
+                username       TEXT    NOT NULL,
+                title          TEXT    NOT NULL,
+                description    TEXT    DEFAULT '',
+                filament_type  TEXT    DEFAULT '',
+                printer_name   TEXT    DEFAULT '',
+                filename       TEXT    NOT NULL,
+                photo_filename TEXT    NOT NULL,
+                download_count INTEGER DEFAULT 0,
+                created_at     TEXT    NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS community_ratings (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                print_id   INTEGER NOT NULL,
+                user_id    INTEGER NOT NULL,
+                stars      INTEGER NOT NULL CHECK(stars BETWEEN 1 AND 5),
+                created_at TEXT    NOT NULL,
+                UNIQUE(print_id, user_id)
+            )
+        """)
         # Schema migrations — add new columns to existing tables without data loss
         _add_column_if_missing(conn, "generation_log", "decision_trace_json", "TEXT")
         _add_column_if_missing(conn, "generation_log", "settings_delta_json",  "TEXT")
