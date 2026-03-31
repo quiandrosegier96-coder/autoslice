@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isLoggedIn } from "@/lib/auth";
 import { useLang } from "@/contexts/LangContext";
+import type { TKey } from "@/lib/i18n";
 import {
   apiCommunityList,
   apiCommunityUpload,
@@ -340,7 +341,7 @@ function PrintCard({
   print: CommunityPrint;
   loggedIn: boolean;
   onRate: (id: number, stars: number) => void;
-  t: (k: string) => string;
+  t: (k: TKey) => string;
 }) {
   const photoUrl = `/api/community/${p.id}/photo`;
   const downloadUrl = `/api/community/${p.id}/download`;
