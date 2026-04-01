@@ -200,7 +200,11 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code} %{time_total}s\\\\n\" https://www.autoslice.be/api/printers)",
       "Bash(curl -s -o /dev/null -w \"%{http_code} %{time_total}s\\\\n\" https://www.autoslice.be/api/ratings/average)",
       "Bash(git pull:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d.get\\(''''version'''',''''''''\\)\\)\")",
+      "Bash(ls c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(auth\\\\\\)/)",
+      "Bash(ls c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(auth\\\\\\)/register/)",
+      "Bash(cat c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/data/printers/*.json)"
     ]
   }
 }

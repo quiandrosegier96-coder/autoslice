@@ -166,6 +166,13 @@ def generate_tree_branches(
         for c in columns
     ]
 
+    # Guard: remove tips whose contact position is inside the model.
+    # This prevents supports originating inside concave cavities or hollow shells.
+    if mesh is not None:
+        tip_nodes = _filter_tips_inside_mesh(tip_nodes, mesh)
+    if not tip_nodes:
+        return []
+
     # ── 2. Hierarchical merging: tips → L1 → L2 → L3 ─────────────────────────
     # Each pass clusters nodes in XY and inserts a merge node below them.
     # The merge node's Z is chosen to satisfy the branch-angle constraint.
@@ -239,6 +246,45 @@ def generate_tree_branches(
 
     # ── 7. Convert node graph → ordered TreeBranch segment list ──────────────
     return _to_branches(nodes, node_map, children_map)
+
+
+# ── Inside-mesh guard ─────────────────────────────────────────────────────────
+
+def _filter_tips_inside_mesh(tips: list[_Node], mesh) -> list[_Node]:
+    """
+    Remove tip nodes whose contact position is geometrically inside the model.
+
+    Primary method : trimesh.Trimesh.contains()  (requires watertight mesh)
+    Fallback method: upward ray-cast — odd intersection count → inside
+    """
+    if not tips:
+        return tips
+
+    pts = np.array([n.pos for n in tips], dtype=float)
+
+    # Primary: fast watertight test
+    try:
+        inside = mesh.contains(pts)
+        return [n for n, ins in zip(tips, inside) if not ins]
+    except Exception:
+        pass
+
+    # Fallback: ray-cast +Z from just above the tip; odd hits → inside
+    keep: list[_Node] = []
+    for n in tips:
+        try:
+            origin = n.pos + np.array([0.0, 0.0, 0.15])
+            hits, _, _ = mesh.ray.intersects_location(
+                ray_origins=[origin],
+                ray_directions=[[0.0, 0.0, 1.0]],
+                multiple_hits=True,
+            )
+            if len(hits) % 2 == 0:   # even (0, 2, …) → outside
+                keep.append(n)
+        except Exception:
+            keep.append(n)   # can't determine — keep
+
+    return keep if keep else tips   # never discard everything on error
 
 
 # ── Clustering ────────────────────────────────────────────────────────────────

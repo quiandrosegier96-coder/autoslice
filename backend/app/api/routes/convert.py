@@ -158,7 +158,7 @@ async def convert(
     try:
         await loop.run_in_executor(
             None, do_export, archive, print_settings, printer,
-            req.filament_type, output_path, rotation_matrix,
+            req.filament_type, output_path, rotation_matrix, parsed_model,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Export failed: {exc}")

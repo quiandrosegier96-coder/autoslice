@@ -169,9 +169,16 @@ export default function ConvertPage() {
     apiGet<Printer[]>("/printers").then((ps) => {
       setPrinters(ps);
       if (ps.length > 0) {
-        setSelectedPrinter(ps[0].id);
-        setAvailableFilaments(ps[0].supported_filaments);
-        setSelectedFilament(ps[0].supported_filaments[0] ?? "pla");
+        const first = ps[0];
+        const firstFil = first.supported_filaments[0] ?? "pla";
+        setSelectedPrinter(first.id);
+        setAvailableFilaments(first.supported_filaments);
+        setSelectedFilament(firstFil);
+        setSlotFilaments(prev => { const a = [...prev]; a[0] = firstFil; return a; });
+        if (first.max_colors > 1) {
+          setColorCount(first.max_colors);
+          setMultiColorMode(first.max_colors >= 8 ? "ace_pro2" : "ace_pro");
+        }
       }
     });
   }, [router]);
@@ -181,7 +188,18 @@ export default function ConvertPage() {
     const p = printers.find((x) => x.id === id);
     if (p) {
       setAvailableFilaments(p.supported_filaments);
-      setSelectedFilament(p.supported_filaments[0] ?? "pla");
+      const firstFil = p.supported_filaments[0] ?? "pla";
+      setSelectedFilament(firstFil);
+      // Keep slot 0 in sync with the primary filament
+      setSlotFilaments(prev => { const a = [...prev]; a[0] = firstFil; return a; });
+      // ACE printers: auto-set color count to match hardware slot count
+      if (p.max_colors > 1) {
+        setColorCount(p.max_colors);
+        setMultiColorMode(p.max_colors >= 8 ? "ace_pro2" : "ace_pro");
+      } else {
+        setColorCount(1);
+        setMultiColorMode("none");
+      }
     }
   }
 
@@ -342,7 +360,12 @@ export default function ConvertPage() {
               <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">{t("conv_filament")}</label>
               <select
                 value={selectedFilament}
-                onChange={(e) => setSelectedFilament(e.target.value)}
+                onChange={(e) => {
+                  setSelectedFilament(e.target.value);
+                  // Keep slot 0 in sync so the primary filament is always reflected
+                  // in per-slot configs sent to the backend
+                  setSlotFilaments(prev => { const a = [...prev]; a[0] = e.target.value; return a; });
+                }}
                 disabled={settingsDisabled}
               >
                 {availableFilaments.map((f) => (

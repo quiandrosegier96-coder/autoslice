@@ -14,6 +14,16 @@ from pathlib import Path
 from dataclasses import dataclass, field
 import xml.etree.ElementTree as ET
 
+# Conversion factors to millimeters for all units allowed by the 3MF spec
+_UNIT_TO_MM: dict[str, float] = {
+    "millimeter": 1.0,
+    "centimeter": 10.0,
+    "inch":       25.4,
+    "foot":       304.8,
+    "meter":      1000.0,
+    "micron":     0.001,
+}
+
 
 @dataclass
 class RawMeshObject:
@@ -134,6 +144,17 @@ def parse_model_files(
             errors.append(f"{f.name}: {exc}")
     if errors and not merged.objects:
         raise RuntimeError(f"All model files failed to parse: {errors}")
+
+    # Apply unit conversion — normalise everything to millimetres
+    scale = _UNIT_TO_MM.get(merged.unit, 1.0)
+    if abs(scale - 1.0) > 1e-9:
+        for obj in merged.objects:
+            obj.vertices = [
+                (x * scale, y * scale, z * scale)
+                for x, y, z in obj.vertices
+            ]
+        merged.unit = "millimeter"
+
     return merged
 
 
@@ -156,9 +177,13 @@ def _extract_mesh(obj: ET.Element, fallback_id: str) -> RawMeshObject | None:
             continue
 
     triangles: list[tuple[int, int, int]] = []
+    n_verts = len(vertices)
     for t in _findall(triangles_el, "triangle"):
         try:
-            triangles.append((int(t.attrib["v1"]), int(t.attrib["v2"]), int(t.attrib["v3"])))
+            v1, v2, v3 = int(t.attrib["v1"]), int(t.attrib["v2"]), int(t.attrib["v3"])
+            # Skip triangles with out-of-range indices (corrupt data)
+            if max(v1, v2, v3) < n_verts and min(v1, v2, v3) >= 0:
+                triangles.append((v1, v2, v3))
         except (KeyError, ValueError):
             continue
 

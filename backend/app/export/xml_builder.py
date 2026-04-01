@@ -38,43 +38,75 @@ def build_rels_xml() -> str:
 _NON_PRINTABLE = {"negative_volume", "modifier", "support_blocker", "support_enforcer"}
 
 
-def build_3mf_xml(parsed_model: ParsedModel) -> str:
+def build_3mf_xml(parsed_model: ParsedModel, rotation_matrix=None) -> str:
+    """
+    Build a clean 3MF model XML with ALL printable objects merged into a single
+    <object> so slicers never see unwanted part splits.
+
+    If rotation_matrix (3×3 np.ndarray) is provided the vertices are rotated
+    and the model is re-seated on the build plate (Z_min → 0).
+    """
+    import numpy as np
+
     ET.register_namespace("", _3MF_NS)
     root = ET.Element(f"{{{_3MF_NS}}}model")
-    root.set("unit", parsed_model.unit)
+    root.set("unit", "millimeter")
     root.set("xml:lang", "en-US")
 
     resources = ET.SubElement(root, f"{{{_3MF_NS}}}resources")
-    build_el = ET.SubElement(root, f"{{{_3MF_NS}}}build")
+    build_el  = ET.SubElement(root, f"{{{_3MF_NS}}}build")
 
-    for obj in parsed_model.objects:
-        if obj.object_type in _NON_PRINTABLE:
-            continue  # skip negative volumes, modifiers, support blockers/enforcers
+    # Collect printable objects
+    printable = [o for o in parsed_model.objects if o.object_type not in _NON_PRINTABLE]
+    if not printable:
+        return '<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(root, encoding="unicode")
 
-        obj_id = obj.object_id if obj.object_id else "1"
-        obj_el = ET.SubElement(resources, f"{{{_3MF_NS}}}object")
-        obj_el.set("id", obj_id)
-        obj_el.set("name", obj.name)
-        obj_el.set("type", "model")
+    # Merge vertices + triangles (adjust indices per object)
+    all_verts: list[tuple[float, float, float]] = []
+    all_tris:  list[tuple[int, int, int]]       = []
+    offset = 0
+    for obj in printable:
+        all_verts.extend(obj.vertices)
+        for t in obj.triangles:
+            all_tris.append((t[0] + offset, t[1] + offset, t[2] + offset))
+        offset += len(obj.vertices)
 
-        mesh_el = ET.SubElement(obj_el, f"{{{_3MF_NS}}}mesh")
+    # Apply rotation + re-seat on build plate
+    if rotation_matrix is not None and all_verts:
+        try:
+            verts_arr = np.array(all_verts, dtype=np.float64)
+            rotated   = (rotation_matrix @ verts_arr.T).T
+            z_min     = float(rotated[:, 2].min())
+            if abs(z_min) > 0.001:
+                rotated[:, 2] -= z_min
+            all_verts = [(float(v[0]), float(v[1]), float(v[2])) for v in rotated]
+        except Exception:
+            pass  # rotation failed — keep original verts
 
-        verts_el = ET.SubElement(mesh_el, f"{{{_3MF_NS}}}vertices")
-        for x, y, z in obj.vertices:
-            v = ET.SubElement(verts_el, f"{{{_3MF_NS}}}vertex")
-            v.set("x", f"{x:.6f}")
-            v.set("y", f"{y:.6f}")
-            v.set("z", f"{z:.6f}")
+    # Single merged <object>
+    name   = printable[0].name if len(printable) == 1 else "merged_model"
+    obj_el = ET.SubElement(resources, f"{{{_3MF_NS}}}object")
+    obj_el.set("id", "1")
+    obj_el.set("name", name)
+    obj_el.set("type", "model")
 
-        tris_el = ET.SubElement(mesh_el, f"{{{_3MF_NS}}}triangles")
-        for v1, v2, v3 in obj.triangles:
-            t = ET.SubElement(tris_el, f"{{{_3MF_NS}}}triangle")
-            t.set("v1", str(v1))
-            t.set("v2", str(v2))
-            t.set("v3", str(v3))
+    mesh_el  = ET.SubElement(obj_el, f"{{{_3MF_NS}}}mesh")
+    verts_el = ET.SubElement(mesh_el, f"{{{_3MF_NS}}}vertices")
+    for x, y, z in all_verts:
+        v = ET.SubElement(verts_el, f"{{{_3MF_NS}}}vertex")
+        v.set("x", f"{x:.6f}")
+        v.set("y", f"{y:.6f}")
+        v.set("z", f"{z:.6f}")
 
-        item = ET.SubElement(build_el, f"{{{_3MF_NS}}}item")
-        item.set("objectid", obj_id)
+    tris_el = ET.SubElement(mesh_el, f"{{{_3MF_NS}}}triangles")
+    for v1, v2, v3 in all_tris:
+        t = ET.SubElement(tris_el, f"{{{_3MF_NS}}}triangle")
+        t.set("v1", str(v1))
+        t.set("v2", str(v2))
+        t.set("v3", str(v3))
+
+    item = ET.SubElement(build_el, f"{{{_3MF_NS}}}item")
+    item.set("objectid", "1")
 
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(root, encoding="unicode")
 
@@ -262,10 +294,13 @@ def _make_machine_config(settings: PrintSettings, printer: PrinterProfile, color
         ],
         "printable_height": str(printer.build_volume_z_mm),
     }
-    if color_count > 1:
+    # ACE printers must always declare their full slot count regardless of how
+    # many colors the user chose — Anycubic Slicer expects all slots to be defined.
+    effective_colors = max(color_count, printer.max_colors if printer.max_colors > 1 else 1)
+    if effective_colors > 1:
         cfg["single_extruder_multi_material"] = "1"
         cfg["single_extruder_multi_material_priming"] = "0"
-        cfg["extruders_count"] = str(color_count)
+        cfg["extruders_count"] = str(effective_colors)
     return cfg
 
 
@@ -273,6 +308,14 @@ _DEFAULT_COLORS = [
     "#FF0000", "#00AA00", "#0000FF", "#FF8800",
     "#AA00AA", "#00AAAA", "#FFFFFF", "#111111",
 ]
+
+# Canonical per-filament temperatures used when per-slot type differs from the
+# primary filament (important for multi-material prints mixing PLA + PETG etc.)
+_SLOT_TEMPS: dict[str, dict] = {
+    "pla":  {"nozzle": 200, "fl_nozzle": 220, "bed": 60},
+    "petg": {"nozzle": 240, "fl_nozzle": 245, "bed": 80},
+    "tpu":  {"nozzle": 230, "fl_nozzle": 235, "bed": 40},
+}
 
 
 def build_settings_configs(
@@ -287,7 +330,11 @@ def build_settings_configs(
     For multi-color printers (ACE Pro / ACE Pro 2) a filament config is generated
     for each active color slot.
     """
-    color_count = max(1, settings.color_count)
+    # ACE Pro / ACE Pro 2: always fill every hardware slot so Anycubic Slicer
+    # never sees a slot count mismatch between machine config and filament configs.
+    min_slots  = printer.max_colors if printer.max_colors > 1 else 1
+    color_count = max(max(1, settings.color_count), min_slots)
+
     process = _make_process_config(settings)
     machine = _make_machine_config(settings, printer, color_count)
 
@@ -316,6 +363,22 @@ def build_settings_configs(
         )
         fil = _make_filament_config(settings, slot_filament)
         fil["filament_colour"] = [color]
+
+        # Per-slot temperature override — critical when mixing filament types
+        # (e.g. PLA in slot 1, PETG in slot 2 must have their own temps)
+        temps = _SLOT_TEMPS.get(slot_filament.value, _SLOT_TEMPS["pla"])
+        sl_nozzle    = str(temps["nozzle"])
+        sl_nozzle_fl = str(temps["fl_nozzle"])
+        sl_bed       = str(temps["bed"])
+        fil["nozzle_temperature"]              = [sl_nozzle]
+        fil["nozzle_temperature_initial_layer"] = [sl_nozzle_fl]
+        for _bk in ("bed_temperature", "bed_temperature_initial_layer",
+                    "hot_plate_temp", "hot_plate_temp_initial_layer",
+                    "textured_plate_temp", "textured_plate_temp_initial_layer",
+                    "cool_plate_temp", "cool_plate_temp_initial_layer",
+                    "eng_plate_temp", "eng_plate_temp_initial_layer"):
+            fil[_bk] = [sl_bed]
+
         filament_configs.append(fil)
         slot_colors.append(color)
         display = _FILAMENT_TYPE_DISPLAY.get(slot_filament.value, slot_filament.value.upper())

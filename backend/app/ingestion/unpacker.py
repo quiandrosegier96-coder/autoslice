@@ -20,6 +20,31 @@ _BAMBU_CONFIG_PATHS = [
 ]
 _BAMBU_OBJECT_CONFIG = "Metadata/model_settings.config"
 
+# OPC relationship type for the primary 3D model
+_3MF_REL_TYPE = "http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"
+
+
+def _parse_rels(rels_path: Path) -> str | None:
+    """
+    Parse _rels/.rels to discover the actual 3D model file path.
+    Returns the relative path string (without leading slash), or None.
+    """
+    if not rels_path.exists():
+        return None
+    try:
+        tree = ET.parse(rels_path)
+        root = tree.getroot()
+        for rel in root:
+            tag = rel.tag.split("}")[-1] if "}" in rel.tag else rel.tag
+            if tag == "Relationship":
+                if rel.attrib.get("Type", "") == _3MF_REL_TYPE:
+                    target = rel.attrib.get("Target", "").lstrip("/")
+                    if target:
+                        return target
+    except Exception:
+        pass
+    return None
+
 # Bambu object subtypes that should NOT be printed
 _NON_PRINTABLE_SUBTYPES = {"negative_volume", "modifier", "support_blocker", "support_enforcer"}
 
@@ -69,7 +94,14 @@ def unpack(archive_path: Path, extract_dir: Path) -> UnpackedArchive:
 
     all_files = [extract_dir / name for name in all_names]
 
-    model_file = extract_dir / _MODEL_PATH
+    # Discover the primary model file from _rels/.rels (authoritative for non-Bambu 3MFs)
+    discovered = _parse_rels(extract_dir / "_rels" / ".rels")
+    if discovered:
+        candidate = extract_dir / discovered
+        model_file = candidate if candidate.exists() else extract_dir / _MODEL_PATH
+    else:
+        model_file = extract_dir / _MODEL_PATH
+
     content_types_file = extract_dir / _CONTENT_TYPES_PATH
 
     metadata_files = [
