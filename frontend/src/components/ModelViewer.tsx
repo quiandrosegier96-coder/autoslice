@@ -27,9 +27,18 @@ import type { ExtendedViewMode }       from "./viewer/TreeSupportPanel";
 
 // ── AutoCamera ────────────────────────────────────────────────────────────────
 
-function AutoCamera({ object }: { object: THREE.Group }) {
+function AutoCamera({ object, rotationEuler }: { object: THREE.Group; rotationEuler?: number[] }) {
   const { camera } = useThree();
   useEffect(() => {
+    // Reset position/rotation, then apply requested rotation, then recenter
+    object.position.set(0, 0, 0);
+    if (rotationEuler && rotationEuler.length === 3) {
+      const [rx, ry, rz] = rotationEuler.map(d => d * Math.PI / 180);
+      object.rotation.set(rx, ry, rz);
+    } else {
+      object.rotation.set(0, 0, 0);
+    }
+
     const box    = new THREE.Box3().setFromObject(object);
     const size   = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
@@ -46,7 +55,7 @@ function AutoCamera({ object }: { object: THREE.Group }) {
     cam.near = dist * 0.001;
     cam.far  = dist * 10;
     cam.updateProjectionMatrix();
-  }, [object, camera]);
+  }, [object, camera, rotationEuler]);
   return null;
 }
 
@@ -73,11 +82,13 @@ function Model({
   wireframe = false,
   opacity   = 1,
   onObjectLoaded,
+  rotationEuler,
 }: {
   url:             string;
   wireframe?:      boolean;
   opacity?:        number;
   onObjectLoaded?: (object: THREE.Group) => void;
+  rotationEuler?:  number[];
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const object = useLoader(ThreeMFLoader as any, url) as THREE.Group;
@@ -105,7 +116,7 @@ function Model({
   return (
     <>
       <primitive object={object} />
-      <AutoCamera object={object} />
+      <AutoCamera object={object} rotationEuler={rotationEuler} />
     </>
   );
 }
@@ -268,6 +279,8 @@ interface ModelViewerProps {
   onLayerPreviewReady?: (info: { layerCount: number; minY: number; maxY: number }) => void;
   showModelLayers?:   boolean;
   showSupportLayers?: boolean;
+  // Rotation preview (Euler angles in degrees)
+  rotationEuler?: number[];
 }
 
 // ── Main exported component ───────────────────────────────────────────────────
@@ -305,6 +318,7 @@ export function ModelViewer({
   onLayerPreviewReady,
   showModelLayers   = true,
   showSupportLayers = true,
+  rotationEuler,
 }: ModelViewerProps) {
   const url = `/api/upload/${jobId}/file`;
 
@@ -438,6 +452,7 @@ export function ModelViewer({
             wireframe={wireframe}
             opacity={effectiveModelOpacity}
             onObjectLoaded={handleObjectLoaded}
+            rotationEuler={rotationEuler}
           />
 
           {/* Backend support visualization (heatmap + backend tree branches) */}

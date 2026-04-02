@@ -162,6 +162,7 @@ export default function ConvertPage() {
   const [ratingDone, setRatingDone] = useState(false);
   const [applyOrientation, setApplyOrientation] = useState(false);
   const [showSupports, setShowSupports] = useState(false);
+  const [manualEuler, setManualEuler] = useState<number[]>([]);
 
   useEffect(() => {
     if (!isLoggedIn()) { router.push("/login"); return; }
@@ -222,6 +223,7 @@ export default function ConvertPage() {
     setAnalysis(null);
     setDownloadUrl(null);
     setApplyOrientation(false);
+    setManualEuler([]);
     try {
       const up = await apiUpload(file);
       setJobId(up.job_id);
@@ -248,9 +250,11 @@ export default function ConvertPage() {
     setError("");
     try {
       const orientEuler =
-        applyOrientation && analysis?.orientation?.should_rotate
-          ? analysis.orientation.recommended.rotation_euler_deg
-          : [];
+        manualEuler.length === 3 && manualEuler.some(v => Math.abs(v) > 0.5)
+          ? manualEuler
+          : applyOrientation && analysis?.orientation?.should_rotate
+            ? analysis.orientation.recommended.rotation_euler_deg
+            : [];
 
       const blob = await apiConvertDownload(
         jobId, selectedPrinter, selectedFilament, nozzleSize, nozzleType, 1.75, buildPlate, flushVolume,
@@ -289,6 +293,7 @@ export default function ConvertPage() {
     setRatingLoading(false);
     setApplyOrientation(false);
     setShowSupports(false);
+    setManualEuler([]);
   }
 
   async function submitRating(stars: number) {
@@ -598,7 +603,33 @@ export default function ConvertPage() {
         {/* 3D Model Viewer */}
         {jobId && (step === "ready" || step === "converting" || step === "done") && (
           <div className="mb-6 flex flex-col gap-2">
-            <ModelViewer jobId={jobId} showSupports={showSupports} />
+            {/* Rotation presets */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-zinc-500 shrink-0">Rotation:</span>
+              {([
+                { label: "Default",      euler: []           },
+                { label: "Flat",         euler: [-90, 0, 0]  },
+                { label: "Upside Down",  euler: [180, 0, 0]  },
+                { label: "On Side L",    euler: [0, 0, 90]   },
+                { label: "On Side R",    euler: [0, 0, -90]  },
+              ] as { label: string; euler: number[] }[]).map(({ label, euler }) => {
+                const isActive = JSON.stringify(manualEuler) === JSON.stringify(euler);
+                return (
+                  <button
+                    key={label}
+                    onClick={() => setManualEuler(euler)}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+                      isActive
+                        ? "bg-brand/20 border-brand/50 text-brand"
+                        : "bg-surface-card border-surface-border text-zinc-400 hover:text-white hover:border-zinc-500"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <ModelViewer jobId={jobId} showSupports={showSupports} rotationEuler={manualEuler.length === 3 ? manualEuler : undefined} />
             {analysis?.geometry.overhang.has_overhangs && (
               <label className="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer select-none w-fit">
                 <input
