@@ -102,13 +102,36 @@ if (-not (Test-Path $IconPath)) {
     $bmp.Dispose()
 }
 
+# ── Patch electron-builder to handle winCodeSign symlink extraction ───────────
+# electron-builder downloads winCodeSign (a signing toolkit) which contains macOS
+# symlinks.  On Windows without Developer Mode, 7-Zip fails to create those
+# symlinks (exit code 2).  We patch:
+#   1. executeAppBuilder (util.js)  - sets SZA_PATH to 7za_wrap.cmd which converts
+#      exit code 2 to 0 so the extraction "succeeds" for the Go binary.
+# The wrapper must live in electron/ next to package.json.
+$Util7zaJs = Join-Path $Electron "node_modules\builder-util\out\util.js"
+if (Test-Path $Util7zaJs) {
+    $content = Get-Content $Util7zaJs -Raw
+    $marker  = "const szaForBinary"
+    if ($content -notmatch [regex]::Escape($marker)) {
+        Write-Host "    Patching builder-util/out/util.js for winCodeSign workaround..." -ForegroundColor Yellow
+        $old = 'const env = {
+        ...process.env,
+        SZA_PATH: await (0, _7za_1.getPath7za)(),'
+        $new = 'const szaPath = await (0, _7za_1.getPath7za)();
+    const _nodePath = require("path");
+    const _nodeFs = require("fs");
+    const _wrapper = _nodePath.join(__dirname, "..", "..", "..", "7za_wrap.cmd");
+    const szaForBinary = _nodeFs.existsSync(_wrapper) ? _wrapper : szaPath;
+    const env = {
+        ...process.env,
+        SZA_PATH: szaForBinary,'
+        $content = $content -replace [regex]::Escape($old), $new
+        Set-Content $Util7zaJs $content -NoNewline
+    }
+}
+
 $env:CSC_IDENTITY_AUTO_DISCOVERY = "false"
-$env:WIN_CSC_LINK                 = ""
-$env:WIN_CSC_KEY_PASSWORD         = ""
-# Point SIGNTOOL_PATH to the system signtool so electron-builder skips the
-# winCodeSign download entirely (it short-circuits before downloading when
-# SIGNTOOL_PATH is set).  Signing is still skipped because no cert is present.
-$env:SIGNTOOL_PATH = "signtool.exe"
 npm run dist
 
 Write-Host "`nDone! Installer is at:" -ForegroundColor Green
