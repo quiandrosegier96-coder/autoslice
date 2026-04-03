@@ -1,0 +1,9 @@
+{
+  "id": "petg",
+  "display_name": "PETG",
+  "nozzle_temp_c": 240,
+  "bed_temp_c": 80,
+  "fan_speed_percent": 50,
+  "fan_first_layer": false,
+  "max_speed_multiplier": 0.8
+}

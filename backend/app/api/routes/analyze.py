@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from app.ingestion.handler import find_job
 from app.ingestion.unpacker import unpack
 from app.parser.model_parser import parse_model_files
-from app.parser.metadata_extractor import extract_archive_metadata
+from app.parser.metadata_extractor import extract_archive_metadata, extract_source_filaments
 from app.geometry.analyzer import analyze_mesh
 from app.geometry.mesh_loader import merge_meshes
 from app.support.detector import get_support_preview
@@ -121,6 +121,12 @@ class NozzleRiskReportSchema(BaseModel):
     recommended_flow_pct: float = 100.0
 
 
+class SourceFilamentSchema(BaseModel):
+    colors: list[str] = []
+    types:  list[str] = []
+    count:  int       = 1
+
+
 class AnalyzeResponse(BaseModel):
     job_id: str
     archive: ArchiveInfoSchema
@@ -131,6 +137,7 @@ class AnalyzeResponse(BaseModel):
     explanations: ExplanationReport
     orientation: OrientationReport
     nozzle_risk: NozzleRiskReportSchema
+    source_filaments: SourceFilamentSchema = SourceFilamentSchema()
 
 
 # ---------- Route ----------
@@ -261,6 +268,7 @@ async def analyze(job_id: str) -> AnalyzeResponse:
         extract_dir=job.extract_dir,
         all_files=archive.all_files,
     )
+    source_filaments_raw = extract_source_filaments(job.extract_dir)
 
     return AnalyzeResponse(
         job_id=job_id,
@@ -268,6 +276,11 @@ async def analyze(job_id: str) -> AnalyzeResponse:
         explanations=explanations,
         orientation=orientation,
         nozzle_risk=nozzle_risk,
+        source_filaments=SourceFilamentSchema(
+            colors=source_filaments_raw.colors,
+            types=source_filaments_raw.types,
+            count=source_filaments_raw.count,
+        ),
         archive=ArchiveInfoSchema(
             filename=meta.original_filename,
             size_bytes=meta.size_bytes,

@@ -66,9 +66,16 @@ type OrientationReport = {
   reasons: string[];
 };
 
+type SourceFilaments = {
+  colors: string[];
+  types: string[];
+  count: number;
+};
+
 type AnalysisResult = {
   job_id: string;
   model: { part_count: number; unit: string };
+  source_filaments?: SourceFilaments;
   geometry: {
     bounding_box: { x_mm: number; y_mm: number; z_mm: number; volume_cm3: number };
     part_count: number;
@@ -177,8 +184,10 @@ export default function ConvertPage() {
         setSelectedFilament(firstFil);
         setSlotFilaments(prev => { const a = [...prev]; a[0] = firstFil; return a; });
         if (first.max_colors > 1) {
+          const dual = first.max_colors >= 8;
           setColorCount(first.max_colors);
-          setMultiColorMode(first.max_colors >= 8 ? "ace_pro2" : "ace_pro");
+          setMultiColorMode(dual ? "ace_pro2" : "ace_pro");
+          setDualUnit(dual);
         }
       }
     });
@@ -195,24 +204,35 @@ export default function ConvertPage() {
       setSlotFilaments(prev => { const a = [...prev]; a[0] = firstFil; return a; });
       // ACE printers: auto-set color count to match hardware slot count
       if (p.max_colors > 1) {
+        const dual = p.max_colors >= 8;
         setColorCount(p.max_colors);
-        setMultiColorMode(p.max_colors >= 8 ? "ace_pro2" : "ace_pro");
+        setMultiColorMode(dual ? "ace_pro2" : "ace_pro");
+        setDualUnit(dual);
       } else {
         setColorCount(1);
         setMultiColorMode("none");
+        setDualUnit(false);
       }
     }
   }
 
   function handleMultiColorMode(mode: "none" | "ace_pro" | "ace_pro2") {
     setMultiColorMode(mode);
-    if (mode === "none") { setColorCount(1); setDualUnit(false); }
-    else setColorCount(dualUnit ? 8 : 4);
+    if (mode === "none") {
+      setColorCount(1);
+      setDualUnit(false);
+    } else {
+      // Use the current dualUnit value directly — do not read stale state
+      setColorCount(dualUnit ? 8 : 4);
+    }
   }
 
   function handleDualUnit(checked: boolean) {
     setDualUnit(checked);
-    if (multiColorMode !== "none") setColorCount(checked ? 8 : 4);
+    // Set colorCount immediately from the new value, not from stale state
+    if (multiColorMode !== "none") {
+      setColorCount(checked ? 8 : 4);
+    }
   }
 
   async function handleFile(file: File) {
@@ -230,6 +250,28 @@ export default function ConvertPage() {
       setStep("analyzing");
       const result = await apiAnalyze(up.job_id) as AnalysisResult;
       setAnalysis(result);
+      // Auto-fill color slots from source 3MF if multi-color detected
+      const sf = result.source_filaments;
+      if (sf && sf.count > 1) {
+        const dual = sf.count >= 8;
+        setColorCount(sf.count);
+        setMultiColorMode(dual ? "ace_pro2" : "ace_pro");
+        setDualUnit(dual);
+        if (sf.colors.length > 0) {
+          setSlotColors(prev => {
+            const a = [...prev];
+            sf.colors.forEach((c, i) => { if (i < a.length) a[i] = c; });
+            return a;
+          });
+        }
+        if (sf.types.length > 0) {
+          setSlotFilaments(prev => {
+            const a = [...prev];
+            sf.types.forEach((t, i) => { if (i < a.length) a[i] = t; });
+            return a;
+          });
+        }
+      }
       setStep("ready");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed");
@@ -246,6 +288,14 @@ export default function ConvertPage() {
 
   async function handleConvert() {
     if (!jobId || !selectedPrinter) return;
+
+    // Validate slot config — auto-rebuild if stale
+    if (multiColorMode !== "none" && dualUnit && colorCount !== 8) {
+      setColorCount(8);
+      setError("Second ACE unit enabled, but 8 filament slots were not generated. Slot configuration was rebuilt automatically.");
+      return;
+    }
+
     setStep("converting");
     setError("");
     try {

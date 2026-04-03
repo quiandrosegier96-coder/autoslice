@@ -3,11 +3,17 @@ AutoSlice — Application configuration.
 """
 
 import os
+import sys
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+# When frozen with PyInstaller sys.executable is the .exe itself;
+# its parent is the backend/ folder inside the install dir.
+if getattr(sys, "frozen", False):
+    BASE_DIR = Path(sys.executable).resolve().parent
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
@@ -23,9 +29,21 @@ class Settings(BaseSettings):
     # CORS
     allowed_origins: list[str] = ["http://localhost:3000"]
 
-    # Data
-    printers_dir: Path = BASE_DIR / "data" / "printers"
-    filaments_dir: Path = BASE_DIR / "data" / "filaments"
+    # Data — override with AUTOSLICE_DATA_DIR when running from installer
+    @property
+    def data_dir(self) -> Path:
+        override = os.environ.get("AUTOSLICE_DATA_DIR")
+        if override:
+            return Path(override)
+        return BASE_DIR / "data"
+
+    @property
+    def printers_dir(self) -> Path:  # type: ignore[override]
+        return self.data_dir / "printers"
+
+    @property
+    def filaments_dir(self) -> Path:  # type: ignore[override]
+        return self.data_dir / "filaments"
 
     # Auth
     jwt_secret_key: str = "autoslice-change-this-in-production"
