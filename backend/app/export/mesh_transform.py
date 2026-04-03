@@ -1,38 +1,36 @@
 """
-AutoSlice — In-place vertex rotation for 3MF model XML files.
+AutoSlice — In-place vertex rotation and transform normalization for 3MF model XML.
 
-rotate_model_xml(xml_bytes, rot_3x3)  →  bytes
+Public API:
+  rotate_model_xml(xml_bytes, rot_3x3)  →  bytes
+  normalize_model_xml(xml_bytes)        →  bytes
 
-Parses a .model XML file, applies a 3×3 rotation matrix to every vertex,
-translates the mesh so Z_min = 0 (placed on the build plate), and returns
-the modified XML as UTF-8 bytes.
-
-No external dependencies — uses stdlib xml.etree.ElementTree + numpy.
-Falls back to returning original bytes if anything fails (non-fatal).
+Both functions fall back to returning original bytes on any error (non-fatal).
 """
 
 from __future__ import annotations
 
 import math
 import xml.etree.ElementTree as ET
+from collections import Counter
 
 import numpy as np
 
 # Known 3MF namespace URIs → register so ET re-serialises with clean prefixes
 _NS_MAP = {
-    "":  "http://schemas.microsoft.com/3dmanufacturing/core/2015/02",
-    "p": "http://schemas.microsoft.com/3dmanufacturing/material/2015/02",
-    "b": "http://schemas.bambulab.com/package/2021",
+    "":           "http://schemas.microsoft.com/3dmanufacturing/core/2015/02",
+    "p":          "http://schemas.microsoft.com/3dmanufacturing/material/2015/02",
+    "b":          "http://schemas.bambulab.com/package/2021",
     "BambuStudio": "http://schemas.bambulab.com/package/2021",
 }
 
+
+# ── Public helpers ────────────────────────────────────────────────────────────
 
 def euler_deg_to_rotation_matrix(rx: float, ry: float, rz: float) -> np.ndarray:
     """
     Build a 3×3 rotation matrix from Euler angles in degrees.
     Application order: Rz @ Ry @ Rx  (extrinsic X→Y→Z).
-    For the axis-aligned candidates used by the orientation scorer, only
-    one angle is non-zero, so the order doesn't matter in practice.
     """
     def _rx(a: float) -> np.ndarray:
         c, s = math.cos(a), math.sin(a)
@@ -46,16 +44,16 @@ def euler_deg_to_rotation_matrix(rx: float, ry: float, rz: float) -> np.ndarray:
         c, s = math.cos(a), math.sin(a)
         return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]], dtype=np.float64)
 
-    rx_r = math.radians(rx)
-    ry_r = math.radians(ry)
-    rz_r = math.radians(rz)
-    return _rz(rz_r) @ _ry(ry_r) @ _rx(rx_r)
+    return _rz(math.radians(rz)) @ _ry(math.radians(ry)) @ _rx(math.radians(rx))
 
 
 def rotate_model_xml(xml_bytes: bytes, rot_3x3: np.ndarray) -> bytes:
     """
-    Apply rot_3x3 to every <vertex x y z> in the XML, translate so Z_min=0,
-    and return the modified file as UTF-8 bytes.
+    Apply rot_3x3 to a 3MF model XML:
+      1. Bake all <item transform> into vertex coordinates (world space)
+      2. Rotate all vertices by rot_3x3
+      3. Z-seat the assembly (min Z → 0)
+      4. Reset all item transforms to identity
 
     Returns original bytes unchanged on any error.
     """
@@ -65,46 +63,230 @@ def rotate_model_xml(xml_bytes: bytes, rot_3x3: np.ndarray) -> bytes:
         return xml_bytes
 
 
-def _rotate(xml_bytes: bytes, rot_3x3: np.ndarray) -> bytes:
-    # Register namespaces before parsing so ET preserves them on output
+def normalize_model_xml(xml_bytes: bytes) -> bytes:
+    """
+    Normalize a 3MF model XML without rotating it.
+
+    Bakes each <item transform> into the referenced object's vertex coordinates
+    so Anycubic Slicer sees correctly assembled world-space geometry regardless
+    of whether it honours the transform attribute.
+
+    Safety: objects referenced by more than one <item> (instanced objects) are
+    left untouched — their transform attribute is preserved as-is so the slicer
+    can still place the instances correctly.
+
+    Returns original bytes unchanged on any error.
+    """
+    try:
+        return _normalize(xml_bytes)
+    except Exception:
+        return xml_bytes
+
+
+# ── Internal: 3MF transform parsing ──────────────────────────────────────────
+
+def _local_tag(el: ET.Element) -> str:
+    tag = el.tag
+    return tag.split("}")[-1] if "}" in tag else tag
+
+
+def _parse_transform(s: str) -> np.ndarray:
+    """
+    Parse a 3MF transform attribute (12 floats, column-major 4×3) into a 4×4
+    homogeneous matrix.
+
+    3MF column-major layout:
+      m00 m01 m02  m10 m11 m12  m20 m21 m22  tx ty tz
+    where the columns are the X, Y, Z basis vectors of the local frame.
+    """
+    vals = [float(v) for v in s.split()]
+    if len(vals) != 12:
+        return np.eye(4, dtype=np.float64)
+    m = np.eye(4, dtype=np.float64)
+    m[0, 0], m[1, 0], m[2, 0] = vals[0],  vals[1],  vals[2]   # col 0
+    m[0, 1], m[1, 1], m[2, 1] = vals[3],  vals[4],  vals[5]   # col 1
+    m[0, 2], m[1, 2], m[2, 2] = vals[6],  vals[7],  vals[8]   # col 2
+    m[0, 3], m[1, 3], m[2, 3] = vals[9],  vals[10], vals[11]  # translation
+    return m
+
+
+def _matrix_to_transform(m: np.ndarray) -> str:
+    """Serialise a 4×4 matrix back to a 3MF transform string (12 floats)."""
+    return " ".join([
+        f"{m[0,0]:.6f}", f"{m[1,0]:.6f}", f"{m[2,0]:.6f}",
+        f"{m[0,1]:.6f}", f"{m[1,1]:.6f}", f"{m[2,1]:.6f}",
+        f"{m[0,2]:.6f}", f"{m[1,2]:.6f}", f"{m[2,2]:.6f}",
+        f"{m[0,3]:.6f}", f"{m[1,3]:.6f}", f"{m[2,3]:.6f}",
+    ])
+
+
+def _identity_transform() -> str:
+    return _matrix_to_transform(np.eye(4, dtype=np.float64))
+
+
+# ── Internal: vertex helpers ──────────────────────────────────────────────────
+
+def _collect_vertices(
+    obj_el: ET.Element,
+) -> tuple[list[ET.Element], np.ndarray]:
+    """Return all <vertex> elements and their coordinates as an (N,3) array."""
+    els: list[ET.Element] = []
+    coords: list[list[float]] = []
+    for el in obj_el.iter():
+        if _local_tag(el) == "vertex":
+            try:
+                coords.append([float(el.attrib["x"]),
+                                float(el.attrib["y"]),
+                                float(el.attrib["z"])])
+                els.append(el)
+            except (KeyError, ValueError):
+                pass
+    if not els:
+        return els, np.empty((0, 3), dtype=np.float64)
+    return els, np.array(coords, dtype=np.float64)
+
+
+def _write_vertices(els: list[ET.Element], verts: np.ndarray) -> None:
+    for el, (x, y, z) in zip(els, verts):
+        el.attrib["x"] = f"{x:.6f}"
+        el.attrib["y"] = f"{y:.6f}"
+        el.attrib["z"] = f"{z:.6f}"
+
+
+# ── Internal: bake item transforms into vertex coordinates ────────────────────
+
+def _bake_item_transforms(
+    root: ET.Element,
+    obj_map: dict[str, ET.Element],
+    skip_multi_ref: bool = True,
+) -> bool:
+    """
+    For each <item> that has a non-identity transform, apply the transform to
+    the referenced object's vertices and reset the item transform to identity.
+
+    skip_multi_ref: if True (default), objects referenced by >1 item are skipped
+    to avoid corrupting instanced geometry.
+
+    Returns True if any vertices were modified.
+    """
+    # Count how many items reference each objectid
+    ref_counts: Counter[str] = Counter()
+    for el in root.iter():
+        if _local_tag(el) == "item":
+            oid = el.attrib.get("objectid", "")
+            if oid:
+                ref_counts[oid] += 1
+
+    changed = False
+    for el in root.iter():
+        if _local_tag(el) != "item":
+            continue
+        transform_str = el.attrib.get("transform", "")
+        obj_id        = el.attrib.get("objectid", "")
+        if not transform_str or not obj_id or obj_id not in obj_map:
+            continue
+        if skip_multi_ref and ref_counts[obj_id] > 1:
+            # Instanced object — leave the transform in place
+            continue
+
+        mat = _parse_transform(transform_str)
+        # Skip identity transforms (within floating-point tolerance)
+        if np.allclose(mat, np.eye(4), atol=1e-4):
+            continue
+
+        rot   = mat[:3, :3]
+        trans = mat[:3, 3]
+
+        v_els, verts = _collect_vertices(obj_map[obj_id])
+        if not v_els:
+            continue
+
+        # World position = R @ local_pos + T
+        verts_world = (rot @ verts.T).T + trans
+        _write_vertices(v_els, verts_world)
+        el.attrib["transform"] = _identity_transform()
+        changed = True
+
+    return changed
+
+
+# ── _normalize (no rotation) ──────────────────────────────────────────────────
+
+def _normalize(xml_bytes: bytes) -> bytes:
     for prefix, uri in _NS_MAP.items():
         ET.register_namespace(prefix, uri)
 
     root = ET.fromstring(xml_bytes)
 
-    # Collect all <vertex> elements (namespace-agnostic)
-    vertex_els: list[ET.Element] = []
-    coords: list[list[float]] = []
-
+    obj_map: dict[str, ET.Element] = {}
     for el in root.iter():
-        local = el.tag.split("}")[-1] if "}" in el.tag else el.tag
-        if local == "vertex":
-            try:
-                coords.append([
-                    float(el.attrib["x"]),
-                    float(el.attrib["y"]),
-                    float(el.attrib["z"]),
-                ])
-                vertex_els.append(el)
-            except (KeyError, ValueError):
-                continue
+        if _local_tag(el) == "object":
+            oid = el.attrib.get("id", "")
+            if oid:
+                obj_map[oid] = el
 
-    if not vertex_els:
+    changed = _bake_item_transforms(root, obj_map, skip_multi_ref=True)
+
+    if not changed:
         return xml_bytes
 
-    verts = np.array(coords, dtype=np.float64)   # (N, 3)
-    rotated = (rot_3x3 @ verts.T).T               # (N, 3)
+    return ET.tostring(root, encoding="unicode", xml_declaration=False).encode("utf-8")
 
-    # Translate so the lowest point sits on Z=0
+
+# ── _rotate (with rotation) ───────────────────────────────────────────────────
+
+def _rotate(xml_bytes: bytes, rot_3x3: np.ndarray) -> bytes:
+    for prefix, uri in _NS_MAP.items():
+        ET.register_namespace(prefix, uri)
+
+    root = ET.fromstring(xml_bytes)
+
+    # Build object map
+    obj_map: dict[str, ET.Element] = {}
+    for el in root.iter():
+        if _local_tag(el) == "object":
+            oid = el.attrib.get("id", "")
+            if oid:
+                obj_map[oid] = el
+
+    # ── Step 1: bake all item transforms into vertex coordinates ─────────────
+    # This brings every vertex into world space before we apply the new rotation.
+    # Correct because: rot_new @ (R_old @ v + T_old) requires v to already be
+    # in world space.  Skipping this step would lose the R_old component when
+    # items carry a rotational transform (e.g. Bambu component placements).
+    _bake_item_transforms(root, obj_map, skip_multi_ref=False)
+
+    # ── Step 2: collect all vertices (now in world space) ────────────────────
+    all_v_els: list[ET.Element] = []
+    all_coords: list[list[float]] = []
+    for el in root.iter():
+        if _local_tag(el) == "vertex":
+            try:
+                all_coords.append([float(el.attrib["x"]),
+                                    float(el.attrib["y"]),
+                                    float(el.attrib["z"])])
+                all_v_els.append(el)
+            except (KeyError, ValueError):
+                pass
+
+    if not all_v_els:
+        return xml_bytes
+
+    verts = np.array(all_coords, dtype=np.float64)   # (N, 3)
+
+    # ── Step 3: apply rotation ───────────────────────────────────────────────
+    rotated = (rot_3x3 @ verts.T).T                   # (N, 3)
+
+    # ── Step 4: Z-seat — translate so min Z = 0 ─────────────────────────────
     z_min = float(rotated[:, 2].min())
     rotated[:, 2] -= z_min
 
-    # Write rotated coordinates back into the elements
-    for el, (x, y, z) in zip(vertex_els, rotated):
-        el.attrib["x"] = f"{x:.6f}"
-        el.attrib["y"] = f"{y:.6f}"
-        el.attrib["z"] = f"{z:.6f}"
+    _write_vertices(all_v_els, rotated)
 
-    # Serialise — ET preserves namespace declarations registered above
-    xml_str = ET.tostring(root, encoding="unicode", xml_declaration=False)
-    return xml_str.encode("utf-8")
+    # ── Step 5: reset all item transforms to identity ────────────────────────
+    # Vertices are now in final world space; no additional transform needed.
+    for el in root.iter():
+        if _local_tag(el) == "item":
+            el.attrib["transform"] = _identity_transform()
+
+    return ET.tostring(root, encoding="unicode", xml_declaration=False).encode("utf-8")

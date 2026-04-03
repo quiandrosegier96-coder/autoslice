@@ -1,0 +1,69 @@
+{
+  "name": "autoslice-desktop",
+  "version": "1.3.41",
+  "description": "AutoSlice — Bambu to Anycubic 3MF converter",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start":  "electron .",
+    "dist":   "electron-builder --win --x64",
+    "dist:dir": "electron-builder --win --x64 --dir"
+  },
+  "build": {
+    "appId":       "be.autoslice.desktop",
+    "productName": "AutoSlice",
+    "copyright":   "AutoSlice",
+
+    "directories": {
+      "output": "dist"
+    },
+
+    "extraResources": [
+      {
+        "from": "resources/backend",
+        "to":   "backend",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "resources/frontend",
+        "to":   "frontend",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "resources/node",
+        "to":   "node",
+        "filter": ["**/*"]
+      }
+    ],
+
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "icon": "assets/icon.ico",
+      "sign": null,
+      "signingHashAlgorithms": null,
+      "forceCodeSigning": false
+    },
+
+    "nsis": {
+      "oneClick":             false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon":        "assets/icon.ico",
+      "uninstallerIcon":      "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName":         "AutoSlice"
+    },
+
+    "files": [
+      "main.js",
+      "preload.js",
+      "assets/**/*"
+    ]
+  },
+  "devDependencies": {
+    "electron":         "^33.0.0",
+    "electron-builder": "^25.1.8"
+  }
+}

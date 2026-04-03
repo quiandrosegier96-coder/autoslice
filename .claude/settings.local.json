@@ -205,7 +205,15 @@
       "Bash(ls c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(auth\\\\\\)/)",
       "Bash(ls c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\\\\\(auth\\\\\\)/register/)",
       "Bash(cat c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/data/printers/*.json)",
-      "Bash(ls \"C:/Program Files \\(x86\\)/AutoSlice/\")"
+      "Bash(ls \"C:/Program Files \\(x86\\)/AutoSlice/\")",
+      "Bash(python -m pytest tests/test_export_transform.py -v)",
+      "Bash(\"c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/electron/assets/.gitkeep\")",
+      "Bash(node -e \"const p=require\\(''./package.json''\\); console.log\\(''name:'', p.name, ''| version:'', p.version, ''| main:'', p.main\\)\")",
+      "Bash(powershell -ExecutionPolicy Bypass -File build/build_electron.ps1)",
+      "Bash(Remove-Item \"C:/Users/QUANT/AppData/Local/electron-builder/Cache/winCodeSign\" -Recurse -Force -ErrorAction SilentlyContinue)",
+      "Bash(CSC_IDENTITY_AUTO_DISCOVERY=false npm run dist)",
+      "Bash(CSC_IDENTITY_AUTO_DISCOVERY=false WIN_CSC_LINK=\"\" WIN_CSC_KEY_PASSWORD=\"\" npm run dist)",
+      "Bash(CSC_IDENTITY_AUTO_DISCOVERY=false WIN_CSC_LINK=\"\" WIN_CSC_KEY_PASSWORD=\"\" SIGNTOOL_PATH=\"signtool.exe\" npm run dist)"
     ]
   }
 }

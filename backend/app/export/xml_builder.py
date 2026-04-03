@@ -244,6 +244,16 @@ def _make_process_config(settings: PrintSettings) -> dict:
     curr_bed_type, _ = _BED_TYPE_MAP.get(settings.build_plate, _BED_TYPE_DEFAULT)
     cfg["curr_bed_type"] = curr_bed_type
 
+    # Extrusion mode — absolute (M82).
+    # Anycubic Slicer warns when M83 (relative) is active but per-layer G92 E0
+    # resets are missing. Absolute mode avoids this entirely: E values are
+    # cumulative, so G92 E0 belongs ONLY in the start G-code, never per-layer.
+    # Inserting G92 E0 at layer changes in absolute mode resets the counter while
+    # the slicer continues emitting cumulative E values — causing over-extrusion.
+    cfg["use_relative_e_distances"] = "0"
+    # Do NOT set layer_change_gcode to "G92 E0" here — incompatible with
+    # cumulative absolute E values. Start G-code handles the single reset.
+
     return cfg
 
 

@@ -17,7 +17,7 @@ from app.models.printer import PrinterProfile, FilamentType
 from app.ingestion.unpacker import UnpackedArchive
 from app.parser.model_parser import ParsedModel
 from app.export.xml_builder import build_settings_configs
-from app.export.mesh_transform import rotate_model_xml
+from app.export.mesh_transform import rotate_model_xml, normalize_model_xml
 
 # Slicer-specific config files we strip out and replace with our own.
 # We use a prefix match for process/filament/machine settings (Bambu numbers them _1, _2, etc.)
@@ -64,10 +64,14 @@ def export(
             if rel_str in _SKIP_EXACT or rel_str.startswith(_SKIP_PREFIXES):
                 continue
 
-            # Apply orientation rotation to model geometry files
-            if rotation_matrix is not None and f.suffix.lower() == ".model":
-                raw      = f.read_bytes()
-                modified = rotate_model_xml(raw, rotation_matrix)
+            # Apply orientation rotation to model geometry files, or normalize
+            # item transforms so Anycubic Slicer receives correctly assembled parts
+            if f.suffix.lower() == ".model":
+                raw = f.read_bytes()
+                if rotation_matrix is not None:
+                    modified = rotate_model_xml(raw, rotation_matrix)
+                else:
+                    modified = normalize_model_xml(raw)
                 zf.writestr(rel_str, modified)
             else:
                 zf.write(str(f), rel_str)
