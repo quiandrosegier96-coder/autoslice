@@ -122,9 +122,11 @@ const NOZZLE_TYPES = [
 ];
 
 const BUILD_PLATES = [
-  { value: "smooth", label: "Smooth PEI" },
+  { value: "smooth",   label: "Smooth PEI" },
   { value: "textured", label: "Textured PEI (+5°C bed)" },
-  { value: "cold", label: "Cold plate (0°C bed)" },
+  { value: "high_temp",label: "High Temp Plate (+10°C bed)" },
+  { value: "glass",    label: "Glass" },
+  { value: "cold",     label: "Cold plate (0°C bed)" },
 ];
 
 const difficultyColor: Record<string, string> = {

@@ -111,6 +111,20 @@ def build_3mf_xml(parsed_model: ParsedModel, rotation_matrix=None) -> str:
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(root, encoding="unicode")
 
 
+# Maps AutoSlice build_plate values → Anycubic Slicer Next curr_bed_type string
+# and the filament config temperature key that should carry the active bed temp.
+# OrcaSlicer/Anycubic Slicer reads curr_bed_type from the process config and
+# uses the matching plate temp key from the filament config.
+_BED_TYPE_MAP: dict[str, tuple[str, str]] = {
+    # (curr_bed_type value,  filament plate-temp key prefix)
+    "smooth":        ("hot_plate",       "hot_plate_temp"),
+    "textured":      ("textured_plate",  "textured_plate_temp"),
+    "cold":          ("cool_plate",      "cool_plate_temp"),
+    "high_temp":     ("eng_plate",       "eng_plate_temp"),
+    "glass":         ("hot_plate",       "hot_plate_temp"),   # glass uses same slot as smooth
+}
+_BED_TYPE_DEFAULT = ("hot_plate", "hot_plate_temp")
+
 _INFILL_MAP = {
     "gyroid": "gyroid",
     "grid": "grid",
@@ -225,6 +239,11 @@ def _make_process_config(settings: PrintSettings) -> dict:
         cfg["support_style"] = "tree_slim"
         cfg["tree_support_branch_angle"] = "40"
         cfg["tree_support_wall_count"] = "1"
+
+    # Bed type — tell Anycubic Slicer which plate is active
+    curr_bed_type, _ = _BED_TYPE_MAP.get(settings.build_plate, _BED_TYPE_DEFAULT)
+    cfg["curr_bed_type"] = curr_bed_type
+
     return cfg
 
 
@@ -233,7 +252,20 @@ def _make_filament_config(settings: PrintSettings, filament: FilamentType) -> di
     bed = str(settings.bed_temp_c)
     nozzle      = str(settings.nozzle_temp_c)
     nozzle_fl   = str(settings.first_layer_nozzle_temp_c or settings.nozzle_temp_c)
-    # Set all plate temperature keys — Anycubic Slicer uses whichever matches the active plate
+
+    # Determine which plate-temp key is active and set only that one to the real
+    # bed temp. All other plate keys stay at "0" so Anycubic Slicer's automatic
+    # plate-type detection doesn't get confused by stale values.
+    _, active_plate_key = _BED_TYPE_MAP.get(settings.build_plate, _BED_TYPE_DEFAULT)
+    _all_plate_keys = [
+        "hot_plate_temp", "textured_plate_temp", "cool_plate_temp", "eng_plate_temp",
+    ]
+    plate_temps: dict[str, list[str]] = {}
+    for key in _all_plate_keys:
+        val = bed if key == active_plate_key else "0"
+        plate_temps[key]                        = [val]
+        plate_temps[f"{key}_initial_layer"]     = [val]
+
     return {
         "from": "project",
         "inherits": "",
@@ -242,18 +274,11 @@ def _make_filament_config(settings: PrintSettings, filament: FilamentType) -> di
         "filament_diameter": [str(settings.filament_diameter_mm)],
         "nozzle_temperature": [nozzle],
         "nozzle_temperature_initial_layer": [nozzle_fl],
-        # Plain bed temp keys (OrcaSlicer / Anycubic Slicer Next primary keys)
+        # Generic bed keys — used as fallback by some slicer versions
         "bed_temperature": [bed],
         "bed_temperature_initial_layer": [bed],
-        # Plate-specific keys (fallback for older versions)
-        "hot_plate_temp": [bed],
-        "hot_plate_temp_initial_layer": [bed],
-        "textured_plate_temp": [bed],
-        "textured_plate_temp_initial_layer": [bed],
-        "cool_plate_temp": [bed],
-        "cool_plate_temp_initial_layer": [bed],
-        "eng_plate_temp": [bed],
-        "eng_plate_temp_initial_layer": [bed],
+        # Plate-specific keys — only the active plate carries the real temp
+        **plate_temps,
         "fan_max_speed": [str(settings.fan_speed_percent)],
         "fan_min_speed": [str(max(0, settings.fan_speed_percent - 20))],
         "close_fan_the_first_x_layers": ["0" if settings.fan_first_layer else "1"],
@@ -370,14 +395,15 @@ def build_settings_configs(
         sl_nozzle    = str(temps["nozzle"])
         sl_nozzle_fl = str(temps["fl_nozzle"])
         sl_bed       = str(temps["bed"])
-        fil["nozzle_temperature"]              = [sl_nozzle]
+        _, active_plate_key = _BED_TYPE_MAP.get(settings.build_plate, _BED_TYPE_DEFAULT)
+        fil["nozzle_temperature"]               = [sl_nozzle]
         fil["nozzle_temperature_initial_layer"] = [sl_nozzle_fl]
-        for _bk in ("bed_temperature", "bed_temperature_initial_layer",
-                    "hot_plate_temp", "hot_plate_temp_initial_layer",
-                    "textured_plate_temp", "textured_plate_temp_initial_layer",
-                    "cool_plate_temp", "cool_plate_temp_initial_layer",
-                    "eng_plate_temp", "eng_plate_temp_initial_layer"):
-            fil[_bk] = [sl_bed]
+        fil["bed_temperature"]                  = [sl_bed]
+        fil["bed_temperature_initial_layer"]    = [sl_bed]
+        for _pk in ("hot_plate_temp", "textured_plate_temp", "cool_plate_temp", "eng_plate_temp"):
+            _val = sl_bed if _pk == active_plate_key else "0"
+            fil[_pk]                    = [_val]
+            fil[f"{_pk}_initial_layer"] = [_val]
 
         filament_configs.append(fil)
         slot_colors.append(color)

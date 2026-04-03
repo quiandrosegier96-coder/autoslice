@@ -147,10 +147,18 @@ async def convert(
     print_settings.filament_types      = req.filament_types
 
     # Adjust bed temperature based on build plate type
-    if req.build_plate == "textured":
+    _VALID_PLATES = {"smooth", "textured", "cold", "high_temp", "glass"}
+    effective_plate = req.build_plate if req.build_plate in _VALID_PLATES else "smooth"
+    if effective_plate != req.build_plate:
+        # Stale/unknown plate value — normalise silently
+        print_settings.build_plate = effective_plate
+
+    if effective_plate == "textured":
         print_settings.bed_temp_c = min(print_settings.bed_temp_c + 5, 120)
-    elif req.build_plate == "cold":
+    elif effective_plate == "cold":
         print_settings.bed_temp_c = 0
+    elif effective_plate == "high_temp":
+        print_settings.bed_temp_c = min(print_settings.bed_temp_c + 10, 130)
 
     output_filename = f"autoslice_{req.printer_id}_{req.filament_type.value}.3mf"
     output_path = job.archive_path.parent / output_filename
