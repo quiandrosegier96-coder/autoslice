@@ -258,7 +258,9 @@
       "Bash(powershell -Command \"Get-ChildItem ''C:/Users/QUANT/AppData/'' -Recurse -Filter ''autoslice.db'' -ErrorAction SilentlyContinue | Select FullName\")",
       "Bash(start \"\" \"c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/electron/dist\")",
       "Bash(find c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src -name *login* -o -name *auth* -o -name *signin*)",
-      "Bash(find \"c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\(auth\\)\" -type f)"
+      "Bash(find \"c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/src/app/\\(auth\\)\" -type f)",
+      "Bash(start \"\" \"c:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\electron\\\\dist\\\\AutoSlice Setup 1.3.41.exe\")",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

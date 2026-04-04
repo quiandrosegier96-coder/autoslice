@@ -12,6 +12,7 @@
  */
 
 const { app, BrowserWindow, dialog, shell, ipcMain } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const path   = require("path");
 const http   = require("http");
 const { spawn } = require("child_process");
@@ -197,6 +198,47 @@ function createMainWindow() {
   return win;
 }
 
+// ── Auto-updater ──────────────────────────────────────────────────────────
+
+function setupAutoUpdater(mainWin) {
+  // Only run in packaged app; skip in dev (`npm start`)
+  if (!app.isPackaged) return;
+
+  autoUpdater.autoDownload    = true;   // download silently in background
+  autoUpdater.autoInstallOnAppQuit = true; // install when user quits normally
+
+  autoUpdater.on("update-available", (info) => {
+    // Silent — download has already started automatically
+    console.log(`Update available: ${info.version}`);
+  });
+
+  autoUpdater.on("update-downloaded", (info) => {
+    dialog.showMessageBox(mainWin, {
+      type:      "info",
+      title:     "AutoSlice — Update ready",
+      message:   `Version ${info.version} has been downloaded.`,
+      detail:    "Restart now to apply the update, or it will install automatically the next time you close AutoSlice.",
+      buttons:   ["Restart now", "Later"],
+      defaultId: 0,
+      icon:      path.join(__dirname, "assets", "icon.ico"),
+    }).then(({ response }) => {
+      if (response === 0) autoUpdater.quitAndInstall(false, true);
+    });
+  });
+
+  autoUpdater.on("error", (err) => {
+    // Log silently — don't bother the user with network errors
+    console.error("Auto-updater error:", err.message);
+  });
+
+  // Check 8 seconds after startup so the app feels responsive first
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.error("Update check failed:", err.message);
+    });
+  }, 8000);
+}
+
 // ── App lifecycle ──────────────────────────────────────────────────────────
 
 // ── IPC handlers (used by preload bridge) ─────────────────────────────────
@@ -247,6 +289,7 @@ app.whenReady().then(async () => {
   mainWin.once("ready-to-show", () => {
     splash.close();
     mainWin.show();
+    setupAutoUpdater(mainWin);
   });
 
   mainWin.on("closed", () => {

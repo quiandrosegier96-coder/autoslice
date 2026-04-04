@@ -47,6 +47,7 @@ select {
   color: #e4e4e8;
   border-radius: 8px;
   padding: 10px 14px;
+  /* Note: Tailwind !pl-* / !pr-* classes override this padding via !important */
   width: 100%;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
@@ -62,6 +63,23 @@ select:focus {
 
 input::placeholder {
   color: #3a3a42;
+}
+
+/* ── Autofill override (Chromium / Electron) ──────────────────────────────
+   Chromium ignores background-color on autofilled inputs and paints its own
+   overlay layer. The inset box-shadow trick fakes a background without
+   triggering that override. The 5000s transition keeps it stable for the
+   session. -webkit-text-fill-color replaces `color` for autofill text,
+   which prevents the doubled/overlapping text rendering. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #131318 inset !important;
+  box-shadow:         0 0 0 1000px #131318 inset !important;
+  -webkit-text-fill-color: #e4e4e8 !important;
+  caret-color: #e4e4e8;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 select option {

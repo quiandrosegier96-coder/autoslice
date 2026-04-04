@@ -303,7 +303,7 @@ export default function LoginPage() {
                     placeholder="you@example.com"
                     required
                     autoComplete="username"
-                    className="w-full pl-10 pr-4 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
+                    className="w-full !pl-10 pr-4 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
                                text-white placeholder-zinc-600 text-sm
                                focus:outline-none focus:border-brand/50 focus:bg-white/[0.07]
                                focus:shadow-[0_0_0_3px_rgba(224,36,36,0.12)]
@@ -337,7 +337,7 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     required
                     autoComplete="current-password"
-                    className="w-full pl-10 pr-11 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
+                    className="w-full !pl-10 pr-11 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
                                text-white placeholder-zinc-600 text-sm
                                focus:outline-none focus:border-brand/50 focus:bg-white/[0.07]
                                focus:shadow-[0_0_0_3px_rgba(224,36,36,0.12)]
@@ -438,6 +438,8 @@ export default function LoginPage() {
           © {new Date().getFullYear()} AutoSlice v1.3.45
           <span className="mx-2 text-zinc-800">•</span>
           {FOOTER[lang] ?? FOOTER.en}
+          <span className="mx-2 text-zinc-800">•</span>
+          Powered by <span className="text-zinc-600">Network-it</span>
         </p>
       </div>
     </div>
