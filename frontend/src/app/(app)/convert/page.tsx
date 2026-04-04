@@ -3,10 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { isLoggedIn, getUser, isAdmin } from "@/lib/auth";
+import { isLoggedIn, getUser } from "@/lib/auth";
 import { useLang } from "@/contexts/LangContext";
 import { apiUpload, apiAnalyze, apiConvertDownload, apiGet, apiPost } from "@/lib/api";
-import { Navbar } from "@/components/Navbar";
 
 const ModelViewer = dynamic(
   () => import("@/components/ModelViewer").then((m) => m.ModelViewer),
@@ -379,10 +378,7 @@ export default function ConvertPage() {
   const settingsDisabled = isWorking;
 
   return (
-    <div className="min-h-screen bg-surface">
-      <Navbar showAdmin={isAdmin()} />
-
-      <main className="max-w-6xl mx-auto px-6 py-8">
+    <main className="max-w-6xl mx-auto px-6 py-8">
 
         {/* ── Page header ── */}
         <div className="mb-7 flex items-end justify-between">
@@ -973,8 +969,7 @@ export default function ConvertPage() {
             )}
           </div>
         </div>
-      </main>
-    </div>
+    </main>
   );
 }
 

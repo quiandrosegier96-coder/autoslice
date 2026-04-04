@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isAdmin } from "@/lib/auth";
 import { apiGet } from "@/lib/api";
-import { Navbar } from "@/components/Navbar";
 
 type UserRow = {
   id: number;
@@ -135,10 +134,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface">
-      <Navbar showAdmin />
-
-      <main className="max-w-5xl mx-auto px-4 py-10">
+    <main className="max-w-5xl mx-auto px-4 py-10">
         <div className="mb-8 flex items-center gap-3">
           <div>
             <h1 className="text-2xl font-bold text-white mb-1">Admin Dashboard</h1>
@@ -466,7 +462,6 @@ export default function AdminPage() {
             )}
           </>
         )}
-      </main>
-    </div>
+    </main>
   );
 }

@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { isLoggedIn, getUser, isAdmin } from "@/lib/auth";
+import { isLoggedIn, getUser } from "@/lib/auth";
 import { useLang } from "@/contexts/LangContext";
 import { apiGet } from "@/lib/api";
-import { Navbar } from "@/components/Navbar";
 
 type HistoryJob = {
   job_id: string;
@@ -72,10 +71,7 @@ export default function HistoryPage() {
   const converts = jobs.filter(j => j.action === "convert");
 
   return (
-    <div className="min-h-screen bg-surface">
-      <Navbar showAdmin={isAdmin()} />
-
-      <main className="max-w-3xl mx-auto px-4 py-10">
+    <main className="max-w-3xl mx-auto px-4 py-10">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white mb-1">{t("hist_title")}</h1>
           <p className="text-zinc-500 text-sm">{t("hist_subtitle")}</p>
@@ -181,7 +177,6 @@ export default function HistoryPage() {
             </div>
           </>
         )}
-      </main>
-    </div>
+    </main>
   );
 }
