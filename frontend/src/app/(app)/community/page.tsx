@@ -11,7 +11,6 @@ import {
   apiCommunityRate,
   type CommunityPrint,
 } from "@/lib/api";
-import { Navbar } from "@/components/Navbar";
 
 const STARS = [1, 2, 3, 4, 5];
 
@@ -168,10 +167,7 @@ export default function CommunityPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
-      <Navbar />
-
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
+    <main className="max-w-5xl mx-auto w-full px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -327,8 +323,7 @@ export default function CommunityPage() {
             ))}
           </div>
         )}
-      </main>
-    </div>
+    </main>
   );
 }
 

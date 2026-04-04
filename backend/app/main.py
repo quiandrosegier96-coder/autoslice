@@ -2,6 +2,8 @@
 AutoSlice — FastAPI application entry point.
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,10 +12,19 @@ from app.api.routes import support_engine
 from app.config import settings
 from app.database import init_db, seed_admin_users
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    seed_admin_users()
+    yield
+
+
 app = FastAPI(
     title="AutoSlice API",
     description="Converts Bambu/MakerWorld 3MF project files into optimized Anycubic 3MF files.",
-    version="1.3.45",
+    version="1.3.46",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -37,12 +48,6 @@ app.include_router(ratings.router,     prefix="/api", tags=["ratings"])
 app.include_router(gcode.router,           prefix="/api", tags=["gcode"])
 app.include_router(community.router,       prefix="/api", tags=["community"])
 app.include_router(support_engine.router,  tags=["support-engine"])
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    init_db()
-    seed_admin_users()
 
 
 @app.get("/health")

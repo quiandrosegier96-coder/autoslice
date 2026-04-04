@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find frontend/src/components -name \"ModelViewer*\" -exec head -50 {} \\\\;)",
+      "Bash(python -c \"import starlette; print\\(starlette.__version__\\)\")",
+      "Bash(pip show:*)",
+      "Bash(pip index:*)",
+      "Bash(xargs -I {} sh -c 'echo \"=== {} ===\" && head -20 \"{}\"')",
+      "Bash(python -c \"import json,sys; data=json.load\\(sys.stdin\\); print\\(data[0]['text']\\)\")",
+      "Bash(node_modules/.bin/tsc --noEmit)"
+    ]
+  }
+}

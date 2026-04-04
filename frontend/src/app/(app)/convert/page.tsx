@@ -3,10 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { isLoggedIn, getUser, isAdmin } from "@/lib/auth";
+import { isLoggedIn, getUser } from "@/lib/auth";
 import { useLang } from "@/contexts/LangContext";
 import { apiUpload, apiAnalyze, apiConvertDownload, apiGet, apiPost } from "@/lib/api";
-import { Navbar } from "@/components/Navbar";
 
 const ModelViewer = dynamic(
   () => import("@/components/ModelViewer").then((m) => m.ModelViewer),
@@ -379,16 +378,22 @@ export default function ConvertPage() {
   const settingsDisabled = isWorking;
 
   return (
-    <div className="min-h-screen bg-surface">
-      <Navbar showAdmin={isAdmin()} />
-
-      <main className="max-w-6xl mx-auto px-6 py-8">
+    <main className="max-w-6xl mx-auto px-6 py-8">
 
         {/* ── Page header ── */}
         <div className="mb-7 flex items-end justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">{t("conv_title")}</h1>
-            <p className="text-zinc-500 text-sm mt-1">{t("conv_subtitle")}</p>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-brand/[0.12] border border-brand/[0.25] flex items-center justify-center shrink-0
+                            shadow-[0_0_24px_rgba(224,36,36,0.22)]">
+              <svg className="w-6 h-6 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white tracking-tight">{t("conv_title")}</h1>
+              <p className="text-zinc-500 text-sm mt-0.5">{t("conv_subtitle")}</p>
+            </div>
           </div>
           {user && (
             <span className="hidden sm:block text-xs text-zinc-600 font-medium">
@@ -414,10 +419,14 @@ export default function ConvertPage() {
           <div className="space-y-5">
 
             {/* Print settings card */}
-            <div className="bg-surface-card border border-surface-border rounded-2xl overflow-hidden
-                            shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
-              <div className="px-5 py-4 border-b border-surface-border flex items-center gap-2.5">
-                <div className="w-6 h-6 rounded-lg bg-brand/15 flex items-center justify-center">
+            <div className="relative bg-surface-card border border-white/[0.07] rounded-2xl overflow-hidden
+                            shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_4px_32px_rgba(0,0,0,0.5),0_0_40px_rgba(224,36,36,0.04)]">
+              {/* Top inner highlight */}
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.09] to-transparent" />
+              <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-2.5
+                              bg-gradient-to-r from-white/[0.025] to-transparent">
+                <div className="w-6 h-6 rounded-lg bg-brand/20 border border-brand/[0.25] flex items-center justify-center
+                                shadow-[0_0_8px_rgba(224,36,36,0.25)]">
                   <svg className="w-3.5 h-3.5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                       d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -540,16 +549,29 @@ export default function ConvertPage() {
             </div>
 
             {/* Multi-color card */}
-            <div className="bg-surface-card border border-surface-border rounded-2xl overflow-hidden
-                            shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
-              <div className="px-5 py-4 border-b border-surface-border flex items-center gap-2.5">
-                <div className="w-6 h-6 rounded-lg bg-brand/15 flex items-center justify-center">
+            <div className="relative bg-surface-card border border-white/[0.07] rounded-2xl overflow-hidden
+                            shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_4px_32px_rgba(0,0,0,0.5),0_0_40px_rgba(224,36,36,0.04)]">
+              {/* Top inner highlight */}
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.09] to-transparent" />
+              <div className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-2.5
+                              bg-gradient-to-r from-white/[0.025] to-transparent">
+                <div className="w-6 h-6 rounded-lg bg-brand/20 border border-brand/[0.25] flex items-center justify-center
+                                shadow-[0_0_8px_rgba(224,36,36,0.25)]">
                   <svg className="w-3.5 h-3.5 text-brand" viewBox="0 0 24 24" fill="currentColor">
                     <circle cx="6" cy="6" r="3.5"/><circle cx="18" cy="6" r="3.5"/>
                     <circle cx="6" cy="18" r="3.5"/><circle cx="18" cy="18" r="3.5"/>
                   </svg>
                 </div>
                 <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-[0.1em]">{t("conv_multicolor")}</h2>
+                {multiColorMode !== "none" && (
+                  <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full
+                                  bg-brand/[0.1] border border-brand/[0.3]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
+                    <span className="text-[10px] text-brand font-semibold">
+                      {multiColorMode === "ace_pro" ? "ACE Pro" : "ACE Pro 2"} ({colorCount} slots)
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="p-5">
@@ -566,8 +588,8 @@ export default function ConvertPage() {
                       disabled={settingsDisabled}
                       className={`py-2.5 px-2 rounded-xl border text-left transition-all duration-150 disabled:opacity-50 ${
                         multiColorMode === id
-                          ? "bg-brand/15 border-brand/60 shadow-[0_0_12px_rgba(224,36,36,0.15)]"
-                          : "bg-white/[0.03] border-white/[0.07] hover:border-white/[0.15]"
+                          ? "bg-brand/[0.18] border-brand/70 shadow-[0_0_20px_rgba(224,36,36,0.22),inset_0_1px_0_rgba(255,255,255,0.07)]"
+                          : "bg-white/[0.025] border-white/[0.07] hover:border-white/[0.15] hover:bg-white/[0.04]"
                       }`}
                     >
                       <p className={`text-xs font-bold leading-tight ${multiColorMode === id ? "text-brand" : "text-zinc-300"}`}>{label}</p>
@@ -636,12 +658,12 @@ export default function ConvertPage() {
               onDrop={onDrop}
               onClick={() => !isWorking && step !== "done" && fileInputRef.current?.click()}
               className={`relative rounded-2xl border-2 border-dashed transition-all duration-200
-                bg-surface-card shadow-[0_4px_24px_rgba(0,0,0,0.3)]
+                bg-surface-card
                 ${dragging
-                  ? "border-brand bg-brand/[0.06] shadow-[0_0_32px_rgba(224,36,36,0.12)]"
+                  ? "border-brand bg-brand/[0.08] shadow-[0_0_40px_rgba(224,36,36,0.18),0_0_0_1px_rgba(224,36,36,0.15)]"
                   : step === "done"
-                    ? "border-green-700/50 bg-green-950/10 cursor-default"
-                    : "border-white/[0.09] hover:border-white/[0.18]"}
+                    ? "border-green-700/50 bg-green-950/10 cursor-default shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
+                    : "border-brand/[0.25] hover:border-brand/[0.5] hover:bg-brand/[0.03] shadow-[0_0_0_1px_rgba(224,36,36,0.04),0_4px_32px_rgba(0,0,0,0.5)] hover:shadow-[0_0_32px_rgba(224,36,36,0.1),0_4px_32px_rgba(0,0,0,0.5)]"}
                 ${step === "idle" || step === "ready" ? "cursor-pointer" : ""}
                 ${isWorking ? "cursor-not-allowed opacity-70" : ""}
               `}
@@ -657,26 +679,27 @@ export default function ConvertPage() {
               <div className="flex flex-col items-center justify-center py-14 px-8 text-center">
                 {step === "idle" && (
                   <>
-                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-5 transition-all duration-200
+                    <div className={`w-[72px] h-[72px] rounded-2xl flex items-center justify-center mb-5 transition-all duration-200
                       ${dragging
-                        ? "bg-brand/20 border border-brand/40 shadow-[0_0_24px_rgba(224,36,36,0.25)]"
-                        : "bg-white/[0.05] border border-white/[0.09]"}`}
+                        ? "bg-brand/25 border border-brand/50 shadow-[0_0_32px_rgba(224,36,36,0.35)]"
+                        : "bg-brand/[0.08] border border-brand/[0.2] shadow-[0_0_20px_rgba(224,36,36,0.12)]"}`}
                     >
-                      <svg className={`w-8 h-8 transition-colors ${dragging ? "text-brand" : "text-zinc-500"}`}
+                      <svg className={`w-9 h-9 transition-colors ${dragging ? "text-brand" : "text-brand/70"}`}
                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                           d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
                       </svg>
                     </div>
-                    <p className="text-lg font-semibold text-white mb-1.5">{t("conv_drop")}</p>
-                    <p className="text-sm text-zinc-500 mb-4">{t("conv_or_browse")}</p>
-                    <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/[0.06] border border-white/[0.10]
-                                     text-xs text-zinc-400 font-medium">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <p className="text-[17px] font-bold text-white mb-1.5">{t("conv_drop")}</p>
+                    <p className="text-sm text-zinc-500 mb-5">{t("conv_or_browse")}</p>
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full
+                                     bg-brand/[0.08] border border-brand/[0.2]
+                                     text-xs text-zinc-300 font-medium">
+                      <svg className="w-3.5 h-3.5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                          d="M13 10V3L4 14h7v7l9-11h-7z"/>
                       </svg>
-                      .3mf files only
+                      Ondersteunt .3mf bestanden tot 100MB
                     </span>
                   </>
                 )}
@@ -725,9 +748,12 @@ export default function ConvertPage() {
 
             {/* ── 3D Model Viewer ── */}
             {jobId && (step === "ready" || step === "converting" || step === "done") && (
-              <div className="bg-surface-card border border-surface-border rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
-                <div className="px-5 py-3.5 border-b border-surface-border flex items-center justify-between">
-                  <span className="text-xs font-semibold text-zinc-400 uppercase tracking-[0.1em]">3D Preview</span>
+              <div className="relative bg-surface-card border border-white/[0.07] rounded-2xl overflow-hidden
+                              shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_4px_32px_rgba(0,0,0,0.5)]">
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.09] to-transparent" />
+                <div className="px-5 py-3.5 border-b border-white/[0.06] flex items-center justify-between
+                                bg-gradient-to-r from-white/[0.025] to-transparent">
+                  <span className="text-xs font-semibold text-zinc-300 uppercase tracking-[0.1em]">3D Preview</span>
                   <div className="flex items-center gap-1.5 flex-wrap justify-end">
                     {([
                       { label: "Default",     euler: []           },
@@ -777,8 +803,10 @@ export default function ConvertPage() {
 
             {/* ── Analysis results ── */}
             {analysis && (
-              <div className="bg-surface-card border border-surface-border rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
-                <div className="px-5 py-4 border-b border-surface-border">
+              <div className="relative bg-surface-card border border-white/[0.07] rounded-2xl overflow-hidden
+                              shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_4px_32px_rgba(0,0,0,0.5)]">
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.09] to-transparent" />
+                <div className="px-5 py-4 border-b border-white/[0.06] bg-gradient-to-r from-white/[0.025] to-transparent">
                   <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-[0.1em]">{t("conv_analysis")}</h2>
                 </div>
                 <div className="p-5">
@@ -858,19 +886,21 @@ export default function ConvertPage() {
             {step === "ready" && (
               <button
                 onClick={handleConvert}
-                className="w-full h-14 rounded-2xl font-bold text-white text-base
-                           bg-gradient-to-r from-brand to-brand-dark
-                           hover:from-brand-light hover:to-brand
-                           shadow-[0_4px_20px_rgba(224,36,36,0.4)]
-                           hover:shadow-[0_6px_32px_rgba(224,36,36,0.6)]
+                className="w-full h-14 rounded-2xl font-bold text-white text-[15px] tracking-wide
+                           bg-gradient-to-r from-[#e02424] via-[#d42020] to-[#c41f1f]
+                           shadow-[0_4px_28px_rgba(224,36,36,0.55),0_0_0_1px_rgba(224,36,36,0.25),inset_0_1px_0_rgba(255,255,255,0.1)]
+                           hover:shadow-[0_6px_40px_rgba(224,36,36,0.75),0_0_0_1px_rgba(224,36,36,0.4),inset_0_1px_0_rgba(255,255,255,0.12)]
                            hover:-translate-y-0.5 active:translate-y-0
                            transition-all duration-150 flex items-center justify-center gap-3"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5}
+                    d="M13 10V3L4 14h7v7l9-11h-7z"/>
                 </svg>
                 {t("conv_generate")}
+                <svg className="w-4 h-4 ml-0.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                </svg>
               </button>
             )}
 
@@ -916,7 +946,8 @@ export default function ConvertPage() {
                 </button>
 
                 {/* Feedback card */}
-                <div className="p-5 bg-surface-card border border-surface-border rounded-2xl">
+                <div className="p-5 bg-surface-card border border-white/[0.07] rounded-2xl
+                                shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_4px_24px_rgba(0,0,0,0.4)]">
                   {feedbackSent ? (
                     <p className="text-center text-sm text-green-400">{t("conv_fb_thanks")}</p>
                   ) : (
@@ -946,7 +977,8 @@ export default function ConvertPage() {
                 </div>
 
                 {/* Star rating card */}
-                <div className="p-5 bg-surface-card border border-surface-border rounded-2xl">
+                <div className="p-5 bg-surface-card border border-white/[0.07] rounded-2xl
+                                shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_4px_24px_rgba(0,0,0,0.4)]">
                   {ratingDone ? (
                     <p className="text-center text-sm text-green-400">{t("rating_thanks")}</p>
                   ) : (
@@ -973,8 +1005,7 @@ export default function ConvertPage() {
             )}
           </div>
         </div>
-      </main>
-    </div>
+    </main>
   );
 }
 
@@ -1007,17 +1038,25 @@ function ColorSlot({
   availableFilaments: string[];
   disabled: boolean;
 }) {
+  const color = slotColors[index];
   return (
-    <div className="rounded-xl border p-2.5 flex flex-col gap-2"
-      style={{ borderColor: slotColors[index] + "55", backgroundColor: slotColors[index] + "0d" }}>
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold text-zinc-500">S{index + 1}</span>
+    <div className="rounded-xl border p-2.5 flex flex-col gap-2 relative overflow-hidden"
+      style={{
+        borderColor: color + "66",
+        backgroundColor: color + "14",
+        boxShadow: `0 0 14px ${color}1a, inset 0 1px 0 ${color}22`,
+      }}>
+      {/* Colored swatch bar at top */}
+      <div className="absolute inset-x-0 top-0 h-[3px] rounded-t-xl"
+        style={{ background: `linear-gradient(90deg, ${color}aa, ${color}55)` }} />
+      <div className="flex items-center justify-between pt-0.5">
+        <span className="text-[10px] font-bold" style={{ color: color + "cc" }}>S{index + 1}</span>
         <div className="w-4 h-4 rounded-full border border-white/20 shrink-0"
-          style={{ backgroundColor: slotColors[index] }} />
+          style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}88` }} />
       </div>
       <input
         type="color"
-        value={slotColors[index]}
+        value={color}
         onChange={(e) => {
           const next = [...slotColors];
           next[index] = e.target.value;
@@ -1095,7 +1134,9 @@ function OrientationCard({
   );
 
   return (
-    <div className="bg-surface-card border border-surface-border rounded-xl mb-6 overflow-hidden">
+    <div className="relative bg-surface-card border border-white/[0.07] rounded-2xl mb-0 overflow-hidden
+                    shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_4px_32px_rgba(0,0,0,0.5)]">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.09] to-transparent" />
       {/* Header — always visible */}
       <div className="p-5">
         <div className="flex items-center justify-between mb-3">
@@ -1228,10 +1269,12 @@ function ExplanationsCard({ report }: { report: ExplanationReport }) {
   };
 
   return (
-    <div className="bg-surface-card border border-surface-border rounded-xl mb-6 overflow-hidden">
+    <div className="relative bg-surface-card border border-white/[0.07] rounded-2xl mb-0 overflow-hidden
+                    shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_4px_32px_rgba(0,0,0,0.5)]">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.09] to-transparent" />
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between p-5 text-left hover:bg-surface-elevated/40 transition-colors"
+        className="w-full flex items-center justify-between p-5 text-left hover:bg-white/[0.02] transition-colors"
       >
         <div>
           <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide mb-1">
@@ -1308,7 +1351,9 @@ function PrintabilityCard({ score }: { score: PrintabilityScore }) {
   ];
 
   return (
-    <div className="bg-surface-card border border-surface-border rounded-xl p-6 mb-6">
+    <div className="relative bg-surface-card border border-white/[0.07] rounded-2xl p-6 mb-0
+                    shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_4px_32px_rgba(0,0,0,0.5)]">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.09] to-transparent" />
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
           {t("print_title")}
