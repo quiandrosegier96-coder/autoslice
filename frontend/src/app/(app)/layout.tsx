@@ -128,7 +128,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen bg-[#070709] overflow-hidden">
 
       {/* ═══════════ SIDEBAR ═══════════ */}
-      <aside className="w-[220px] shrink-0 h-screen flex flex-col bg-[#08080c] border-r border-white/[0.055]">
+      <aside className="w-[220px] shrink-0 h-screen flex flex-col bg-[#07070b] border-r border-white/[0.055]
+                        shadow-[4px_0_32px_rgba(0,0,0,0.4)]">
 
         {/* Brand */}
         <div className="px-5 pt-5 pb-4 border-b border-white/[0.055]">
@@ -176,14 +177,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   "relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium",
                   "transition-all duration-150 group",
                   active
-                    ? "bg-brand/[0.13] text-white"
+                    ? "bg-brand/[0.16] text-white shadow-[0_0_20px_rgba(224,36,36,0.1),inset_0_1px_0_rgba(255,255,255,0.05)]"
                     : "text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04]",
                 ].join(" ")}>
 
                 {/* Active left accent bar */}
                 {active && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[22px]
-                                   bg-brand rounded-r-full shadow-[0_0_10px_rgba(224,36,36,0.7)]" />
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[26px]
+                                   bg-brand rounded-r-full shadow-[0_0_12px_rgba(224,36,36,0.9)]" />
                 )}
 
                 <span className={active
@@ -222,27 +223,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Background decorations */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {/* Top-right red glow blob */}
-          <div className="absolute -top-40 -right-40 w-[520px] h-[520px] rounded-full
-                          bg-brand/[0.09] blur-[110px]" />
+          <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full
+                          bg-brand/[0.11] blur-[120px]" />
+          {/* Center-top secondary glow */}
+          <div className="absolute -top-20 left-1/3 w-[360px] h-[280px] rounded-full
+                          bg-brand/[0.05] blur-[90px]" />
           {/* Bottom-left ambient glow */}
-          <div className="absolute -bottom-20 -left-10 w-[420px] h-[280px] rounded-full
-                          bg-brand/[0.055] blur-[90px]" />
+          <div className="absolute -bottom-20 -left-10 w-[480px] h-[320px] rounded-full
+                          bg-brand/[0.07] blur-[100px]" />
           {/* Perspective grid */}
           <div className="absolute bottom-0 left-0 right-0 h-[260px]">
             <div
               className="absolute inset-0"
               style={{
                 backgroundImage: [
-                  "linear-gradient(rgba(224,36,36,0.065) 1px, transparent 1px)",
-                  "linear-gradient(90deg, rgba(224,36,36,0.065) 1px, transparent 1px)",
+                  "linear-gradient(rgba(224,36,36,0.085) 1px, transparent 1px)",
+                  "linear-gradient(90deg, rgba(224,36,36,0.085) 1px, transparent 1px)",
                 ].join(","),
-                backgroundSize: "46px 46px",
-                transform: "perspective(320px) rotateX(56deg) scaleX(1.6)",
+                backgroundSize: "44px 44px",
+                transform: "perspective(300px) rotateX(58deg) scaleX(1.7)",
                 transformOrigin: "50% 0%",
               }}
             />
             {/* Fade the grid out toward the top */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#070709]/70 via-[#070709]/30 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#070709]/80 via-[#070709]/20 to-transparent" />
           </div>
         </div>
 
