@@ -435,7 +435,7 @@ export default function LoginPage() {
       {/* ── Footer ── */}
       <div className="relative z-10 pb-6 text-center">
         <p className="text-[11px] text-zinc-700 tracking-wide">
-          © {new Date().getFullYear()} AutoSlice v1.3.45
+          © {new Date().getFullYear()} AutoSlice v1.3.47
           <span className="mx-2 text-zinc-800">•</span>
           {FOOTER[lang] ?? FOOTER.en}
           <span className="mx-2 text-zinc-800">•</span>

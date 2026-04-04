@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AutoSlice API",
     description="Converts Bambu/MakerWorld 3MF project files into optimized Anycubic 3MF files.",
-    version="1.3.46",
+    version="1.3.47",
     lifespan=lifespan,
 )
 
