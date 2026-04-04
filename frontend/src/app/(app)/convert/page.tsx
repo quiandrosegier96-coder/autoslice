@@ -382,508 +382,597 @@ export default function ConvertPage() {
     <div className="min-h-screen bg-surface">
       <Navbar showAdmin={isAdmin()} />
 
-      <main className="max-w-3xl mx-auto px-4 py-10">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white mb-1">{t("conv_title")}</h1>
-          <p className="text-zinc-500 text-sm">
-            {t("conv_subtitle")}
-          </p>
+      <main className="max-w-6xl mx-auto px-6 py-8">
+
+        {/* ── Page header ── */}
+        <div className="mb-7 flex items-end justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">{t("conv_title")}</h1>
+            <p className="text-zinc-500 text-sm mt-1">{t("conv_subtitle")}</p>
+          </div>
+          {user && (
+            <span className="hidden sm:block text-xs text-zinc-600 font-medium">
+              {user.email}
+            </span>
+          )}
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-brand/10 border border-brand/30 rounded-lg text-brand text-sm">
+          <div className="mb-6 p-4 bg-brand/10 border border-brand/30 rounded-xl text-brand text-sm flex items-center gap-3">
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
             {error}
           </div>
         )}
 
-        {/* ── Settings panel (always visible) ── */}
-        <div className="bg-surface-card border border-surface-border rounded-xl p-5 mb-6 space-y-4">
-          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">{t("conv_settings")}</h2>
+        {/* ── Two-column dashboard grid ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6 items-start">
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">{t("conv_printer")}</label>
-              <select
-                value={selectedPrinter}
-                onChange={(e) => handlePrinterChange(e.target.value)}
-                disabled={settingsDisabled}
-              >
-                {printers.map((p) => (
-                  <option key={p.id} value={p.id}>{p.display_name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">{t("conv_filament")}</label>
-              <select
-                value={selectedFilament}
-                onChange={(e) => {
-                  setSelectedFilament(e.target.value);
-                  // Keep slot 0 in sync so the primary filament is always reflected
-                  // in per-slot configs sent to the backend
-                  setSlotFilaments(prev => { const a = [...prev]; a[0] = e.target.value; return a; });
-                }}
-                disabled={settingsDisabled}
-              >
-                {availableFilaments.map((f) => (
-                  <option key={f} value={f}>{FILAMENT_LABELS[f] ?? f.toUpperCase()}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+          {/* ════ LEFT SIDEBAR — Settings ════ */}
+          <div className="space-y-5">
 
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">{t("conv_nozzle_size")}</label>
-              <select
-                value={nozzleSize}
-                onChange={(e) => setNozzleSize(parseFloat(e.target.value))}
-                disabled={settingsDisabled}
-              >
-                {NOZZLE_SIZES.map((n) => (
-                  <option key={n.value} value={n.value}>{n.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">{t("conv_nozzle_type")}</label>
-              <select
-                value={nozzleType}
-                onChange={(e) => setNozzleType(e.target.value)}
-                disabled={settingsDisabled}
-              >
-                {NOZZLE_TYPES.map((n) => (
-                  <option key={n.value} value={n.value}>{n.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">{t("conv_diameter")}</label>
-              <div className="w-full px-3 py-2 bg-surface-elevated border border-surface-border rounded-lg text-sm text-zinc-400 cursor-not-allowed">
-                1.75 mm
+            {/* Print settings card */}
+            <div className="bg-surface-card border border-surface-border rounded-2xl overflow-hidden
+                            shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
+              <div className="px-5 py-4 border-b border-surface-border flex items-center gap-2.5">
+                <div className="w-6 h-6 rounded-lg bg-brand/15 flex items-center justify-center">
+                  <svg className="w-3.5 h-3.5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-[0.1em]">{t("conv_settings")}</h2>
               </div>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">{t("conv_plate")}</label>
-              <select
-                value={buildPlate}
-                onChange={(e) => setBuildPlate(e.target.value)}
-                disabled={settingsDisabled}
-              >
-                {BUILD_PLATES.map((b) => (
-                  <option key={b.value} value={b.value}>{b.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">{t("conv_flush")}</label>
-              <input
-                type="number"
-                min={0}
-                max={50}
-                step={0.5}
-                value={flushVolume}
-                onChange={(e) => setFlushVolume(parseFloat(e.target.value) || 0)}
-                disabled={settingsDisabled}
-                className="w-full"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* ── Multi-Color Setup ── */}
-        <div className="bg-surface-card border border-surface-border rounded-xl p-5 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-5 h-5 rounded-sm bg-brand/20 flex items-center justify-center">
-              <svg className="w-3 h-3 text-brand" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="6" cy="6" r="4"/><circle cx="18" cy="6" r="4"/>
-                <circle cx="6" cy="18" r="4"/><circle cx="18" cy="18" r="4"/>
-              </svg>
-            </div>
-            <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">{t("conv_multicolor")}</h2>
-          </div>
-
-          {/* Mode buttons */}
-          <div className="flex gap-2 mb-5">
-            {([
-              { id: "none",     label: t("conv_single"),  sub: t("conv_single_sub"), slots: 0 },
-              { id: "ace_pro",  label: "ACE Pro",         sub: t("conv_slots_sub"),  slots: 4 },
-              { id: "ace_pro2", label: "ACE Pro 2",       sub: t("conv_slots_sub"),  slots: 4 },
-            ] as const).map(({ id, label, sub }) => (
-              <button
-                key={id}
-                onClick={() => handleMultiColorMode(id)}
-                disabled={settingsDisabled}
-                className={`flex-1 py-2.5 px-3 rounded-lg border text-left transition-colors ${
-                  multiColorMode === id
-                    ? "bg-brand/15 border-brand text-white"
-                    : "bg-surface-elevated border-surface-border text-zinc-400 hover:border-zinc-500"
-                }`}
-              >
-                <p className={`text-sm font-semibold ${multiColorMode === id ? "text-brand" : ""}`}>{label}</p>
-                <p className="text-xs text-zinc-500 mt-0.5">{sub}</p>
-              </button>
-            ))}
-          </div>
-
-          {/* Dual unit toggle */}
-          {multiColorMode !== "none" && (
-            <label className="flex items-center gap-2 mb-4 cursor-pointer w-fit select-none">
-              <input
-                type="checkbox"
-                checked={dualUnit}
-                onChange={(e) => handleDualUnit(e.target.checked)}
-                disabled={settingsDisabled}
-                className="w-3.5 h-3.5 accent-brand cursor-pointer"
-              />
-              <span className="text-xs text-zinc-500">
-                {t("conv_add_second")} {multiColorMode === "ace_pro" ? "ACE Pro" : "ACE Pro 2"}
-                <span className="ml-1.5 text-zinc-600">{t("conv_8slots")}</span>
-              </span>
-            </label>
-          )}
-
-          {/* Color slots */}
-          {multiColorMode !== "none" ? (
-            <>
-              {dualUnit && (
-                <p className="text-xs text-zinc-600 mb-1.5 -mt-1">{t("conv_unit1")}</p>
-              )}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {Array.from({ length: Math.min(colorCount, 4) }, (_, i) => (
-                  <ColorSlot key={i} index={i} slotColors={slotColors} setSlotColors={setSlotColors}
-                    slotFilaments={slotFilaments} setSlotFilaments={setSlotFilaments}
-                    availableFilaments={availableFilaments} disabled={settingsDisabled} />
-                ))}
-              </div>
-              {dualUnit && colorCount === 8 && (
-                <>
-                  <p className="text-xs text-zinc-600 mt-4 mb-1.5">{t("conv_unit2")}</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {Array.from({ length: 4 }, (_, i) => (
-                      <ColorSlot key={i + 4} index={i + 4} slotColors={slotColors} setSlotColors={setSlotColors}
-                        slotFilaments={slotFilaments} setSlotFilaments={setSlotFilaments}
-                        availableFilaments={availableFilaments} disabled={settingsDisabled} />
-                    ))}
+              <div className="p-5 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-zinc-500 mb-1.5 uppercase tracking-[0.12em]">{t("conv_printer")}</label>
+                    <select
+                      value={selectedPrinter}
+                      onChange={(e) => handlePrinterChange(e.target.value)}
+                      disabled={settingsDisabled}
+                      className="w-full h-10 px-3 bg-white/[0.05] border border-white/[0.09] rounded-xl text-white text-sm
+                                 focus:outline-none focus:border-brand/50 focus:bg-white/[0.07] transition-all duration-150
+                                 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {printers.map((p) => (
+                        <option key={p.id} value={p.id}>{p.display_name}</option>
+                      ))}
+                    </select>
                   </div>
-                </>
-              )}
-            </>
-          ) : (
-            <p className="text-xs text-zinc-600 italic">
-              {t("conv_multicolor_hint")}
-            </p>
-          )}
-        </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-zinc-500 mb-1.5 uppercase tracking-[0.12em]">{t("conv_filament")}</label>
+                    <select
+                      value={selectedFilament}
+                      onChange={(e) => {
+                        setSelectedFilament(e.target.value);
+                        setSlotFilaments(prev => { const a = [...prev]; a[0] = e.target.value; return a; });
+                      }}
+                      disabled={settingsDisabled}
+                      className="w-full h-10 px-3 bg-white/[0.05] border border-white/[0.09] rounded-xl text-white text-sm
+                                 focus:outline-none focus:border-brand/50 focus:bg-white/[0.07] transition-all duration-150
+                                 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {availableFilaments.map((f) => (
+                        <option key={f} value={f}>{FILAMENT_LABELS[f] ?? f.toUpperCase()}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
-        {/* ── Upload zone ── */}
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={onDrop}
-          onClick={() => !isWorking && step !== "done" && fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-10 text-center transition-all duration-150 mb-6
-            ${dragging ? "border-brand bg-brand/5" : "border-surface-border bg-surface-card"}
-            ${step === "idle" || step === "ready" ? "cursor-pointer hover:border-zinc-600" : ""}
-            ${isWorking ? "cursor-not-allowed opacity-70" : ""}
-            ${step === "done" ? "border-green-700/50 bg-green-950/10 cursor-default" : ""}
-          `}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".3mf"
-            className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-          />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-zinc-500 mb-1.5 uppercase tracking-[0.12em]">{t("conv_nozzle_size")}</label>
+                    <select
+                      value={nozzleSize}
+                      onChange={(e) => setNozzleSize(parseFloat(e.target.value))}
+                      disabled={settingsDisabled}
+                      className="w-full h-10 px-3 bg-white/[0.05] border border-white/[0.09] rounded-xl text-white text-sm
+                                 focus:outline-none focus:border-brand/50 focus:bg-white/[0.07] transition-all duration-150
+                                 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {NOZZLE_SIZES.map((n) => (
+                        <option key={n.value} value={n.value}>{n.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-zinc-500 mb-1.5 uppercase tracking-[0.12em]">{t("conv_nozzle_type")}</label>
+                    <select
+                      value={nozzleType}
+                      onChange={(e) => setNozzleType(e.target.value)}
+                      disabled={settingsDisabled}
+                      className="w-full h-10 px-3 bg-white/[0.05] border border-white/[0.09] rounded-xl text-white text-sm
+                                 focus:outline-none focus:border-brand/50 focus:bg-white/[0.07] transition-all duration-150
+                                 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {NOZZLE_TYPES.map((n) => (
+                        <option key={n.value} value={n.value}>{n.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
-          {step === "idle" && (
-            <>
-              <div className="w-12 h-12 rounded-full bg-surface-elevated border border-surface-border flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
-                </svg>
-              </div>
-              <p className="text-white font-medium mb-1">{t("conv_drop")}</p>
-              <p className="text-zinc-500 text-sm">{t("conv_or_browse")}</p>
-            </>
-          )}
-
-          {(step === "uploading" || step === "analyzing") && (
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin"/>
-              <p className="text-white text-sm font-medium">
-                {step === "uploading" ? t("conv_uploading") : t("conv_analyzing")}
-              </p>
-              <p className="text-zinc-500 text-xs">{uploadedFile?.name}</p>
-            </div>
-          )}
-
-          {(step === "ready" || step === "converting") && (
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-brand/10 border border-brand/30 flex items-center justify-center">
-                <svg className="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
-                </svg>
-              </div>
-              <p className="text-white text-sm font-medium">{uploadedFile?.name}</p>
-              <button
-                onClick={(e) => { e.stopPropagation(); reset(); }}
-                className="text-xs text-zinc-500 hover:text-brand transition-colors mt-1"
-              >
-                {t("conv_change_file")}
-              </button>
-            </div>
-          )}
-
-          {step === "done" && (
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center">
-                <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
-                </svg>
-              </div>
-              <p className="text-green-400 text-sm font-medium">{t("conv_done")}</p>
-            </div>
-          )}
-        </div>
-
-        {/* 3D Model Viewer */}
-        {jobId && (step === "ready" || step === "converting" || step === "done") && (
-          <div className="mb-6 flex flex-col gap-2">
-            {/* Rotation presets */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-zinc-500 shrink-0">Rotation:</span>
-              {([
-                { label: "Default",      euler: []           },
-                { label: "Flat",         euler: [-90, 0, 0]  },
-                { label: "Upside Down",  euler: [180, 0, 0]  },
-                { label: "On Side L",    euler: [0, 0, 90]   },
-                { label: "On Side R",    euler: [0, 0, -90]  },
-              ] as { label: string; euler: number[] }[]).map(({ label, euler }) => {
-                const isActive = JSON.stringify(manualEuler) === JSON.stringify(euler);
-                return (
-                  <button
-                    key={label}
-                    onClick={() => setManualEuler(euler)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
-                      isActive
-                        ? "bg-brand/20 border-brand/50 text-brand"
-                        : "bg-surface-card border-surface-border text-zinc-400 hover:text-white hover:border-zinc-500"
-                    }`}
+                <div>
+                  <label className="block text-[10px] font-semibold text-zinc-500 mb-1.5 uppercase tracking-[0.12em]">{t("conv_plate")}</label>
+                  <select
+                    value={buildPlate}
+                    onChange={(e) => setBuildPlate(e.target.value)}
+                    disabled={settingsDisabled}
+                    className="w-full h-10 px-3 bg-white/[0.05] border border-white/[0.09] rounded-xl text-white text-sm
+                               focus:outline-none focus:border-brand/50 focus:bg-white/[0.07] transition-all duration-150
+                               disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {label}
-                  </button>
-                );
-              })}
+                    {BUILD_PLATES.map((b) => (
+                      <option key={b.value} value={b.value}>{b.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-zinc-500 mb-1.5 uppercase tracking-[0.12em]">{t("conv_diameter")}</label>
+                    <div className="h-10 px-3 flex items-center bg-white/[0.03] border border-white/[0.06] rounded-xl text-sm text-zinc-500 cursor-not-allowed select-none">
+                      1.75 mm
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-zinc-500 mb-1.5 uppercase tracking-[0.12em]">{t("conv_flush")}</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={50}
+                      step={0.5}
+                      value={flushVolume}
+                      onChange={(e) => setFlushVolume(parseFloat(e.target.value) || 0)}
+                      disabled={settingsDisabled}
+                      className="w-full h-10 px-3 bg-white/[0.05] border border-white/[0.09] rounded-xl text-white text-sm
+                                 focus:outline-none focus:border-brand/50 focus:bg-white/[0.07] transition-all duration-150
+                                 disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-            <ModelViewer jobId={jobId} showSupports={showSupports} rotationEuler={manualEuler.length === 3 ? manualEuler : undefined} />
-            {analysis?.geometry.overhang.has_overhangs && (
-              <label className="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer select-none w-fit">
-                <input
-                  type="checkbox"
-                  checked={showSupports}
-                  onChange={(e) => setShowSupports(e.target.checked)}
-                  className="w-4 h-4 rounded accent-orange-500"
-                />
-                <span>Show support regions</span>
-                {showSupports && analysis.geometry.overhang.overhang_area_ratio > 0 && (
-                  <span className="text-xs text-zinc-600">
-                    ({(analysis.geometry.overhang.overhang_area_ratio * 100).toFixed(0)}% of surface)
-                  </span>
+
+            {/* Multi-color card */}
+            <div className="bg-surface-card border border-surface-border rounded-2xl overflow-hidden
+                            shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
+              <div className="px-5 py-4 border-b border-surface-border flex items-center gap-2.5">
+                <div className="w-6 h-6 rounded-lg bg-brand/15 flex items-center justify-center">
+                  <svg className="w-3.5 h-3.5 text-brand" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="6" cy="6" r="3.5"/><circle cx="18" cy="6" r="3.5"/>
+                    <circle cx="6" cy="18" r="3.5"/><circle cx="18" cy="18" r="3.5"/>
+                  </svg>
+                </div>
+                <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-[0.1em]">{t("conv_multicolor")}</h2>
+              </div>
+
+              <div className="p-5">
+                {/* Mode buttons */}
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {([
+                    { id: "none",     label: t("conv_single"),  sub: t("conv_single_sub") },
+                    { id: "ace_pro",  label: "ACE Pro",         sub: t("conv_slots_sub")  },
+                    { id: "ace_pro2", label: "ACE Pro 2",       sub: t("conv_slots_sub")  },
+                  ] as const).map(({ id, label, sub }) => (
+                    <button
+                      key={id}
+                      onClick={() => handleMultiColorMode(id)}
+                      disabled={settingsDisabled}
+                      className={`py-2.5 px-2 rounded-xl border text-left transition-all duration-150 disabled:opacity-50 ${
+                        multiColorMode === id
+                          ? "bg-brand/15 border-brand/60 shadow-[0_0_12px_rgba(224,36,36,0.15)]"
+                          : "bg-white/[0.03] border-white/[0.07] hover:border-white/[0.15]"
+                      }`}
+                    >
+                      <p className={`text-xs font-bold leading-tight ${multiColorMode === id ? "text-brand" : "text-zinc-300"}`}>{label}</p>
+                      <p className="text-[10px] text-zinc-600 mt-0.5 leading-tight">{sub}</p>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Dual unit toggle */}
+                {multiColorMode !== "none" && (
+                  <label className="flex items-center gap-2 mb-4 cursor-pointer select-none w-fit">
+                    <input
+                      type="checkbox"
+                      checked={dualUnit}
+                      onChange={(e) => handleDualUnit(e.target.checked)}
+                      disabled={settingsDisabled}
+                      className="w-3.5 h-3.5 accent-brand cursor-pointer"
+                    />
+                    <span className="text-xs text-zinc-500">
+                      {t("conv_add_second")} {multiColorMode === "ace_pro" ? "ACE Pro" : "ACE Pro 2"}
+                      <span className="ml-1.5 text-zinc-600">{t("conv_8slots")}</span>
+                    </span>
+                  </label>
                 )}
-              </label>
+
+                {/* Color slots */}
+                {multiColorMode !== "none" ? (
+                  <>
+                    {dualUnit && (
+                      <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest mb-2">{t("conv_unit1")}</p>
+                    )}
+                    <div className="grid grid-cols-4 gap-2">
+                      {Array.from({ length: Math.min(colorCount, 4) }, (_, i) => (
+                        <ColorSlot key={i} index={i} slotColors={slotColors} setSlotColors={setSlotColors}
+                          slotFilaments={slotFilaments} setSlotFilaments={setSlotFilaments}
+                          availableFilaments={availableFilaments} disabled={settingsDisabled} />
+                      ))}
+                    </div>
+                    {dualUnit && colorCount === 8 && (
+                      <>
+                        <p className="text-[10px] font-semibold text-zinc-600 uppercase tracking-widest mt-4 mb-2">{t("conv_unit2")}</p>
+                        <div className="grid grid-cols-4 gap-2">
+                          {Array.from({ length: 4 }, (_, i) => (
+                            <ColorSlot key={i + 4} index={i + 4} slotColors={slotColors} setSlotColors={setSlotColors}
+                              slotFilaments={slotFilaments} setSlotFilaments={setSlotFilaments}
+                              availableFilaments={availableFilaments} disabled={settingsDisabled} />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-zinc-600 italic">{t("conv_multicolor_hint")}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ════ RIGHT COLUMN — Upload + Results ════ */}
+          <div className="space-y-5 min-w-0">
+
+            {/* ── Upload zone ── */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={onDrop}
+              onClick={() => !isWorking && step !== "done" && fileInputRef.current?.click()}
+              className={`relative rounded-2xl border-2 border-dashed transition-all duration-200
+                bg-surface-card shadow-[0_4px_24px_rgba(0,0,0,0.3)]
+                ${dragging
+                  ? "border-brand bg-brand/[0.06] shadow-[0_0_32px_rgba(224,36,36,0.12)]"
+                  : step === "done"
+                    ? "border-green-700/50 bg-green-950/10 cursor-default"
+                    : "border-white/[0.09] hover:border-white/[0.18]"}
+                ${step === "idle" || step === "ready" ? "cursor-pointer" : ""}
+                ${isWorking ? "cursor-not-allowed opacity-70" : ""}
+              `}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".3mf"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+              />
+
+              <div className="flex flex-col items-center justify-center py-14 px-8 text-center">
+                {step === "idle" && (
+                  <>
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-5 transition-all duration-200
+                      ${dragging
+                        ? "bg-brand/20 border border-brand/40 shadow-[0_0_24px_rgba(224,36,36,0.25)]"
+                        : "bg-white/[0.05] border border-white/[0.09]"}`}
+                    >
+                      <svg className={`w-8 h-8 transition-colors ${dragging ? "text-brand" : "text-zinc-500"}`}
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                          d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+                      </svg>
+                    </div>
+                    <p className="text-lg font-semibold text-white mb-1.5">{t("conv_drop")}</p>
+                    <p className="text-sm text-zinc-500 mb-4">{t("conv_or_browse")}</p>
+                    <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/[0.06] border border-white/[0.10]
+                                     text-xs text-zinc-400 font-medium">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                      </svg>
+                      .3mf files only
+                    </span>
+                  </>
+                )}
+
+                {(step === "uploading" || step === "analyzing") && (
+                  <>
+                    <div className="w-14 h-14 rounded-full border-2 border-brand/30 border-t-brand flex items-center justify-center mb-5 animate-spin" />
+                    <p className="text-base font-semibold text-white mb-1">
+                      {step === "uploading" ? t("conv_uploading") : t("conv_analyzing")}
+                    </p>
+                    <p className="text-sm text-zinc-500">{uploadedFile?.name}</p>
+                  </>
+                )}
+
+                {(step === "ready" || step === "converting") && (
+                  <>
+                    <div className="w-14 h-14 rounded-full bg-brand/10 border border-brand/30 flex items-center justify-center mb-5
+                                    shadow-[0_0_24px_rgba(224,36,36,0.15)]">
+                      <svg className="w-7 h-7 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                      </svg>
+                    </div>
+                    <p className="text-base font-semibold text-white mb-1 truncate max-w-xs">{uploadedFile?.name}</p>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); reset(); }}
+                      className="text-xs text-zinc-500 hover:text-brand transition-colors mt-1"
+                    >
+                      {t("conv_change_file")}
+                    </button>
+                  </>
+                )}
+
+                {step === "done" && (
+                  <>
+                    <div className="w-14 h-14 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center mb-5
+                                    shadow-[0_0_24px_rgba(34,197,94,0.15)]">
+                      <svg className="w-7 h-7 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                      </svg>
+                    </div>
+                    <p className="text-base font-semibold text-green-400">{t("conv_done")}</p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* ── 3D Model Viewer ── */}
+            {jobId && (step === "ready" || step === "converting" || step === "done") && (
+              <div className="bg-surface-card border border-surface-border rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
+                <div className="px-5 py-3.5 border-b border-surface-border flex items-center justify-between">
+                  <span className="text-xs font-semibold text-zinc-400 uppercase tracking-[0.1em]">3D Preview</span>
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    {([
+                      { label: "Default",     euler: []           },
+                      { label: "Flat",        euler: [-90, 0, 0]  },
+                      { label: "Flip",        euler: [180, 0, 0]  },
+                      { label: "Side L",      euler: [0, 0, 90]   },
+                      { label: "Side R",      euler: [0, 0, -90]  },
+                    ] as { label: string; euler: number[] }[]).map(({ label, euler }) => {
+                      const isActive = JSON.stringify(manualEuler) === JSON.stringify(euler);
+                      return (
+                        <button
+                          key={label}
+                          onClick={() => setManualEuler(euler)}
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-medium border transition-colors ${
+                            isActive
+                              ? "bg-brand/20 border-brand/50 text-brand"
+                              : "bg-surface-elevated border-surface-border text-zinc-500 hover:text-white hover:border-zinc-500"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="p-4">
+                  <ModelViewer jobId={jobId} showSupports={showSupports} rotationEuler={manualEuler.length === 3 ? manualEuler : undefined} />
+                  {analysis?.geometry.overhang.has_overhangs && (
+                    <label className="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer select-none w-fit mt-3">
+                      <input
+                        type="checkbox"
+                        checked={showSupports}
+                        onChange={(e) => setShowSupports(e.target.checked)}
+                        className="w-4 h-4 rounded accent-orange-500"
+                      />
+                      <span>Show support regions</span>
+                      {showSupports && analysis.geometry.overhang.overhang_area_ratio > 0 && (
+                        <span className="text-xs text-zinc-600">
+                          ({(analysis.geometry.overhang.overhang_area_ratio * 100).toFixed(0)}% of surface)
+                        </span>
+                      )}
+                    </label>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── Analysis results ── */}
+            {analysis && (
+              <div className="bg-surface-card border border-surface-border rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
+                <div className="px-5 py-4 border-b border-surface-border">
+                  <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-[0.1em]">{t("conv_analysis")}</h2>
+                </div>
+                <div className="p-5">
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-5">
+                    <Stat label={t("conv_size") + " X"} value={`${analysis.geometry.bounding_box.x_mm} mm`} />
+                    <Stat label={t("conv_size") + " Y"} value={`${analysis.geometry.bounding_box.y_mm} mm`} />
+                    <Stat label={t("conv_size") + " Z"} value={`${analysis.geometry.bounding_box.z_mm} mm`} />
+                    <Stat label="Volume" value={`${analysis.geometry.bounding_box.volume_cm3} cm³`} />
+                    <Stat label="Parts" value={String(analysis.geometry.part_count)} />
+                    <Stat label={t("conv_watertight")} value={analysis.geometry.mesh_is_watertight ? t("conv_yes") : t("conv_no")} />
+                  </div>
+
+                  <div className="border-t border-surface-border pt-4 grid grid-cols-3 sm:grid-cols-6 gap-3 mb-5">
+                    <Badge
+                      label={t("conv_difficulty")}
+                      value={analysis.intent.difficulty}
+                      className={difficultyColor[analysis.intent.difficulty] ?? "text-zinc-400"}
+                    />
+                    <Badge label={t("conv_size")} value={analysis.intent.size_class} />
+                    <Badge
+                      label={t("conv_supports")}
+                      value={analysis.intent.needs_supports ? `Yes (${analysis.intent.support_density_hint})` : t("conv_no")}
+                      className={analysis.intent.needs_supports ? "text-yellow-400" : "text-green-400"}
+                    />
+                    <Badge
+                      label={t("conv_overhangs")}
+                      value={analysis.geometry.overhang.has_overhangs
+                        ? `${analysis.geometry.overhang.max_angle_deg}°`
+                        : "None"}
+                      className={analysis.geometry.overhang.has_overhangs ? "text-yellow-400" : "text-zinc-400"}
+                    />
+                    <Badge
+                      label={t("conv_bridges")}
+                      value={analysis.geometry.bridge.has_bridges
+                        ? `${analysis.geometry.bridge.max_span_mm} mm span`
+                        : "None"}
+                      className={analysis.geometry.bridge.has_bridges ? "text-yellow-400" : "text-zinc-400"}
+                    />
+                    <Badge
+                      label={t("conv_brim")}
+                      value={analysis.intent.needs_brim ? t("conv_brim_rec") : t("conv_brim_no")}
+                    />
+                  </div>
+
+                  <div className="border-t border-surface-border pt-4 space-y-2.5">
+                    <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-3">{t("conv_risk")}</p>
+                    <RiskBar label={t("conv_risk_support")}   value={analysis.intent.support_risk}   />
+                    <RiskBar label={t("conv_risk_adhesion")}  value={analysis.intent.adhesion_risk}  />
+                    <RiskBar label={t("conv_risk_stability")} value={analysis.intent.stability_risk} />
+                    <RiskBar label={t("conv_risk_detail")}    value={analysis.intent.detail_risk}    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Orientation optimization */}
+            {analysis?.orientation && (
+              <OrientationCard
+                report={analysis.orientation}
+                apply={applyOrientation}
+                onToggle={setApplyOrientation}
+                disabled={isWorking}
+              />
+            )}
+
+            {/* Printability score */}
+            {analysis?.printability && (
+              <PrintabilityCard score={analysis.printability} />
+            )}
+
+            {/* Explanations */}
+            {analysis?.explanations && (
+              <ExplanationsCard report={analysis.explanations} />
+            )}
+
+            {/* ── Primary CTA ── */}
+            {step === "ready" && (
+              <button
+                onClick={handleConvert}
+                className="w-full h-14 rounded-2xl font-bold text-white text-base
+                           bg-gradient-to-r from-brand to-brand-dark
+                           hover:from-brand-light hover:to-brand
+                           shadow-[0_4px_20px_rgba(224,36,36,0.4)]
+                           hover:shadow-[0_6px_32px_rgba(224,36,36,0.6)]
+                           hover:-translate-y-0.5 active:translate-y-0
+                           transition-all duration-150 flex items-center justify-center gap-3"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                {t("conv_generate")}
+              </button>
+            )}
+
+            {step === "converting" && (
+              <button disabled
+                className="w-full h-14 rounded-2xl font-bold text-white text-base
+                           bg-brand/40 flex items-center justify-center gap-3 cursor-not-allowed"
+              >
+                <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin"/>
+                {t("conv_generating")}
+              </button>
+            )}
+
+            {step === "done" && downloadUrl && (
+              <div className="space-y-3">
+                <a
+                  href={downloadUrl}
+                  download={downloadName}
+                  className="w-full h-14 rounded-2xl font-bold text-white text-base
+                             bg-gradient-to-r from-green-700 to-green-600
+                             hover:from-green-600 hover:to-green-500
+                             shadow-[0_4px_20px_rgba(34,197,94,0.25)]
+                             hover:shadow-[0_6px_32px_rgba(34,197,94,0.35)]
+                             hover:-translate-y-0.5 active:translate-y-0
+                             transition-all duration-150 flex items-center justify-center gap-3"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4 4m0 0l4-4m-4 4V4"/>
+                  </svg>
+                  {t("conv_download")} {downloadName}
+                </a>
+                <button
+                  onClick={reset}
+                  className="w-full h-12 rounded-2xl font-semibold text-white text-sm
+                             bg-white/[0.04] hover:bg-white/[0.07] border border-white/[0.09]
+                             transition-all duration-150 flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
+                  </svg>
+                  {t("conv_new")}
+                </button>
+
+                {/* Feedback card */}
+                <div className="p-5 bg-surface-card border border-surface-border rounded-2xl">
+                  {feedbackSent ? (
+                    <p className="text-center text-sm text-green-400">{t("conv_fb_thanks")}</p>
+                  ) : (
+                    <>
+                      <p className="text-xs text-zinc-500 mb-3 text-center">{t("conv_feedback_q")}</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { outcome: "printed_ok",        label: t("conv_fb_ok"),         color: "text-green-400 border-green-500/30 hover:bg-green-500/10" },
+                          { outcome: "supports_unneeded", label: t("conv_fb_sup_excess"),  color: "text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/10" },
+                          { outcome: "supports_missing",  label: t("conv_fb_sup_miss"),    color: "text-orange-400 border-orange-500/30 hover:bg-orange-500/10" },
+                          { outcome: "detached_from_bed", label: t("conv_fb_detach"),      color: "text-red-400 border-red-500/30 hover:bg-red-500/10" },
+                          { outcome: "weak_part",         label: t("conv_fb_weak"),        color: "text-orange-400 border-orange-500/30 hover:bg-orange-500/10" },
+                          { outcome: "details_lost",      label: t("conv_fb_detail"),      color: "text-blue-400 border-blue-500/30 hover:bg-blue-500/10" },
+                        ].map(({ outcome, label, color }) => (
+                          <button
+                            key={outcome}
+                            onClick={() => sendFeedback(outcome)}
+                            disabled={feedbackLoading}
+                            className={`py-2 px-2 rounded-xl border text-xs font-medium transition-colors disabled:opacity-50 ${color} bg-transparent`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Star rating card */}
+                <div className="p-5 bg-surface-card border border-surface-border rounded-2xl">
+                  {ratingDone ? (
+                    <p className="text-center text-sm text-green-400">{t("rating_thanks")}</p>
+                  ) : (
+                    <>
+                      <p className="text-xs text-zinc-500 mb-3 text-center">{t("rating_title")}</p>
+                      <div className="flex items-center justify-center gap-2">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            onClick={() => submitRating(star)}
+                            disabled={ratingLoading}
+                            className={`text-2xl transition-transform hover:scale-110 disabled:opacity-50 ${
+                              star <= ratingGiven ? "text-yellow-400" : "text-zinc-600 hover:text-yellow-300"
+                            }`}
+                          >
+                            ★
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             )}
           </div>
-        )}
-
-        {/* Analysis results */}
-        {analysis && (
-          <div className="bg-surface-card border border-surface-border rounded-xl p-6 mb-6">
-            <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide mb-4">
-              {t("conv_analysis")}
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-5">
-              <Stat label={t("conv_size") + " X"} value={`${analysis.geometry.bounding_box.x_mm} mm`} />
-              <Stat label={t("conv_size") + " Y"} value={`${analysis.geometry.bounding_box.y_mm} mm`} />
-              <Stat label={t("conv_size") + " Z"} value={`${analysis.geometry.bounding_box.z_mm} mm`} />
-              <Stat label="Volume" value={`${analysis.geometry.bounding_box.volume_cm3} cm³`} />
-              <Stat label="Parts" value={String(analysis.geometry.part_count)} />
-              <Stat label={t("conv_watertight")} value={analysis.geometry.mesh_is_watertight ? t("conv_yes") : t("conv_no")} />
-            </div>
-
-            <div className="border-t border-surface-border pt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <Badge
-                label={t("conv_difficulty")}
-                value={analysis.intent.difficulty}
-                className={difficultyColor[analysis.intent.difficulty] ?? "text-zinc-400"}
-              />
-              <Badge label={t("conv_size")} value={analysis.intent.size_class} />
-              <Badge
-                label={t("conv_supports")}
-                value={analysis.intent.needs_supports ? `Yes (${analysis.intent.support_density_hint})` : t("conv_no")}
-                className={analysis.intent.needs_supports ? "text-yellow-400" : "text-green-400"}
-              />
-              <Badge
-                label={t("conv_overhangs")}
-                value={analysis.geometry.overhang.has_overhangs
-                  ? `${analysis.geometry.overhang.max_angle_deg}°`
-                  : "None"}
-                className={analysis.geometry.overhang.has_overhangs ? "text-yellow-400" : "text-zinc-400"}
-              />
-              <Badge
-                label={t("conv_bridges")}
-                value={analysis.geometry.bridge.has_bridges
-                  ? `${analysis.geometry.bridge.max_span_mm} mm span`
-                  : "None"}
-                className={analysis.geometry.bridge.has_bridges ? "text-yellow-400" : "text-zinc-400"}
-              />
-              <Badge
-                label={t("conv_brim")}
-                value={analysis.intent.needs_brim ? t("conv_brim_rec") : t("conv_brim_no")}
-              />
-            </div>
-
-            {/* Risk score bars */}
-            <div className="border-t border-surface-border pt-4 mt-4 space-y-2.5">
-              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-3">{t("conv_risk")}</p>
-              <RiskBar label={t("conv_risk_support")}   value={analysis.intent.support_risk}   />
-              <RiskBar label={t("conv_risk_adhesion")}  value={analysis.intent.adhesion_risk}  />
-              <RiskBar label={t("conv_risk_stability")} value={analysis.intent.stability_risk} />
-              <RiskBar label={t("conv_risk_detail")}    value={analysis.intent.detail_risk}    />
-            </div>
-          </div>
-        )}
-
-        {/* Orientation optimization */}
-        {analysis?.orientation && (
-          <OrientationCard
-            report={analysis.orientation}
-            apply={applyOrientation}
-            onToggle={setApplyOrientation}
-            disabled={isWorking}
-          />
-        )}
-
-        {/* Printability score */}
-        {analysis?.printability && (
-          <PrintabilityCard score={analysis.printability} />
-        )}
-
-        {/* Explanations */}
-        {analysis?.explanations && (
-          <ExplanationsCard report={analysis.explanations} />
-        )}
-
-        {/* Action buttons */}
-        {step === "ready" && (
-          <button
-            onClick={handleConvert}
-            className="w-full py-3 bg-brand hover:bg-brand-dark text-white font-semibold rounded-lg
-                       transition-colors duration-150 text-sm flex items-center justify-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
-            {t("conv_generate")}
-          </button>
-        )}
-
-        {step === "converting" && (
-          <button disabled className="w-full py-3 bg-brand/50 text-white font-semibold rounded-lg text-sm flex items-center justify-center gap-2">
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
-            {t("conv_generating")}
-          </button>
-        )}
-
-        {step === "done" && downloadUrl && (
-          <div className="flex flex-col gap-3">
-            <a
-              href={downloadUrl}
-              download={downloadName}
-              className="w-full py-3 bg-green-700 hover:bg-green-600 text-white font-semibold rounded-lg
-                         transition-colors duration-150 text-sm flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4 4m0 0l4-4m-4 4V4"/>
-              </svg>
-              {t("conv_download")} {downloadName}
-            </a>
-            <button
-              onClick={reset}
-              className="w-full py-3 bg-surface-card hover:bg-surface-elevated border border-surface-border
-                         text-white font-semibold rounded-lg transition-colors duration-150 text-sm
-                         flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M12 4v16m8-8H4"/>
-              </svg>
-              {t("conv_new")}
-            </button>
-
-            {/* Feedback card */}
-            <div className="mt-2 p-4 bg-surface-card border border-surface-border rounded-xl">
-              {feedbackSent ? (
-                <p className="text-center text-sm text-green-400">{t("conv_fb_thanks")}</p>
-              ) : (
-                <>
-                  <p className="text-xs text-zinc-500 mb-3 text-center">{t("conv_feedback_q")}</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { outcome: "printed_ok",         label: t("conv_fb_ok"),      color: "text-green-400 border-green-500/30 hover:bg-green-500/10" },
-                      { outcome: "supports_unneeded",  label: t("conv_fb_sup_excess"),   color: "text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/10" },
-                      { outcome: "supports_missing",   label: t("conv_fb_sup_miss"),  color: "text-orange-400 border-orange-500/30 hover:bg-orange-500/10" },
-                      { outcome: "detached_from_bed",  label: t("conv_fb_detach"),          color: "text-red-400 border-red-500/30 hover:bg-red-500/10" },
-                      { outcome: "weak_part",          label: t("conv_fb_weak"),          color: "text-orange-400 border-orange-500/30 hover:bg-orange-500/10" },
-                      { outcome: "details_lost",       label: t("conv_fb_detail"),      color: "text-blue-400 border-blue-500/30 hover:bg-blue-500/10" },
-                    ].map(({ outcome, label, color }) => (
-                      <button
-                        key={outcome}
-                        onClick={() => sendFeedback(outcome)}
-                        disabled={feedbackLoading}
-                        className={`py-1.5 px-2 rounded-lg border text-xs font-medium transition-colors disabled:opacity-50 ${color} bg-transparent`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Star rating card */}
-            <div className="mt-2 p-4 bg-surface-card border border-surface-border rounded-xl">
-              {ratingDone ? (
-                <p className="text-center text-sm text-green-400">{t("rating_thanks")}</p>
-              ) : (
-                <>
-                  <p className="text-xs text-zinc-500 mb-3 text-center">{t("rating_title")}</p>
-                  <div className="flex items-center justify-center gap-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        onClick={() => submitRating(star)}
-                        disabled={ratingLoading}
-                        className={`text-2xl transition-transform hover:scale-110 disabled:opacity-50 ${
-                          star <= ratingGiven ? "text-yellow-400" : "text-zinc-600 hover:text-yellow-300"
-                        }`}
-                      >
-                        ★
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        )}
+        </div>
       </main>
     </div>
   );
@@ -919,12 +1008,12 @@ function ColorSlot({
   disabled: boolean;
 }) {
   return (
-    <div className="rounded-lg border p-3"
-      style={{ borderColor: slotColors[index] + "66", backgroundColor: slotColors[index] + "11" }}>
-      <div className="flex items-center gap-2 mb-2">
+    <div className="rounded-xl border p-2.5 flex flex-col gap-2"
+      style={{ borderColor: slotColors[index] + "55", backgroundColor: slotColors[index] + "0d" }}>
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-bold text-zinc-500">S{index + 1}</span>
         <div className="w-4 h-4 rounded-full border border-white/20 shrink-0"
           style={{ backgroundColor: slotColors[index] }} />
-        <span className="text-xs font-medium text-zinc-400">Slot {index + 1}</span>
       </div>
       <input
         type="color"
@@ -935,7 +1024,7 @@ function ColorSlot({
           setSlotColors(next);
         }}
         disabled={disabled}
-        className="w-full h-7 rounded cursor-pointer border-0 bg-transparent mb-2"
+        className="w-full h-6 rounded cursor-pointer border-0 bg-transparent"
       />
       <select
         value={slotFilaments[index]}
@@ -945,7 +1034,7 @@ function ColorSlot({
           setSlotFilaments(next);
         }}
         disabled={disabled}
-        className="text-xs py-1"
+        className="text-[10px] py-0.5 px-1 bg-white/[0.05] border border-white/[0.08] rounded-lg text-zinc-300 w-full"
       >
         {availableFilaments.map((f) => (
           <option key={f} value={f}>{FILAMENT_LABELS[f] ?? f.toUpperCase()}</option>

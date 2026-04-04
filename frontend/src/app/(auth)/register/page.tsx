@@ -8,6 +8,68 @@ import { saveAuth } from "@/lib/auth";
 import { useLang } from "@/contexts/LangContext";
 import { LANGS, type Lang } from "@/lib/i18n";
 
+/* ── shared background layer ─────────────────────────────────── */
+function AuthBackground() {
+  return (
+    <div className="pointer-events-none select-none absolute inset-0">
+      <div className="absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full bg-brand/20 blur-[120px]" />
+      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full bg-brand/15 blur-[100px]" />
+      <div className="absolute top-1/2 left-1/3 w-[300px] h-[300px] -translate-y-1/2 rounded-full bg-brand/8 blur-[80px]" />
+      <svg className="absolute inset-0 w-full h-full opacity-[0.04]" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="grid-r" width="48" height="48" patternUnits="userSpaceOnUse">
+            <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#e02424" strokeWidth="0.5" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid-r)" />
+      </svg>
+      <svg className="absolute bottom-0 left-0 w-[55%] h-[45%] opacity-[0.10]" viewBox="0 0 800 400" preserveAspectRatio="none">
+        {Array.from({ length: 12 }).map((_, i) => (
+          <line key={`h${i}`} x1="0" y1={400 - i * 36} x2="800" y2={400 - i * 6} stroke="#e02424" strokeWidth="0.8" />
+        ))}
+        {Array.from({ length: 16 }).map((_, i) => (
+          <line key={`v${i}`} x1={i * 54} y1="400" x2={400 + i * 26} y2="0" stroke="#e02424" strokeWidth="0.8" />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+/* ── logo icon ───────────────────────────────────────────────── */
+function LogoIcon({ size = "lg" }: { size?: "sm" | "lg" }) {
+  const dim = size === "lg" ? "w-16 h-16" : "w-9 h-9";
+  const icon = size === "lg" ? "w-8 h-8" : "w-5 h-5";
+  return (
+    <div className={`${dim} bg-brand rounded-2xl flex items-center justify-center shadow-[0_0_32px_rgba(224,36,36,0.5)] shrink-0`}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={icon}>
+        <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2" />
+        <line x1="12" y1="22" x2="12" y2="15.5" />
+        <polyline points="22 8.5 12 15.5 2 8.5" />
+      </svg>
+    </div>
+  );
+}
+
+const STEPS = {
+  nl: ["Account aanmaken", "Bevestig je e-mail", "Start met converteren"],
+  en: ["Create your account", "Confirm your email", "Start converting"],
+  fr: ["Créer votre compte", "Confirmez votre e-mail", "Commencez à convertir"],
+  de: ["Konto erstellen", "E-Mail bestätigen", "Mit Konvertieren beginnen"],
+};
+
+const HEADING = {
+  nl: "Aan de slag",
+  en: "Get started",
+  fr: "Commencer",
+  de: "Loslegen",
+};
+const SUBHEADING = {
+  nl: "Maak je gratis account aan.",
+  en: "Create your free account.",
+  fr: "Créez votre compte gratuit.",
+  de: "Erstellen Sie Ihr kostenloses Konto.",
+};
+
 export default function RegisterPage() {
   const router = useRouter();
   const { lang, setLang, t } = useLang();
@@ -15,10 +77,12 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     if (password !== confirm) { setError(t("reg_err_match")); return; }
@@ -38,108 +102,286 @@ export default function RegisterPage() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-surface flex flex-col items-center justify-center px-4">
+  const steps = STEPS[lang] ?? STEPS.en;
 
-      {/* Logo */}
-      <div className="mb-10 text-center">
-        <div className="flex items-center justify-center gap-3 mb-3">
-          <div className="w-10 h-10 bg-brand rounded-xl flex items-center justify-center
-                          shadow-[0_0_20px_rgba(224,36,36,0.35)]">
-            <svg viewBox="0 0 24 24" fill="white" className="w-5 h-5">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-          </div>
-          <span className="text-[26px] font-bold text-white tracking-tight">
-            Auto<span className="text-brand">Slice</span>
-          </span>
-        </div>
-        <p className="text-zinc-500 text-sm mb-4">{t("reg_subtitle")}</p>
-        <div className="inline-flex items-center gap-0.5 bg-surface-card border border-surface-border rounded-lg px-2 py-1.5">
+  return (
+    <div className="relative min-h-screen bg-[#0a0a0d] overflow-hidden flex flex-col">
+      <AuthBackground />
+
+      {/* Language switcher */}
+      <div className="relative z-10 flex justify-end px-8 pt-6">
+        <div className="flex items-center gap-0.5 bg-white/5 border border-white/8 rounded-full px-2 py-1.5 backdrop-blur-sm">
           {LANGS.map(({ code, label }) => (
-            <button key={code} onClick={() => setLang(code as Lang)}
-              className={`px-2 py-0.5 rounded-md text-xs font-semibold transition-colors ${
-                lang === code ? "text-brand" : "text-zinc-600 hover:text-zinc-400"
-              }`}>
+            <button
+              key={code}
+              onClick={() => setLang(code as Lang)}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all duration-150 ${
+                lang === code
+                  ? "bg-brand text-white shadow-[0_0_10px_rgba(224,36,36,0.4)]"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
               {label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Card */}
-      <div className="w-full max-w-sm bg-surface-card border border-surface-border rounded-2xl p-8
-                      shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]">
+      {/* Main */}
+      <div className="relative z-10 flex flex-1 items-center justify-center px-6 py-10 gap-8 lg:gap-16 max-w-[1200px] mx-auto w-full">
 
-        <h1 className="text-xl font-semibold text-white mb-6">{t("reg_heading")}</h1>
+        {/* LEFT */}
+        <div className="hidden lg:flex flex-col flex-1 max-w-[480px]">
+          <div className="flex items-center gap-4 mb-12">
+            <LogoIcon size="lg" />
+            <div>
+              <h1 className="text-4xl font-bold text-white tracking-tight leading-none">
+                Auto<span className="text-brand">Slice</span>
+              </h1>
+              <p className="text-[11px] font-semibold text-zinc-500 tracking-[0.18em] mt-1 uppercase">
+                SMART 3MF → G-CODE CONVERSION
+              </p>
+            </div>
+          </div>
 
-        {error && (
-          <div className="mb-5 p-3.5 bg-brand/8 border border-brand/20 rounded-xl text-brand text-sm flex items-center gap-2.5">
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-            </svg>
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-[11px] font-semibold text-zinc-500 mb-2 uppercase tracking-widest">
-              {t("reg_username")}
-            </label>
-            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)}
-              placeholder="yourname" required minLength={3} autoComplete="username" />
-          </div>
-          <div>
-            <label className="block text-[11px] font-semibold text-zinc-500 mb-2 uppercase tracking-widest">
-              {t("reg_email")}
-            </label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com" required autoComplete="email" />
-          </div>
-          <div>
-            <label className="block text-[11px] font-semibold text-zinc-500 mb-2 uppercase tracking-widest">
-              {t("reg_password")}
-            </label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-              placeholder={t("reg_placeholder_pw")} required minLength={8} autoComplete="new-password" />
-          </div>
-          <div>
-            <label className="block text-[11px] font-semibold text-zinc-500 mb-2 uppercase tracking-widest">
-              {t("reg_confirm")}
-            </label>
-            <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
-              placeholder={t("reg_placeholder_confirm")} required autoComplete="new-password" />
-          </div>
-          <button type="submit" disabled={loading}
-            className="w-full mt-2 py-2.5 px-4 bg-brand hover:bg-brand-dark disabled:opacity-40
-                       disabled:cursor-not-allowed text-white font-semibold rounded-xl
-                       transition-all duration-150 text-sm
-                       shadow-[0_2px_8px_rgba(224,36,36,0.25)] hover:shadow-[0_4px_16px_rgba(224,36,36,0.35)]
-                       hover:-translate-y-px active:translate-y-0">
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                {t("reg_submitting")}
-              </span>
-            ) : t("reg_submit")}
-          </button>
-        </form>
-
-        <div className="mt-6 pt-5 border-t border-surface-border text-center">
-          <p className="text-sm text-zinc-500">
-            {t("reg_has_account")}{" "}
-            <Link href="/login" className="text-brand hover:text-brand-light transition-colors font-medium">
-              {t("reg_signin")}
-            </Link>
+          {/* Steps */}
+          <p className="text-xs font-semibold text-zinc-600 uppercase tracking-[0.14em] mb-5">
+            {lang === "nl" ? "Hoe het werkt" : lang === "fr" ? "Comment ça marche" : lang === "de" ? "So funktioniert es" : "How it works"}
           </p>
+          <div className="space-y-4">
+            {steps.map((step, i) => (
+              <div key={i} className="flex items-center gap-4 group">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold transition-all duration-200 ${
+                  i === 0
+                    ? "bg-brand text-white shadow-[0_0_16px_rgba(224,36,36,0.4)]"
+                    : "bg-white/5 border border-white/10 text-zinc-600 group-hover:border-white/20"
+                }`}>
+                  {i + 1}
+                </div>
+                <p className={`text-sm font-medium ${i === 0 ? "text-white" : "text-zinc-500"}`}>{step}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-12 pt-8 border-t border-white/[0.06]">
+            <p className="text-xs text-zinc-700 leading-relaxed">
+              {lang === "nl"
+                ? "Door je te registreren ga je akkoord met onze servicevoorwaarden."
+                : lang === "fr"
+                ? "En vous inscrivant, vous acceptez nos conditions de service."
+                : lang === "de"
+                ? "Mit der Registrierung stimmen Sie unseren Nutzungsbedingungen zu."
+                : "By registering you agree to our terms of service."}
+            </p>
+          </div>
+        </div>
+
+        {/* RIGHT — card */}
+        <div className="w-full max-w-[440px] shrink-0">
+          <div className="relative bg-white/[0.04] border border-white/[0.09] rounded-2xl p-8
+                          shadow-[0_8px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)]
+                          backdrop-blur-xl">
+            <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-brand/50 to-transparent" />
+
+            {/* Mobile logo */}
+            <div className="flex lg:hidden items-center gap-3 mb-7">
+              <LogoIcon size="sm" />
+              <span className="text-xl font-bold text-white tracking-tight">
+                Auto<span className="text-brand">Slice</span>
+              </span>
+            </div>
+
+            <h2 className="text-2xl font-bold text-white mb-1">{HEADING[lang] ?? HEADING.en}</h2>
+            <p className="text-sm text-zinc-500 mb-7">{SUBHEADING[lang] ?? SUBHEADING.en}</p>
+
+            {error && (
+              <div className="mb-5 p-3.5 bg-brand/8 border border-brand/25 rounded-xl text-brand text-sm flex items-center gap-2.5">
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                </svg>
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+
+              {/* Username */}
+              <div>
+                <label className="block text-[11px] font-semibold text-zinc-500 mb-2 uppercase tracking-[0.12em]">
+                  {t("reg_username")}
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </span>
+                  <input type="text" value={username} onChange={(e) => setUsername(e.target.value)}
+                    placeholder="yourname" required minLength={3} autoComplete="username"
+                    className="w-full pl-10 pr-4 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
+                               text-white placeholder-zinc-600 text-sm
+                               focus:outline-none focus:border-brand/50 focus:bg-white/[0.07]
+                               focus:shadow-[0_0_0_3px_rgba(224,36,36,0.12)]
+                               transition-all duration-150" />
+                </div>
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-[11px] font-semibold text-zinc-500 mb-2 uppercase tracking-[0.12em]">
+                  {t("reg_email")}
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                  </span>
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com" required autoComplete="email"
+                    className="w-full pl-10 pr-4 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
+                               text-white placeholder-zinc-600 text-sm
+                               focus:outline-none focus:border-brand/50 focus:bg-white/[0.07]
+                               focus:shadow-[0_0_0_3px_rgba(224,36,36,0.12)]
+                               transition-all duration-150" />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-[11px] font-semibold text-zinc-500 mb-2 uppercase tracking-[0.12em]">
+                  {t("reg_password")}
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </span>
+                  <input type={showPw ? "text" : "password"} value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={t("reg_placeholder_pw")} required minLength={8} autoComplete="new-password"
+                    className="w-full pl-10 pr-11 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
+                               text-white placeholder-zinc-600 text-sm
+                               focus:outline-none focus:border-brand/50 focus:bg-white/[0.07]
+                               focus:shadow-[0_0_0_3px_rgba(224,36,36,0.12)]
+                               transition-all duration-150" />
+                  <button type="button" onClick={() => setShowPw(!showPw)} tabIndex={-1}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400 transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {showPw
+                        ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        : <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>
+                      }
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Strength bar */}
+                {password.length > 0 && (
+                  <div className="mt-2 flex gap-1">
+                    {[1, 2, 3, 4].map((lvl) => {
+                      const strength = Math.min(4, Math.floor(password.length / 3));
+                      return (
+                        <div key={lvl} className={`h-0.5 flex-1 rounded-full transition-all duration-300 ${
+                          lvl <= strength
+                            ? strength <= 1 ? "bg-red-500" : strength <= 2 ? "bg-yellow-500" : strength <= 3 ? "bg-blue-500" : "bg-green-500"
+                            : "bg-white/10"
+                        }`} />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Confirm password */}
+              <div>
+                <label className="block text-[11px] font-semibold text-zinc-500 mb-2 uppercase tracking-[0.12em]">
+                  {t("reg_confirm")}
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </span>
+                  <input type={showConfirm ? "text" : "password"} value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    placeholder={t("reg_placeholder_confirm")} required autoComplete="new-password"
+                    className={`w-full pl-10 pr-11 py-3 bg-white/[0.05] border rounded-xl
+                               text-white placeholder-zinc-600 text-sm
+                               focus:outline-none focus:bg-white/[0.07]
+                               transition-all duration-150 ${
+                                 confirm.length > 0
+                                   ? confirm === password
+                                     ? "border-green-500/40 focus:border-green-500/60 focus:shadow-[0_0_0_3px_rgba(34,197,94,0.1)]"
+                                     : "border-brand/40 focus:border-brand/60 focus:shadow-[0_0_0_3px_rgba(224,36,36,0.12)]"
+                                   : "border-white/[0.09] focus:border-brand/50 focus:shadow-[0_0_0_3px_rgba(224,36,36,0.12)]"
+                               }`} />
+                  <button type="button" onClick={() => setShowConfirm(!showConfirm)} tabIndex={-1}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400 transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {showConfirm
+                        ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        : <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>
+                      }
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Submit */}
+              <button type="submit" disabled={loading}
+                className="w-full py-3.5 px-5 mt-1 rounded-xl font-semibold text-white text-sm
+                           bg-gradient-to-r from-brand to-brand-dark
+                           hover:from-brand-light hover:to-brand
+                           disabled:opacity-40 disabled:cursor-not-allowed
+                           shadow-[0_4px_16px_rgba(224,36,36,0.35)]
+                           hover:shadow-[0_6px_24px_rgba(224,36,36,0.5)]
+                           hover:-translate-y-0.5 active:translate-y-0
+                           transition-all duration-150
+                           flex items-center justify-center gap-2">
+                {loading ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {t("reg_submitting")}
+                  </>
+                ) : (
+                  <>
+                    {t("reg_submit")}
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5-5 5M6 12h12" />
+                    </svg>
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="mt-6 pt-5 border-t border-white/[0.07] text-center">
+              <p className="text-sm text-zinc-500">
+                {t("reg_has_account")}{" "}
+                <Link href="/login" className="text-brand hover:text-brand-light font-semibold transition-colors duration-150">
+                  {t("reg_signin")}
+                </Link>
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <p className="mt-6 text-[11px] text-zinc-800 tracking-wide">
-        AutoSlice © {new Date().getFullYear()} — Bambu to Anycubic converter
-      </p>
+      {/* Footer */}
+      <div className="relative z-10 pb-6 text-center">
+        <p className="text-[11px] text-zinc-700 tracking-wide">
+          © {new Date().getFullYear()} AutoSlice v1.3.41
+          <span className="mx-2 text-zinc-800">•</span>
+          Built for makers &amp; professionals
+        </p>
+      </div>
     </div>
   );
 }
