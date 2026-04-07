@@ -1,6 +1,11 @@
 """
-AutoSlice — Auth routes: /register and /login.
+AutoSlice — Auth routes: /register, /login, /verify, /settings.
 """
+
+import hashlib
+import json
+import secrets
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
@@ -9,9 +14,26 @@ from app.auth.service import register_user, login_user, create_access_token, cre
 from app.auth.dependencies import get_current_user
 from app.database import ADMIN_EMAILS, get_connection
 from app.config import settings
-from app.email_service import send_password_reset_email
+from app.email_service import send_password_reset_email, send_verification_email
 
 router = APIRouter()
+
+# ── Verification helpers ───────────────────────────────────────────────────
+
+def _generate_verification_code(user_id: int) -> str:
+    """Generate a 6-digit code, store its SHA-256 hash, return the raw code."""
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    code_hash = hashlib.sha256(code.encode()).hexdigest()
+    created_at = datetime.now(timezone.utc).isoformat()
+    with get_connection() as conn:
+        # Invalidate any previous unused codes for this user
+        conn.execute("UPDATE verification_codes SET used = 1 WHERE user_id = ?", (user_id,))
+        conn.execute(
+            "INSERT INTO verification_codes (user_id, code_hash, created_at) VALUES (?,?,?)",
+            (user_id, code_hash, created_at),
+        )
+        conn.commit()
+    return code
 
 
 class RegisterRequest(BaseModel):
@@ -33,33 +55,170 @@ class AuthResponse(BaseModel):
     is_admin: bool = False
 
 
-@router.post("/auth/register", response_model=AuthResponse)
-def register(req: RegisterRequest) -> AuthResponse:
+class RegisterResponse(BaseModel):
+    needs_verification: bool = True
+    email: str
+    username: str
+
+
+@router.post("/auth/register", response_model=RegisterResponse)
+def register(req: RegisterRequest) -> RegisterResponse:
     if len(req.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
     try:
         user = register_user(req.username, req.email, req.password)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
-    token = create_access_token(user["id"], user["email"])
-    return AuthResponse(access_token=token, username=user["username"], email=user["email"],
-                        is_admin=user["email"] in ADMIN_EMAILS)
+    # Send verification code — admins are auto-verified
+    if req.email not in ADMIN_EMAILS:
+        code = _generate_verification_code(user["id"])
+        send_verification_email(req.email, code, req.username)
+    else:
+        with get_connection() as conn:
+            conn.execute("UPDATE users SET is_verified = 1 WHERE id = ?", (user["id"],))
+            conn.commit()
+    return RegisterResponse(needs_verification=req.email not in ADMIN_EMAILS,
+                            email=req.email, username=req.username)
 
 
 @router.post("/auth/login", response_model=AuthResponse)
 def login(req: LoginRequest) -> AuthResponse:
-    from datetime import datetime, timezone
     try:
         user = login_user(req.email, req.password)
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc))
     with get_connection() as conn:
+        row = conn.execute("SELECT is_verified FROM users WHERE id = ?", (user["id"],)).fetchone()
+        if row and not row["is_verified"] and user["email"] not in ADMIN_EMAILS:
+            raise HTTPException(status_code=403, detail="EMAIL_NOT_VERIFIED")
         conn.execute("UPDATE users SET last_login = ? WHERE id = ?",
                      (datetime.now(timezone.utc).isoformat(), user["id"]))
         conn.commit()
     token = create_access_token(user["id"], user["email"])
     return AuthResponse(access_token=token, username=user["username"], email=user["email"],
                         is_admin=user["email"] in ADMIN_EMAILS)
+
+
+# ── Email verification ─────────────────────────────────────────────────────
+
+class VerifyRequest(BaseModel):
+    email: str
+    code: str
+
+
+class ResendVerifyRequest(BaseModel):
+    email: str
+
+
+@router.post("/auth/verify-email")
+def verify_email(req: VerifyRequest) -> dict:
+    code_hash = hashlib.sha256(req.code.strip().encode()).hexdigest()
+    with get_connection() as conn:
+        user = conn.execute("SELECT id, username, email FROM users WHERE email = ?", (req.email,)).fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="Account not found.")
+        row = conn.execute(
+            "SELECT id, created_at, used FROM verification_codes "
+            "WHERE user_id = ? AND code_hash = ? ORDER BY id DESC LIMIT 1",
+            (user["id"], code_hash),
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=400, detail="Ongeldige code.")
+        if row["used"]:
+            raise HTTPException(status_code=400, detail="Deze code is al gebruikt.")
+        created = datetime.fromisoformat(row["created_at"])
+        if datetime.now(timezone.utc) - created > timedelta(minutes=15):
+            raise HTTPException(status_code=400, detail="Code verlopen. Vraag een nieuwe aan.")
+        conn.execute("UPDATE verification_codes SET used = 1 WHERE id = ?", (row["id"],))
+        conn.execute("UPDATE users SET is_verified = 1 WHERE id = ?", (user["id"],))
+        conn.commit()
+    token = create_access_token(user["id"], user["email"])
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "username": user["username"],
+        "email": user["email"],
+        "is_admin": user["email"] in ADMIN_EMAILS,
+    }
+
+
+@router.post("/auth/resend-verification")
+def resend_verification(req: ResendVerifyRequest) -> dict:
+    with get_connection() as conn:
+        user = conn.execute(
+            "SELECT id, username, email, is_verified FROM users WHERE email = ?", (req.email,)
+        ).fetchone()
+        if not user:
+            return {"message": "Als dit account bestaat, sturen we een nieuwe code."}
+        if user["is_verified"]:
+            return {"message": "Account is al geverifieerd."}
+        # Rate limit: block if a code was sent in the last 60 seconds
+        recent = conn.execute(
+            "SELECT created_at FROM verification_codes WHERE user_id = ? AND used = 0 "
+            "ORDER BY id DESC LIMIT 1", (user["id"],)
+        ).fetchone()
+        if recent:
+            created = datetime.fromisoformat(recent["created_at"])
+            if datetime.now(timezone.utc) - created < timedelta(seconds=60):
+                raise HTTPException(status_code=429, detail="Wacht even voor je opnieuw verstuurt.")
+    code = _generate_verification_code(user["id"])
+    send_verification_email(user["email"], code, user["username"])
+    return {"message": "Nieuwe verificatiecode verstuurd."}
+
+
+# ── User settings ──────────────────────────────────────────────────────────
+
+DEFAULT_SETTINGS: dict = {
+    # Appearance
+    "theme":              "dark",
+    "language":           "nl",
+    # Viewer
+    "viewer_support_preview": True,
+    "viewer_wireframe":       False,
+    "viewer_bounding_box":    False,
+    "viewer_contact_area":    False,
+    "viewer_quality":         "medium",
+    "viewer_bed_type":        "smooth",
+    # Print defaults
+    "default_printer":    "",
+    "default_filament":   "pla",
+    "default_nozzle":     0.4,
+    "default_bed_type":   "smooth",
+    "speed_quality":      "balanced",   # "speed" | "balanced" | "quality"
+    "expert_mode":        False,
+    # Advanced
+    "beta_features":      False,
+    "debug_overlays":     False,
+}
+
+
+class UpdateSettingsRequest(BaseModel):
+    settings: dict
+
+
+@router.get("/auth/settings")
+def get_settings(current_user: dict = Depends(get_current_user)) -> dict:
+    user_id = int(current_user["sub"])
+    with get_connection() as conn:
+        row = conn.execute("SELECT settings_json FROM users WHERE id = ?", (user_id,)).fetchone()
+    stored = json.loads(row["settings_json"] or "{}") if row else {}
+    return {**DEFAULT_SETTINGS, **stored}
+
+
+@router.patch("/auth/settings")
+def update_settings(req: UpdateSettingsRequest, current_user: dict = Depends(get_current_user)) -> dict:
+    user_id = int(current_user["sub"])
+    # Merge patch — only update keys that exist in DEFAULT_SETTINGS
+    allowed_keys = set(DEFAULT_SETTINGS.keys())
+    patch = {k: v for k, v in req.settings.items() if k in allowed_keys}
+    with get_connection() as conn:
+        row = conn.execute("SELECT settings_json FROM users WHERE id = ?", (user_id,)).fetchone()
+        stored = json.loads(row["settings_json"] or "{}") if row else {}
+        merged = {**stored, **patch}
+        conn.execute("UPDATE users SET settings_json = ? WHERE id = ?",
+                     (json.dumps(merged), user_id))
+        conn.commit()
+    return {**DEFAULT_SETTINGS, **merged}
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -112,7 +271,7 @@ def get_me(current_user: dict = Depends(get_current_user)) -> dict:
     user_id = int(current_user["sub"])
     with get_connection() as conn:
         row = conn.execute(
-            "SELECT id, username, email, created_at, last_login FROM users WHERE id = ?",
+            "SELECT id, username, email, created_at, last_login, is_verified FROM users WHERE id = ?",
             (user_id,),
         ).fetchone()
     if not row:

@@ -2,7 +2,7 @@ const BASE = "/api";
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("autoslice_token");
+  return localStorage.getItem("autoslice_token") ?? sessionStorage.getItem("autoslice_token");
 }
 
 function authHeaders(): Record<string, string> {

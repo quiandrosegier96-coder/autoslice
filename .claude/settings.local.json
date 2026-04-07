@@ -328,7 +328,11 @@
       "Bash(taskkill /F /IM \"autoslice_backend.exe\" /T)",
       "Bash(powershell.exe -Command \"Stop-Process -Name 'AutoSlice' -Force -ErrorAction SilentlyContinue; Stop-Process -Name 'autoslice_backend' -Force -ErrorAction SilentlyContinue; Start-Sleep 2; Start-Process 'C:\\\\Users\\\\QUANT\\\\AppData\\\\Local\\\\Programs\\\\AutoSlice\\\\AutoSlice.exe'; Write-Host 'launched'\")",
       "Bash(powershell.exe -Command \"Stop-Process -Name 'AutoSlice' -Force -ErrorAction SilentlyContinue; Stop-Process -Name 'autoslice_backend' -Force -ErrorAction SilentlyContinue; Write-Host 'killed'\")",
-      "Bash(powershell.exe -Command \"Start-Sleep 1; Start-Process 'C:\\\\Users\\\\QUANT\\\\AppData\\\\Local\\\\Programs\\\\AutoSlice\\\\AutoSlice.exe'; Write-Host 'launched'\")"
+      "Bash(powershell.exe -Command \"Start-Sleep 1; Start-Process 'C:\\\\Users\\\\QUANT\\\\AppData\\\\Local\\\\Programs\\\\AutoSlice\\\\AutoSlice.exe'; Write-Host 'launched'\")",
+      "Bash(sqlite3 \"/c/Users/QUANT/AppData/Roaming/AutoSlice/autoslice.db\" \"UPDATE users SET is_verified=1 WHERE email='y.smets@hotmail.com'; SELECT id, username, email, is_verified FROM users WHERE email='y.smets@hotmail.com';\")",
+      "Bash(node -e ':*)",
+      "Bash(powershell.exe -Command \"cd 'C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\backend'; python -c \\\\\"import sqlite3; conn = sqlite3.connect\\('autoslice.db'\\); conn.execute\\(\\\\\\\\\\\\\"UPDATE users SET is_verified=1 WHERE email='y.smets@hotmail.com'\\\\\\\\\\\\\"\\); conn.commit\\(\\); row = conn.execute\\(\\\\\\\\\\\\\"SELECT id, username, email, is_verified FROM users WHERE email='y.smets@hotmail.com'\\\\\\\\\\\\\"\\).fetchone\\(\\); print\\(row\\); conn.close\\(\\)\\\\\"\")",
+      "Bash(powershell.exe -Command \"cd 'C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\backend'; python fix_admin.py\")"
     ]
   }
 }

@@ -96,10 +96,15 @@ export default function LoginPage() {
         "/auth/login",
         { email, password }
       );
-      saveAuth({ token: res.access_token, username: res.username, email: res.email, is_admin: res.is_admin });
+      saveAuth({ token: res.access_token, username: res.username, email: res.email, is_admin: res.is_admin }, remember);
       router.push("/convert");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      const msg = err instanceof Error ? err.message : "Login failed";
+      if (msg === "EMAIL_NOT_VERIFIED") {
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        return;
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }

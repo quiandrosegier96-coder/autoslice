@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/api";
-import { saveAuth } from "@/lib/auth";
 import { useLang } from "@/contexts/LangContext";
 import { LANGS, type Lang } from "@/lib/i18n";
 
@@ -94,12 +93,15 @@ export default function RegisterPage() {
     if (password.length < 8) { setError(t("reg_err_length")); return; }
     setLoading(true);
     try {
-      const res = await apiPost<{ access_token: string; username: string; email: string; is_admin: boolean }>(
+      const res = await apiPost<{ needs_verification: boolean; email: string; username: string }>(
         "/auth/register",
         { username, email, password }
       );
-      saveAuth({ token: res.access_token, username: res.username, email: res.email, is_admin: res.is_admin });
-      router.push("/convert");
+      if (res.needs_verification) {
+        router.push(`/verify-email?email=${encodeURIComponent(res.email)}&username=${encodeURIComponent(res.username)}`);
+      } else {
+        router.push("/convert");
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {

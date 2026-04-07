@@ -126,10 +126,21 @@ def init_db() -> None:
                 UNIQUE(print_id, user_id)
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS verification_codes (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER NOT NULL,
+                code_hash  TEXT    NOT NULL,
+                created_at TEXT    NOT NULL,
+                used       INTEGER NOT NULL DEFAULT 0
+            )
+        """)
         # Schema migrations — add new columns to existing tables without data loss
         _add_column_if_missing(conn, "generation_log", "decision_trace_json", "TEXT")
         _add_column_if_missing(conn, "generation_log", "settings_delta_json",  "TEXT")
-        _add_column_if_missing(conn, "users", "last_login", "TEXT")
+        _add_column_if_missing(conn, "users", "last_login",    "TEXT")
+        _add_column_if_missing(conn, "users", "is_verified",   "INTEGER NOT NULL DEFAULT 0")
+        _add_column_if_missing(conn, "users", "settings_json", "TEXT NOT NULL DEFAULT '{}'")
         conn.commit()
 
 

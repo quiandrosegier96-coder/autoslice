@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isLoggedIn, getUser, saveAuth } from "@/lib/auth";
+import { isLoggedIn, getUser, getToken, saveAuth } from "@/lib/auth";
 import { useLang } from "@/contexts/LangContext";
 import { useTheme, type Theme } from "@/contexts/ThemeContext";
 import { useUnits, type Unit } from "@/contexts/UnitsContext";
@@ -122,6 +122,38 @@ export default function SettingsPage() {
   const [showUpdatePopup, setShowUpdatePopup] = useState(true);
   const [defaultFlush, setDefaultFlush] = useState("3");
 
+  // Server-synced user settings
+  type UserSettings = {
+    viewer_support_preview: boolean;
+    viewer_wireframe: boolean;
+    viewer_bounding_box: boolean;
+    viewer_contact_area: boolean;
+    viewer_quality: string;
+    viewer_bed_type: string;
+    default_filament: string;
+    default_nozzle: number;
+    speed_quality: string;
+    expert_mode: boolean;
+    beta_features: boolean;
+    debug_overlays: boolean;
+  };
+  const [userSettings, setUserSettings] = useState<UserSettings>({
+    viewer_support_preview: true,
+    viewer_wireframe: false,
+    viewer_bounding_box: false,
+    viewer_contact_area: false,
+    viewer_quality: "medium",
+    viewer_bed_type: "smooth",
+    default_filament: "pla",
+    default_nozzle: 0.4,
+    speed_quality: "balanced",
+    expert_mode: false,
+    beta_features: false,
+    debug_overlays: false,
+  });
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsMsg, setSettingsMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
   useEffect(() => {
     window.autoslice?.getVersion?.().then((v) => setAppVersion(`v${v}`)).catch(() => {});
   }, []);
@@ -141,7 +173,29 @@ export default function SettingsPage() {
         if (data.last_login) setLastLogin(new Date(data.last_login).toLocaleDateString());
       })
       .catch(() => {});
+
+    apiGet<UserSettings>("/auth/settings", true)
+      .then((data) => setUserSettings((prev) => ({ ...prev, ...data })))
+      .catch(() => {});
   }, [router]);
+
+  async function saveUserSettings() {
+    setSettingsSaving(true);
+    setSettingsMsg(null);
+    try {
+      const updated = await apiPatch<UserSettings>("/auth/settings", { settings: userSettings });
+      setUserSettings((prev) => ({ ...prev, ...updated }));
+      setSettingsMsg({ type: "ok", text: "Instellingen opgeslagen." });
+    } catch {
+      setSettingsMsg({ type: "err", text: "Opslaan mislukt." });
+    } finally {
+      setSettingsSaving(false);
+    }
+  }
+
+  function patchSetting<K extends keyof UserSettings>(key: K, value: UserSettings[K]) {
+    setUserSettings((prev) => ({ ...prev, [key]: value }));
+  }
 
   async function saveProfile() {
     setProfileMsg(null);
@@ -159,7 +213,8 @@ export default function SettingsPage() {
       if (newPw) { body.current_password = currentPw; body.new_password = newPw; }
       const res = await apiPatch<{ username: string; email: string }>("/auth/me", body);
       const cur = getUser();
-      if (cur) saveAuth({ ...cur, token: localStorage.getItem("autoslice_token")!, username: res.username, email: res.email });
+      const tok = getToken();
+      if (cur && tok) saveAuth({ ...cur, token: tok, username: res.username, email: res.email });
       setProfileMsg({ type: "ok", text: "Profile updated successfully." });
       setCurrentPw(""); setNewPw(""); setConfirmPw("");
     } catch (e: unknown) {
@@ -365,6 +420,163 @@ export default function SettingsPage() {
           </div>
         </div>
       </Section>
+
+      {/* ── Viewer defaults ── */}
+      <Section title="Viewer instellingen" icon={
+        <svg className="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+      }>
+        <div className="space-y-4">
+          {([
+            ["viewer_support_preview", "Ondersteuningspreview"],
+            ["viewer_wireframe",       "Wireframe-modus"],
+            ["viewer_bounding_box",    "Bounding box tonen"],
+            ["viewer_contact_area",    "Contactoppervlak tonen"],
+          ] as const).map(([key, label]) => (
+            <div key={key} className="flex items-center justify-between">
+              <p className="text-sm text-zinc-300">{label}</p>
+              <Toggle
+                checked={userSettings[key]}
+                onChange={(v) => patchSetting(key, v)}
+              />
+            </div>
+          ))}
+          <div className="border-t border-white/[0.06] pt-4 grid grid-cols-2 gap-4">
+            <Field label="Viewer kwaliteit">
+              <select
+                value={userSettings.viewer_quality}
+                onChange={(e) => patchSetting("viewer_quality", e.target.value)}
+                className="w-full h-9 px-3 rounded-lg text-sm focus:outline-none"
+                style={{ background: "#1a1a1f", border: "1px solid rgba(255,255,255,0.1)", color: "#e4e4e8", colorScheme: "dark" }}
+              >
+                <option value="low">Laag</option>
+                <option value="medium">Middel</option>
+                <option value="high">Hoog</option>
+              </select>
+            </Field>
+            <Field label="Standaard bedplaat">
+              <select
+                value={userSettings.viewer_bed_type}
+                onChange={(e) => patchSetting("viewer_bed_type", e.target.value)}
+                className="w-full h-9 px-3 rounded-lg text-sm focus:outline-none"
+                style={{ background: "#1a1a1f", border: "1px solid rgba(255,255,255,0.1)", color: "#e4e4e8", colorScheme: "dark" }}
+              >
+                <option value="smooth">Glad PEI</option>
+                <option value="textured">Getextureerd PEI</option>
+                <option value="high_temp">Hoge temperatuur</option>
+              </select>
+            </Field>
+          </div>
+        </div>
+      </Section>
+
+      {/* ── Print defaults ── */}
+      <Section title="Print standaardwaarden" icon={
+        <svg className="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+        </svg>
+      }>
+        <div className="grid grid-cols-2 gap-4 mb-5">
+          <Field label="Standaard filament">
+            <select
+              value={userSettings.default_filament}
+              onChange={(e) => patchSetting("default_filament", e.target.value)}
+              className="w-full h-9 px-3 rounded-lg text-sm focus:outline-none"
+              style={{ background: "#1a1a1f", border: "1px solid rgba(255,255,255,0.1)", color: "#e4e4e8", colorScheme: "dark" }}
+            >
+              <option value="pla">PLA</option>
+              <option value="petg">PETG</option>
+              <option value="tpu">TPU</option>
+            </select>
+          </Field>
+          <Field label="Standaard nozzle (mm)">
+            <select
+              value={userSettings.default_nozzle}
+              onChange={(e) => patchSetting("default_nozzle", parseFloat(e.target.value))}
+              className="w-full h-9 px-3 rounded-lg text-sm focus:outline-none"
+              style={{ background: "#1a1a1f", border: "1px solid rgba(255,255,255,0.1)", color: "#e4e4e8", colorScheme: "dark" }}
+            >
+              {[0.2, 0.4, 0.6, 0.8].map((n) => (
+                <option key={n} value={n}>{n} mm</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        <div className="mb-5">
+          <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.12em] mb-3">Snelheid vs. kwaliteit</p>
+          <div className="flex gap-3">
+            {([["speed", "Snel"], ["balanced", "Gebalanceerd"], ["quality", "Kwaliteit"]] as const).map(([val, label]) => (
+              <button
+                key={val}
+                type="button"
+                onClick={() => patchSetting("speed_quality", val)}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all duration-150
+                  ${userSettings.speed_quality === val
+                    ? "bg-brand/15 border-brand/50 text-white shadow-[0_0_16px_rgba(224,36,36,0.12)]"
+                    : "bg-white/[0.03] border-white/[0.07] text-zinc-400 hover:text-zinc-200"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-between pt-4 border-t border-white/[0.06]">
+          <div>
+            <p className="text-sm text-zinc-300">Expertmodus</p>
+            <p className="text-xs text-zinc-600 mt-0.5">Toon geavanceerde opties in het conversiescherm.</p>
+          </div>
+          <Toggle checked={userSettings.expert_mode} onChange={(v) => patchSetting("expert_mode", v)} />
+        </div>
+      </Section>
+
+      {/* ── Advanced ── */}
+      <Section title="Geavanceerd" icon={
+        <svg className="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      }>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-zinc-300">Beta-functies</p>
+              <p className="text-xs text-zinc-600 mt-0.5">Schakel experimentele functies in die nog in ontwikkeling zijn.</p>
+            </div>
+            <Toggle checked={userSettings.beta_features} onChange={(v) => patchSetting("beta_features", v)} />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-zinc-300">Debug-overlays</p>
+              <p className="text-xs text-zinc-600 mt-0.5">Toon technische debug-informatie in de viewer.</p>
+            </div>
+            <Toggle checked={userSettings.debug_overlays} onChange={(v) => patchSetting("debug_overlays", v)} />
+          </div>
+        </div>
+      </Section>
+
+      {/* Save server settings */}
+      <div className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/[0.06] rounded-2xl">
+        <div>
+          {settingsMsg && (
+            <p className={`text-sm ${settingsMsg.type === "ok" ? "text-green-400" : "text-red-400"}`}>
+              {settingsMsg.text}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={saveUserSettings}
+          disabled={settingsSaving}
+          className="px-5 py-2 rounded-xl bg-gradient-to-r from-brand to-brand-dark
+                     text-white text-sm font-semibold shadow-[0_4px_16px_rgba(224,36,36,0.35)]
+                     hover:shadow-[0_6px_24px_rgba(224,36,36,0.5)] hover:-translate-y-0.5 active:translate-y-0
+                     transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {settingsSaving ? "Opslaan…" : "Instellingen opslaan"}
+        </button>
+      </div>
 
       {/* ── Keyboard shortcuts ── */}
       <Section title="Sneltoetsen" icon={
