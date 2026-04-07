@@ -27,4 +27,17 @@ contextBridge.exposeInMainWorld("autoslice", {
    * Open a URL in the default system browser.
    */
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
+
+  // Custom title bar window controls
+  windowMinimize:    () => ipcRenderer.invoke("window-minimize"),
+  windowMaximize:    () => ipcRenderer.invoke("window-maximize"),
+  windowClose:       () => ipcRenderer.invoke("window-close"),
+  windowIsMaximized: () => ipcRenderer.invoke("window-is-maximized"),
+
+  // Auto-update
+  onUpdateStatus: (cb) => {
+    ipcRenderer.on("update-status", (_event, data) => cb(data));
+  },
+  getUpdateStatus: () => ipcRenderer.invoke("get-update-status"),
+  installUpdate: () => ipcRenderer.invoke("install-update"),
 });

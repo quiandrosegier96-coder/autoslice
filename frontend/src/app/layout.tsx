@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { LangProvider } from "@/contexts/LangContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
+import { UnitsProvider } from "@/contexts/UnitsContext";
 
 export const metadata: Metadata = {
   title: "AutoSlice — 3MF Converter",
@@ -11,9 +13,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <LangProvider>
-          {children}
-        </LangProvider>
+        <ThemeProvider>
+          <UnitsProvider>
+            <LangProvider>
+              {children}
+            </LangProvider>
+          </UnitsProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

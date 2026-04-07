@@ -23,6 +23,10 @@ const staticSrc     = path.join(feDir, ".next", "static");
 const publicSrc     = path.join(feDir, "public");
 
 // ── 1. Build Next.js ─────────────────────────────────────────────────────────
+// Wipe .next first so Next.js can't reuse stale chunk hashes from a prior build.
+const nextCacheDir = path.join(feDir, ".next");
+if (fs.existsSync(nextCacheDir)) fs.rmSync(nextCacheDir, { recursive: true, force: true });
+
 console.log("\n[1/2] Building Next.js frontend (standalone)…");
 execSync("npm run build", { cwd: feDir, stdio: "inherit" });
 

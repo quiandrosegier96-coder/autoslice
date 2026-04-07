@@ -64,6 +64,7 @@ const FOOTER = {
 export default function LoginPage() {
   const router = useRouter();
   const { lang, setLang, t } = useLang();
+  const [appVersion, setAppVersion] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
@@ -74,6 +75,7 @@ export default function LoginPage() {
   const [avgRating, setAvgRating] = useState<{ average: number; total: number } | null>(null);
 
   useEffect(() => {
+    window.autoslice?.getVersion?.().then((v) => setAppVersion(`v${v}`)).catch(() => {});
     if (!localStorage.getItem(NOTICE_KEY)) setShowNotice(true);
     apiGet<{ average: number; total: number }>("/ratings/average")
       .then(setAvgRating)
@@ -435,7 +437,7 @@ export default function LoginPage() {
       {/* ── Footer ── */}
       <div className="relative z-10 pb-6 text-center">
         <p className="text-[11px] text-zinc-700 tracking-wide">
-          © {new Date().getFullYear()} AutoSlice v1.3.47
+          © {new Date().getFullYear()} AutoSlice {appVersion}
           <span className="mx-2 text-zinc-800">•</span>
           {FOOTER[lang] ?? FOOTER.en}
           <span className="mx-2 text-zinc-800">•</span>

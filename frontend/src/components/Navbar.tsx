@@ -24,8 +24,8 @@ export function Navbar({ showAdmin = false }: { showAdmin?: boolean }) {
   ];
 
   return (
-    <nav className="sticky top-0 z-30 border-b border-surface-border/60 bg-surface-elevated/80 backdrop-blur-xl px-6 py-0 flex items-center justify-between h-13"
-      style={{ height: "52px" }}>
+    <nav className="sticky top-0 z-50 border-b border-surface-border/60 px-6 py-0 flex items-center justify-between"
+      style={{ height: "52px", isolation: "isolate", backgroundColor: "rgba(15,15,18,0.85)", backdropFilter: "blur(20px)" }}>
 
       {/* Logo */}
       <Link href="/convert" className="flex items-center gap-2.5 shrink-0 group">
@@ -93,8 +93,9 @@ export function Navbar({ showAdmin = false }: { showAdmin?: boolean }) {
 
         <button
           onClick={() => { clearAuth(); router.push("/login"); }}
-          className="text-[12px] text-zinc-600 hover:text-zinc-300 transition-colors px-2 py-1
-                     border border-transparent hover:border-surface-border rounded-md">
+          style={{ position: "relative", zIndex: 9999, pointerEvents: "all", cursor: "pointer" }}
+          className="text-[12px] text-zinc-400 hover:text-white transition-colors px-3 py-1.5
+                     border border-surface-border hover:border-zinc-500 rounded-md bg-surface-card">
           {t("nav_signout")}
         </button>
       </div>

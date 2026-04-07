@@ -45,6 +45,7 @@ select {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.07);
   color: #e4e4e8;
+  color-scheme: dark;
   border-radius: 8px;
   padding: 10px 14px;
   /* Note: Tailwind !pl-* / !pr-* classes override this padding via !important */
@@ -85,4 +86,68 @@ input:-webkit-autofill:active {
 select option {
   background: #131316;
   color: #e4e4e8;
+}
+
+/* ── Micro interactions ──────────────────────────────────────────────────────
+   Subtle polish applied globally so individual components don't need inline
+   transition classes everywhere. */
+
+/* Card hover lift — any element with .card-hover gets a subtle lift */
+.card-hover {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+}
+
+/* Button press feel */
+button:not(:disabled):active {
+  transform: scale(0.975);
+}
+
+/* Smoother focus ring on all interactive elements */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(224, 36, 36, 0.5);
+  outline-offset: 2px;
+}
+
+/* Sidebar nav items — smooth translate on hover */
+.nav-item {
+  transition: transform 0.1s ease, background 0.15s ease, color 0.15s ease;
+}
+.nav-item:hover {
+  transform: translateX(2px);
+}
+
+/* Smooth height/opacity transitions for collapsible content */
+.collapse-enter {
+  animation: collapseIn 0.2s ease forwards;
+}
+@keyframes collapseIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Light theme ──────────────────────────────────────────────────────────────
+   Inverts all colours + hue-rotates 180° so dark→light while brand red stays red.
+   Images/canvas are counter-inverted so they render normally. */
+[data-theme="light"] body {
+  filter: invert(1) hue-rotate(180deg);
+}
+[data-theme="light"] img,
+[data-theme="light"] video,
+[data-theme="light"] canvas {
+  filter: invert(1) hue-rotate(180deg);
 }

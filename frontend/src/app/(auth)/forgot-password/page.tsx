@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { apiPost } from "@/lib/api";
 import { useLang } from "@/contexts/LangContext";
@@ -45,10 +45,15 @@ const EMAIL_LBL  = { nl: "E-mailadres", en: "Email address", fr: "Adresse e-mail
 
 export default function ForgotPasswordPage() {
   const { lang, setLang, t } = useLang();
+  const [appVersion, setAppVersion] = useState("");
   const [email, setEmail]   = useState("");
   const [sent, setSent]     = useState(false);
   const [error, setError]   = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    window.autoslice?.getVersion?.().then((v) => setAppVersion(`v${v}`)).catch(() => {});
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -217,7 +222,7 @@ export default function ForgotPasswordPage() {
       {/* Footer */}
       <div className="relative z-10 pb-6 text-center">
         <p className="text-[11px] text-zinc-700 tracking-wide">
-          © {new Date().getFullYear()} AutoSlice v1.3.41
+          © {new Date().getFullYear()} AutoSlice {appVersion}
           <span className="mx-2 text-zinc-800">•</span>
           Built for makers &amp; professionals
         </p>

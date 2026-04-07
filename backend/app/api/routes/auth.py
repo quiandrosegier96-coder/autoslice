@@ -100,6 +100,72 @@ class HistoryJob(BaseModel):
     created_at: str
 
 
+class UpdateProfileRequest(BaseModel):
+    username: str | None = None
+    email: EmailStr | None = None
+    current_password: str | None = None
+    new_password: str | None = None
+
+
+@router.get("/auth/me")
+def get_me(current_user: dict = Depends(get_current_user)) -> dict:
+    user_id = int(current_user["sub"])
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT id, username, email, created_at, last_login FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="User not found")
+    return dict(row)
+
+
+@router.patch("/auth/me")
+def update_me(req: UpdateProfileRequest, current_user: dict = Depends(get_current_user)) -> dict:
+    from app.auth.service import verify_password, hash_password
+    user_id = int(current_user["sub"])
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT id, username, email, password_hash FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        updates: dict = {}
+
+        if req.new_password:
+            if not req.current_password:
+                raise HTTPException(status_code=400, detail="Current password is required to set a new password.")
+            if not verify_password(req.current_password, row["password_hash"]):
+                raise HTTPException(status_code=401, detail="Current password is incorrect.")
+            if len(req.new_password) < 8:
+                raise HTTPException(status_code=400, detail="New password must be at least 8 characters.")
+            updates["password_hash"] = hash_password(req.new_password)
+
+        if req.username and req.username != row["username"]:
+            updates["username"] = req.username
+
+        if req.email and req.email != row["email"]:
+            updates["email"] = req.email
+
+        if updates:
+            set_clause = ", ".join(f"{k} = ?" for k in updates)
+            values = list(updates.values()) + [user_id]
+            try:
+                conn.execute(f"UPDATE users SET {set_clause} WHERE id = ?", values)
+                conn.commit()
+            except Exception as exc:
+                if "UNIQUE" in str(exc):
+                    raise HTTPException(status_code=409, detail="Username or email already in use.")
+                raise
+
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT id, username, email FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+    return dict(row)
+
+
 @router.get("/auth/history", response_model=list[HistoryJob])
 def get_history(current_user: dict = Depends(get_current_user)) -> list[HistoryJob]:
     user_id = int(current_user["sub"])

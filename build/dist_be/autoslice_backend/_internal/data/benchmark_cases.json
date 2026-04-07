@@ -1,0 +1,9 @@
+[
+  {
+    "label": "example_model",
+    "archive_path": "data/benchmark_models/example.3mf",
+    "printer_id": "kobra3",
+    "filament": "pla",
+    "nozzle_mm": 0.4
+  }
+]

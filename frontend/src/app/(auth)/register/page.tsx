@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/api";
@@ -73,6 +73,7 @@ const SUBHEADING = {
 export default function RegisterPage() {
   const router = useRouter();
   const { lang, setLang, t } = useLang();
+  const [appVersion, setAppVersion] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -81,6 +82,10 @@ export default function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    window.autoslice?.getVersion?.().then((v) => setAppVersion(`v${v}`)).catch(() => {});
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -377,7 +382,7 @@ export default function RegisterPage() {
       {/* Footer */}
       <div className="relative z-10 pb-6 text-center">
         <p className="text-[11px] text-zinc-700 tracking-wide">
-          © {new Date().getFullYear()} AutoSlice v1.3.41
+          © {new Date().getFullYear()} AutoSlice {appVersion}
           <span className="mx-2 text-zinc-800">•</span>
           Built for makers &amp; professionals
         </p>

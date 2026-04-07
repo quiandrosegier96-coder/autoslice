@@ -11,7 +11,7 @@
  *   5. On window close / app quit, terminate both child processes
  */
 
-const { app, BrowserWindow, dialog, shell, ipcMain } = require("electron");
+const { app, BrowserWindow, dialog, shell, ipcMain, nativeImage } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path   = require("path");
 const http   = require("http");
@@ -180,6 +180,8 @@ function createMainWindow() {
     minHeight:       600,
     show:            false,
     title:           "AutoSlice",
+    frame:           false,          // remove native title bar
+    titleBarStyle:   "hidden",
     webPreferences: {
       preload:             path.join(__dirname, "preload.js"),
       contextIsolation:    true,
@@ -200,6 +202,9 @@ function createMainWindow() {
 
 // ── Auto-updater ──────────────────────────────────────────────────────────
 
+// Cache last update event so the renderer can request it after mounting
+let _lastUpdateInfo = null;
+
 function setupAutoUpdater(mainWin) {
   // Only run in packaged app; skip in dev (`npm start`)
   if (!app.isPackaged) return;
@@ -207,22 +212,38 @@ function setupAutoUpdater(mainWin) {
   autoUpdater.autoDownload    = true;   // download silently in background
   autoUpdater.autoInstallOnAppQuit = true; // install when user quits normally
 
+  function sendUpdate(payload) {
+    _lastUpdateInfo = payload;
+    mainWin.webContents.send("update-status", payload);
+  }
+
+  autoUpdater.on("checking-for-update", () => {
+    console.log("Checking for updates…");
+  });
+
   autoUpdater.on("update-available", (info) => {
-    // Silent — download has already started automatically
     console.log(`Update available: ${info.version}`);
+    sendUpdate({
+      status:      "available",
+      version:     info.version,
+      releaseName: info.releaseName || `v${info.version}`,
+    });
+  });
+
+  autoUpdater.on("update-not-available", () => {
+    console.log("App is up to date.");
+  });
+
+  autoUpdater.on("download-progress", (p) => {
+    console.log(`Downloading update: ${Math.round(p.percent)}%`);
   });
 
   autoUpdater.on("update-downloaded", (info) => {
-    dialog.showMessageBox(mainWin, {
-      type:      "info",
-      title:     "AutoSlice — Update ready",
-      message:   `Version ${info.version} has been downloaded.`,
-      detail:    "Restart now to apply the update, or it will install automatically the next time you close AutoSlice.",
-      buttons:   ["Restart now", "Later"],
-      defaultId: 0,
-      icon:      path.join(__dirname, "assets", "icon.ico"),
-    }).then(({ response }) => {
-      if (response === 0) autoUpdater.quitAndInstall(false, true);
+    console.log(`Update downloaded: ${info.version}`);
+    sendUpdate({
+      status:      "downloaded",
+      version:     info.version,
+      releaseName: info.releaseName || `v${info.version}`,
     });
   });
 
@@ -237,15 +258,38 @@ function setupAutoUpdater(mainWin) {
       console.error("Update check failed:", err.message);
     });
   }, 8000);
+
+  // Re-check every 2 hours while the app is running
+  setInterval(() => {
+    autoUpdater.checkForUpdates().catch(() => {});
+  }, 2 * 60 * 60 * 1000);
+
+  // Re-send cached status when window regains focus (catches users who missed the initial event)
+  mainWin.on("focus", () => {
+    if (_lastUpdateInfo) {
+      mainWin.webContents.send("update-status", _lastUpdateInfo);
+    }
+  });
 }
 
 // ── App lifecycle ──────────────────────────────────────────────────────────
 
 // ── IPC handlers (used by preload bridge) ─────────────────────────────────
 
-ipcMain.handle("get-version", () => app.getVersion());
+ipcMain.handle("get-version",     () => app.getVersion());
+ipcMain.handle("install-update",   () => autoUpdater.quitAndInstall(false, true));
+ipcMain.handle("get-update-status", () => _lastUpdateInfo);
 
 ipcMain.handle("open-external", (_event, url) => shell.openExternal(url));
+
+// Window controls for custom title bar
+ipcMain.handle("window-minimize",     (e) => BrowserWindow.fromWebContents(e.sender)?.minimize());
+ipcMain.handle("window-maximize",     (e) => {
+  const w = BrowserWindow.fromWebContents(e.sender);
+  w?.isMaximized() ? w.unmaximize() : w.maximize();
+});
+ipcMain.handle("window-close",        (e) => BrowserWindow.fromWebContents(e.sender)?.close());
+ipcMain.handle("window-is-maximized", (e) => BrowserWindow.fromWebContents(e.sender)?.isMaximized() ?? false);
 
 ipcMain.handle("save-file", async (_event, filename, buffer) => {
   const { canceled, filePath } = await dialog.showSaveDialog({

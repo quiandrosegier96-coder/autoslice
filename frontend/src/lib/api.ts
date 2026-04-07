@@ -35,6 +35,15 @@ export async function apiPost<T>(path: string, body: unknown, auth = false): Pro
   return parseResponse<T>(res);
 }
 
+export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(body),
+  });
+  return parseResponse<T>(res);
+}
+
 export async function apiGet<T>(path: string, auth = false): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: auth ? authHeaders() : {},

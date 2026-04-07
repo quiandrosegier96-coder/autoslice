@@ -9,8 +9,8 @@ export const LANGS: { code: Lang; label: string }[] = [
 ];
 
 export function getSavedLang(): Lang {
-  if (typeof window === "undefined") return "nl";
-  return (localStorage.getItem(LANG_KEY) as Lang) ?? "nl";
+  if (typeof window === "undefined") return "en";
+  return (localStorage.getItem(LANG_KEY) as Lang) ?? "en";
 }
 
 export const translations = {

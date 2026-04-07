@@ -16,7 +16,7 @@ const LangContext = createContext<LangCtx>({
 });
 
 export function LangProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>("nl");
+  const [lang, setLangState] = useState<Lang>("en");
 
   useEffect(() => {
     setLangState(getSavedLang());
