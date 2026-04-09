@@ -98,6 +98,47 @@ function Input({ value, onChange, type = "text", placeholder, disabled }: {
   );
 }
 
+// ── SettingsSelect ─────────────────────────────────────────────────────────
+
+function SettingsSelect({ value, onChange, children, disabled }: {
+  value: string | number;
+  onChange: (v: string) => void;
+  children: React.ReactNode;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="relative w-full">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className="w-full h-10 pl-3 pr-9 rounded-xl text-sm font-medium
+                   appearance-none cursor-pointer outline-none
+                   transition-all duration-150
+                   disabled:opacity-40 disabled:cursor-not-allowed
+                   hover:border-zinc-500 focus:border-brand focus:ring-2 focus:ring-brand/20"
+        style={{
+          WebkitAppearance: "none",
+          appearance: "none",
+          background: "rgba(255,255,255,0.06)",
+          border: "1px solid rgba(255,255,255,0.12)",
+          color: "#f4f4f5",
+          colorScheme: "dark",
+        }}
+      >
+        {children}
+      </select>
+      {/* Custom chevron */}
+      <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5"
+                strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -445,28 +486,18 @@ export default function SettingsPage() {
           ))}
           <div className="border-t border-white/[0.06] pt-4 grid grid-cols-2 gap-4">
             <Field label="Viewer kwaliteit">
-              <select
-                value={userSettings.viewer_quality}
-                onChange={(e) => patchSetting("viewer_quality", e.target.value)}
-                className="w-full h-9 px-3 rounded-lg text-sm focus:outline-none"
-                style={{ background: "#1a1a1f", border: "1px solid rgba(255,255,255,0.1)", color: "#e4e4e8", colorScheme: "dark" }}
-              >
+              <SettingsSelect value={userSettings.viewer_quality} onChange={(v) => patchSetting("viewer_quality", v)}>
                 <option value="low">Laag</option>
                 <option value="medium">Middel</option>
                 <option value="high">Hoog</option>
-              </select>
+              </SettingsSelect>
             </Field>
             <Field label="Standaard bedplaat">
-              <select
-                value={userSettings.viewer_bed_type}
-                onChange={(e) => patchSetting("viewer_bed_type", e.target.value)}
-                className="w-full h-9 px-3 rounded-lg text-sm focus:outline-none"
-                style={{ background: "#1a1a1f", border: "1px solid rgba(255,255,255,0.1)", color: "#e4e4e8", colorScheme: "dark" }}
-              >
+              <SettingsSelect value={userSettings.viewer_bed_type} onChange={(v) => patchSetting("viewer_bed_type", v)}>
                 <option value="smooth">Glad PEI</option>
                 <option value="textured">Getextureerd PEI</option>
                 <option value="high_temp">Hoge temperatuur</option>
-              </select>
+              </SettingsSelect>
             </Field>
           </div>
         </div>
@@ -481,28 +512,18 @@ export default function SettingsPage() {
       }>
         <div className="grid grid-cols-2 gap-4 mb-5">
           <Field label="Standaard filament">
-            <select
-              value={userSettings.default_filament}
-              onChange={(e) => patchSetting("default_filament", e.target.value)}
-              className="w-full h-9 px-3 rounded-lg text-sm focus:outline-none"
-              style={{ background: "#1a1a1f", border: "1px solid rgba(255,255,255,0.1)", color: "#e4e4e8", colorScheme: "dark" }}
-            >
+            <SettingsSelect value={userSettings.default_filament} onChange={(v) => patchSetting("default_filament", v)}>
               <option value="pla">PLA</option>
               <option value="petg">PETG</option>
               <option value="tpu">TPU</option>
-            </select>
+            </SettingsSelect>
           </Field>
           <Field label="Standaard nozzle (mm)">
-            <select
-              value={userSettings.default_nozzle}
-              onChange={(e) => patchSetting("default_nozzle", parseFloat(e.target.value))}
-              className="w-full h-9 px-3 rounded-lg text-sm focus:outline-none"
-              style={{ background: "#1a1a1f", border: "1px solid rgba(255,255,255,0.1)", color: "#e4e4e8", colorScheme: "dark" }}
-            >
+            <SettingsSelect value={String(userSettings.default_nozzle)} onChange={(v) => patchSetting("default_nozzle", parseFloat(v))}>
               {[0.2, 0.4, 0.6, 0.8].map((n) => (
-                <option key={n} value={n}>{n} mm</option>
+                <option key={n} value={String(n)}>{n} mm</option>
               ))}
-            </select>
+            </SettingsSelect>
           </Field>
         </div>
         <div className="mb-5">

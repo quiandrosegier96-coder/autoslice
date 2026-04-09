@@ -41,6 +41,10 @@ from app.support.engine import (
     serialise,
     serialise_skeleton,
 )
+from app.support.engine.validator import (
+    tag_debug,
+    DEFAULT_CLEARANCE_MM as _DEFAULT_CLEARANCE,
+)
 
 router = APIRouter(prefix="/api/support", tags=["support-engine"])
 log    = logging.getLogger(__name__)
@@ -166,6 +170,61 @@ async def get_tree_support_skeleton(
         raise HTTPException(status_code=500, detail=f"Support engine error: {e}") from e
 
     return serialise_skeleton(plan)
+
+
+# ── Debug validation tags ────────────────────────────────────────────────────
+
+@router.get("/{job_id}/engine/debug-tags")
+async def get_debug_tags(
+    job_id:         str,
+    overhang_angle: float = Query(45.0,  ge=10.0, le=80.0),
+    clearance:      float = Query(_DEFAULT_CLEARANCE, ge=0.0, le=5.0),
+) -> Dict[str, Any]:
+    """
+    Return per-segment validation tags for debug visualisation:
+      "valid"     → GREEN  (passes all checks)
+      "colliding" → ORANGE (ray-cast intersection)
+      "internal"  → RED    (sample point inside mesh)
+      "too_close" → YELLOW (clearance violated)
+    """
+    mesh = await _load_mesh(job_id)
+    config = EngineConfig(overhang_angle_deg=overhang_angle)
+
+    try:
+        plan = await asyncio.to_thread(run_pipeline, mesh, config)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+    from app.geometry.mesh_loader import merge_meshes
+    from app.support.engine.bvh import BVH
+    import numpy as np
+
+    bvh = BVH(
+        np.asarray(mesh.vertices, dtype=np.float64),
+        np.asarray(mesh.faces,    dtype=np.int32),
+    )
+
+    tags = tag_debug(
+        segments  = plan.segments,
+        nodes     = plan.nodes,
+        bvh       = bvh,
+        mesh_tm   = mesh,
+        clearance = clearance,
+    )
+
+    colour_map = {
+        "valid":     "#00ff88",
+        "colliding": "#ff6600",
+        "internal":  "#ff2222",
+        "too_close": "#ffdd00",
+    }
+
+    return {
+        "segment_tags": {str(k): v for k, v in tags.items()},
+        "colour_map":   colour_map,
+        "counts": {tag: sum(1 for v in tags.values() if v == tag)
+                   for tag in colour_map},
+    }
 
 
 # ── Support decision only ─────────────────────────────────────────────────────

@@ -1,15 +1,16 @@
 """
 AutoSlice — Admin routes.
-GET /api/admin/users  — list all users with upload/convert counts
-GET /api/admin/stats  — overall platform stats
-Only accessible by admin accounts (admin1@prints.be, admin2@prints.be).
+GET   /api/admin/users              — list all users
+PATCH /api/admin/users/{id}/role   — grant or revoke admin rights
+GET   /api/admin/stats             — overall platform stats
+Only accessible by verified admin accounts.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.auth.dependencies import get_admin_user
-from app.database import get_connection
+from app.database import get_connection, ADMIN_EMAILS
 
 router = APIRouter()
 
@@ -43,10 +44,10 @@ class RecentJob(BaseModel):
 
 @router.get("/admin/users", response_model=list[UserRow])
 def list_users(_: dict = Depends(get_admin_user)) -> list[UserRow]:
-    from app.database import ADMIN_EMAILS
     with get_connection() as conn:
         rows = conn.execute("""
             SELECT u.id, u.username, u.email, u.created_at, u.last_login,
+                   COALESCE(u.is_admin, 0) AS is_admin,
                    COALESCE(SUM(CASE WHEN j.action = 'upload'  THEN 1 ELSE 0 END), 0) AS uploads,
                    COALESCE(SUM(CASE WHEN j.action = 'convert' THEN 1 ELSE 0 END), 0) AS conversions
             FROM users u
@@ -58,11 +59,65 @@ def list_users(_: dict = Depends(get_admin_user)) -> list[UserRow]:
         UserRow(
             id=r["id"], username=r["username"], email=r["email"],
             created_at=r["created_at"], last_login=r["last_login"],
-            is_admin=r["email"] in ADMIN_EMAILS,
+            is_admin=bool(r["is_admin"]) or r["email"] in ADMIN_EMAILS,
             uploads=r["uploads"], conversions=r["conversions"],
         )
         for r in rows
     ]
+
+
+class UpdateRoleRequest(BaseModel):
+    is_admin: bool
+
+
+@router.patch("/admin/users/{user_id}/role", response_model=UserRow)
+def update_user_role(
+    user_id: int,
+    req: UpdateRoleRequest,
+    current_admin: dict = Depends(get_admin_user),
+) -> UserRow:
+    acting_id = int(current_admin["sub"])
+
+    with get_connection() as conn:
+        target = conn.execute(
+            "SELECT id, username, email, created_at, last_login, COALESCE(is_admin,0) AS is_admin FROM users WHERE id = ?",
+            (user_id,)
+        ).fetchone()
+
+        if not target:
+            raise HTTPException(status_code=404, detail="User not found.")
+
+        # Prevent self-demotion
+        if user_id == acting_id and not req.is_admin:
+            raise HTTPException(status_code=400, detail="You cannot remove your own admin rights.")
+
+        # Prevent removing the last admin
+        if not req.is_admin:
+            admin_count = conn.execute(
+                "SELECT COUNT(*) FROM users WHERE (is_admin = 1 OR email IN ({})) AND id != ?".format(
+                    ",".join("?" * len(ADMIN_EMAILS))
+                ),
+                (*ADMIN_EMAILS, user_id)
+            ).fetchone()[0]
+            if admin_count == 0:
+                raise HTTPException(status_code=400, detail="Cannot remove the last admin.")
+
+        conn.execute("UPDATE users SET is_admin = ? WHERE id = ?", (1 if req.is_admin else 0, user_id))
+        conn.commit()
+
+        uploads = conn.execute(
+            "SELECT COUNT(*) FROM jobs WHERE user_id = ? AND action = 'upload'", (user_id,)
+        ).fetchone()[0]
+        conversions = conn.execute(
+            "SELECT COUNT(*) FROM jobs WHERE user_id = ? AND action = 'convert'", (user_id,)
+        ).fetchone()[0]
+
+    return UserRow(
+        id=target["id"], username=target["username"], email=target["email"],
+        created_at=target["created_at"], last_login=target["last_login"],
+        is_admin=req.is_admin or target["email"] in ADMIN_EMAILS,
+        uploads=uploads, conversions=conversions,
+    )
 
 
 @router.get("/admin/stats", response_model=StatsResponse)

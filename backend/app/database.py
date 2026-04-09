@@ -141,6 +141,10 @@ def init_db() -> None:
         _add_column_if_missing(conn, "users", "last_login",    "TEXT")
         _add_column_if_missing(conn, "users", "is_verified",   "INTEGER NOT NULL DEFAULT 0")
         _add_column_if_missing(conn, "users", "settings_json", "TEXT NOT NULL DEFAULT '{}'")
+        _add_column_if_missing(conn, "users", "is_admin",      "INTEGER NOT NULL DEFAULT 0")
+        # Sync ADMIN_EMAILS into is_admin column so DB is authoritative
+        for email in ADMIN_EMAILS:
+            conn.execute("UPDATE users SET is_admin = 1 WHERE email = ?", (email,))
         conn.commit()
 
 

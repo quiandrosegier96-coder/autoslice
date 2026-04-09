@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { isAdmin } from "@/lib/auth";
-import { apiGet } from "@/lib/api";
+import { isAdmin, getUser } from "@/lib/auth";
+import { apiGet, apiPatch } from "@/lib/api";
 
 type UserRow = {
   id: number;
@@ -95,6 +95,12 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
 
+  // Role management
+  const [roleConfirm, setRoleConfirm] = useState<{ user: UserRow; grant: boolean } | null>(null);
+  const [roleLoading, setRoleLoading] = useState(false);
+  const [roleMsg, setRoleMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const currentUser = getUser();
+
   useEffect(() => {
     if (!isAdmin()) { router.push("/convert"); return; }
     Promise.all([
@@ -133,8 +139,76 @@ export default function AdminPage() {
     return `${Math.floor(hrs / 24)}d ago`;
   }
 
+  async function applyRoleChange() {
+    if (!roleConfirm) return;
+    setRoleLoading(true);
+    setRoleMsg(null);
+    try {
+      const updated = await apiPatch<UserRow>(`/admin/users/${roleConfirm.user.id}/role`, {
+        is_admin: roleConfirm.grant,
+      });
+      setUsers((prev) => prev.map((u) => u.id === updated.id ? updated : u));
+      setRoleMsg({
+        type: "ok",
+        text: roleConfirm.grant
+          ? `${roleConfirm.user.username} is now an admin.`
+          : `Admin rights removed from ${roleConfirm.user.username}.`,
+      });
+    } catch (err: unknown) {
+      setRoleMsg({ type: "err", text: err instanceof Error ? err.message : "Failed to update role." });
+    } finally {
+      setRoleLoading(false);
+      setRoleConfirm(null);
+    }
+  }
+
   return (
     <main className="max-w-5xl mx-auto px-4 py-10">
+
+      {/* ── Role confirm dialog ── */}
+      {roleConfirm && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-[#0e0e14] border border-white/[0.1] rounded-2xl w-full max-w-sm
+                            shadow-[0_24px_80px_rgba(0,0,0,0.8)]">
+              <div className={`h-1 rounded-t-2xl ${roleConfirm.grant ? "bg-brand" : "bg-yellow-500"}`} />
+              <div className="p-6">
+                <h3 className="text-[15px] font-bold text-white mb-2">
+                  {roleConfirm.grant ? "Admin rechten toekennen" : "Admin rechten intrekken"}
+                </h3>
+                <p className="text-[13px] text-zinc-400 mb-5">
+                  {roleConfirm.grant
+                    ? <>Weet je zeker dat je <strong className="text-white">{roleConfirm.user.username}</strong> admin rechten wilt geven?</>
+                    : <>Weet je zeker dat je de admin rechten van <strong className="text-white">{roleConfirm.user.username}</strong> wilt intrekken?</>
+                  }
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={applyRoleChange}
+                    disabled={roleLoading}
+                    className={`flex-1 h-9 rounded-xl text-white text-[13px] font-semibold transition-all disabled:opacity-50
+                      ${roleConfirm.grant
+                        ? "bg-brand hover:bg-red-500"
+                        : "bg-yellow-600 hover:bg-yellow-500"}`}
+                  >
+                    {roleLoading ? "Bezig…" : "Bevestigen"}
+                  </button>
+                  <button
+                    onClick={() => setRoleConfirm(null)}
+                    disabled={roleLoading}
+                    className="flex-1 h-9 rounded-xl bg-white/[0.06] hover:bg-white/[0.1]
+                               text-zinc-400 text-[13px] transition-all disabled:opacity-50"
+                  >
+                    Annuleren
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
         <div className="mb-8 flex items-center gap-3">
           <div>
             <h1 className="text-2xl font-bold text-white mb-1">Admin Dashboard</h1>
@@ -217,53 +291,92 @@ export default function AdminPage() {
 
             {/* Users table */}
             {tab === "users" && (
-              <div className="bg-surface-card border border-surface-border rounded-xl overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-surface-border bg-surface/30">
-                      <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">User</th>
-                      <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Email</th>
-                      <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Joined</th>
-                      <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Last Login</th>
-                      <th className="text-right px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Uploads</th>
-                      <th className="text-right px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Conversions</th>
-                      <th className="text-center px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Role</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-surface-border">
-                    {users.map((u) => (
-                      <tr key={u.id} className="hover:bg-surface/40 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-xs font-semibold text-brand shrink-0">
-                              {u.username[0].toUpperCase()}
-                            </div>
-                            <span className="text-white font-medium">{u.username}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-zinc-400 text-xs">{u.email}</td>
-                        <td className="px-4 py-3 text-zinc-500 text-xs whitespace-nowrap">{formatDate(u.created_at)}</td>
-                        <td className="px-4 py-3 text-zinc-500 text-xs whitespace-nowrap">{u.last_login ? timeAgo(u.last_login) : "Never"}</td>
-                        <td className="px-4 py-3 text-zinc-300 text-right font-mono text-xs">{u.uploads}</td>
-                        <td className="px-4 py-3 text-zinc-300 text-right font-mono text-xs">{u.conversions}</td>
-                        <td className="px-4 py-3 text-center">
-                          {u.is_admin ? (
-                            <span className="text-xs bg-brand/20 text-brand border border-brand/30 rounded-full px-2.5 py-0.5 font-medium">
-                              Admin
-                            </span>
-                          ) : (
-                            <span className="text-xs text-zinc-600">User</span>
-                          )}
-                        </td>
+              <div>
+                {roleMsg && (
+                  <div className={`mb-4 px-4 py-3 rounded-xl text-sm border ${
+                    roleMsg.type === "ok"
+                      ? "bg-green-500/10 border-green-500/20 text-green-400"
+                      : "bg-red-500/10 border-red-500/20 text-red-400"
+                  }`}>
+                    {roleMsg.text}
+                  </div>
+                )}
+                <div className="bg-surface-card border border-surface-border rounded-xl overflow-x-auto">
+                  <table className="w-full min-w-[860px] text-sm">
+                    <thead>
+                      <tr className="border-b border-surface-border bg-surface/30">
+                        <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">User</th>
+                        <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Email</th>
+                        <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Joined</th>
+                        <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Last Login</th>
+                        <th className="text-right px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Uploads</th>
+                        <th className="text-right px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Conversions</th>
+                        <th className="text-center px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Role</th>
+                        <th className="text-center px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Actions</th>
                       </tr>
-                    ))}
-                    {users.length === 0 && (
-                      <tr>
-                        <td colSpan={7} className="px-4 py-10 text-center text-zinc-500">No users yet.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-surface-border">
+                      {users.map((u) => {
+                        const isSelf = u.username === currentUser?.username;
+                        return (
+                          <tr key={u.id} className="hover:bg-surface/40 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-7 h-7 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-xs font-semibold text-brand shrink-0">
+                                  {u.username[0].toUpperCase()}
+                                </div>
+                                <span className="text-white font-medium">
+                                  {u.username}
+                                  {isSelf && <span className="ml-1.5 text-[10px] text-zinc-600">(jij)</span>}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-zinc-400 text-xs">{u.email}</td>
+                            <td className="px-4 py-3 text-zinc-500 text-xs whitespace-nowrap">{formatDate(u.created_at)}</td>
+                            <td className="px-4 py-3 text-zinc-500 text-xs whitespace-nowrap">{u.last_login ? timeAgo(u.last_login) : "Never"}</td>
+                            <td className="px-4 py-3 text-zinc-300 text-right font-mono text-xs">{u.uploads}</td>
+                            <td className="px-4 py-3 text-zinc-300 text-right font-mono text-xs">{u.conversions}</td>
+                            <td className="px-4 py-3 text-center">
+                              {u.is_admin ? (
+                                <span className="text-xs bg-brand/20 text-brand border border-brand/30 rounded-full px-2.5 py-0.5 font-medium">
+                                  Admin
+                                </span>
+                              ) : (
+                                <span className="text-xs text-zinc-600">User</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              {u.is_admin ? (
+                                <button
+                                  onClick={() => { setRoleMsg(null); setRoleConfirm({ user: u, grant: false }); }}
+                                  disabled={isSelf}
+                                  title={isSelf ? "Je kunt je eigen admin rechten niet intrekken" : "Admin rechten intrekken"}
+                                  className="text-xs px-2.5 py-1 rounded-lg border border-yellow-500/30 text-yellow-400
+                                             hover:bg-yellow-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                  Intrekken
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => { setRoleMsg(null); setRoleConfirm({ user: u, grant: true }); }}
+                                  className="text-xs px-2.5 py-1 rounded-lg border border-brand/30 text-brand
+                                             hover:bg-brand/10 transition-colors"
+                                >
+                                  Maak admin
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {users.length === 0 && (
+                        <tr>
+                          <td colSpan={8} className="px-4 py-10 text-center text-zinc-500">No users yet.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 

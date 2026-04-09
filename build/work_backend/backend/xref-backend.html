@@ -3940,6 +3940,7 @@ imported by:
  &#8226;   <a href="#app.support.engine.overhang">app.support.engine.overhang</a>
  &#8226;   <a href="#app.support.engine.planner">app.support.engine.planner</a>
  &#8226;   <a href="#app.support.engine.serializer">app.support.engine.serializer</a>
+ &#8226;   <a href="#app.support.engine.validator">app.support.engine.validator</a>
  &#8226;   <a href="#app.support.models">app.support.models</a>
  &#8226;   <a href="#app.support.tree_generator">app.support.tree_generator</a>
  &#8226;   <a href="#click">click</a>
@@ -9573,8 +9574,11 @@ imports:
  &#8226;   <a href="#app.email_service">app.email_service</a>
  &#8226;   <a href="#datetime">datetime</a>
  &#8226;   <a href="#fastapi">fastapi</a>
+ &#8226;   <a href="#hashlib">hashlib</a>
+ &#8226;   <a href="#json">json</a>
  &#8226;   <a href="#pydantic">pydantic</a>
  &#8226;   <a href="#pydantic.BaseModel">pydantic.BaseModel</a>
+ &#8226;   <a href="#secrets">secrets</a>
 
   </div>
   <div class="import">
@@ -9813,6 +9817,7 @@ imports:
  &#8226;   <a href="#app.support.engine.bvh">app.support.engine.bvh</a>
  &#8226;   <a href="#app.support.engine.clustering">app.support.engine.clustering</a>
  &#8226;   <a href="#app.support.engine.overhang">app.support.engine.overhang</a>
+ &#8226;   <a href="#app.support.engine.validator">app.support.engine.validator</a>
  &#8226;   <a href="#asyncio">asyncio</a>
  &#8226;   <a href="#fastapi">fastapi</a>
  &#8226;   <a href="#functools">functools</a>
@@ -11145,6 +11150,7 @@ imports:
  &#8226;   <a href="#app.support.engine.overhang">app.support.engine.overhang</a>
  &#8226;   <a href="#app.support.engine.planner">app.support.engine.planner</a>
  &#8226;   <a href="#app.support.engine.serializer">app.support.engine.serializer</a>
+ &#8226;   <a href="#app.support.engine.validator">app.support.engine.validator</a>
  &#8226;   <a href="#logging">logging</a>
  &#8226;   <a href="#numpy">numpy</a>
  &#8226;   <a href="#trimesh">trimesh</a>
@@ -11162,6 +11168,7 @@ imported by:
  &#8226;   <a href="#app.support.engine.overhang">app.support.engine.overhang</a>
  &#8226;   <a href="#app.support.engine.planner">app.support.engine.planner</a>
  &#8226;   <a href="#app.support.engine.serializer">app.support.engine.serializer</a>
+ &#8226;   <a href="#app.support.engine.validator">app.support.engine.validator</a>
 
   </div>
 
@@ -11184,6 +11191,7 @@ imported by:
  &#8226;   <a href="#app.support.engine">app.support.engine</a>
  &#8226;   <a href="#app.support.engine.collision">app.support.engine.collision</a>
  &#8226;   <a href="#app.support.engine.overhang">app.support.engine.overhang</a>
+ &#8226;   <a href="#app.support.engine.validator">app.support.engine.validator</a>
 
   </div>
 
@@ -11253,6 +11261,7 @@ imported by:
  &#8226;   <a href="#app.support.engine.overhang">app.support.engine.overhang</a>
  &#8226;   <a href="#app.support.engine.planner">app.support.engine.planner</a>
  &#8226;   <a href="#app.support.engine.serializer">app.support.engine.serializer</a>
+ &#8226;   <a href="#app.support.engine.validator">app.support.engine.validator</a>
 
   </div>
 
@@ -11287,8 +11296,10 @@ imports:
  &#8226;   <a href="#app.support.engine">app.support.engine</a>
  &#8226;   <a href="#app.support.engine.bvh">app.support.engine.bvh</a>
  &#8226;   <a href="#app.support.engine.models">app.support.engine.models</a>
+ &#8226;   <a href="#app.support.engine.validator">app.support.engine.validator</a>
  &#8226;   <a href="#math">math</a>
  &#8226;   <a href="#numpy">numpy</a>
+ &#8226;   <a href="#trimesh">trimesh</a>
  &#8226;   <a href="#typing">typing</a>
 
   </div>
@@ -11338,6 +11349,31 @@ imports:
   <div class="import">
 imported by:
     <a href="#app.support.engine">app.support.engine</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="app.support.engine.validator"></a>
+  <a target="code" href="///C:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/backend/app/support/engine/validator.py" type="text/plain"><tt>app.support.engine.validator</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#__future__">__future__</a>
+ &#8226;   <a href="#app.support.engine">app.support.engine</a>
+ &#8226;   <a href="#app.support.engine.bvh">app.support.engine.bvh</a>
+ &#8226;   <a href="#app.support.engine.models">app.support.engine.models</a>
+ &#8226;   <a href="#logging">logging</a>
+ &#8226;   <a href="#numpy">numpy</a>
+ &#8226;   <a href="#trimesh.proximity">trimesh.proximity</a>
+ &#8226;   <a href="#typing">typing</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#app.api.routes.support_engine">app.api.routes.support_engine</a>
+ &#8226;   <a href="#app.support.engine">app.support.engine</a>
+ &#8226;   <a href="#app.support.engine.overhang">app.support.engine.overhang</a>
 
   </div>
 
@@ -27073,6 +27109,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#_pytest._py.path">_pytest._py.path</a>
+ &#8226;   <a href="#app.api.routes.auth">app.api.routes.auth</a>
  &#8226;   <a href="#app.auth.service">app.auth.service</a>
  &#8226;   <a href="#cryptography.x509.extensions">cryptography.x509.extensions</a>
  &#8226;   <a href="#dns.entropy">dns.entropy</a>
@@ -30815,6 +30852,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#_pytest.cacheprovider">_pytest.cacheprovider</a>
+ &#8226;   <a href="#app.api.routes.auth">app.api.routes.auth</a>
  &#8226;   <a href="#app.api.routes.convert">app.api.routes.convert</a>
  &#8226;   <a href="#app.api.routes.printers">app.api.routes.printers</a>
  &#8226;   <a href="#app.api.routes.scoring">app.api.routes.scoring</a>
@@ -31059,6 +31097,7 @@ imported by:
  &#8226;   <a href="#app.api.routes.support_engine">app.api.routes.support_engine</a>
  &#8226;   <a href="#app.email_service">app.email_service</a>
  &#8226;   <a href="#app.support.engine">app.support.engine</a>
+ &#8226;   <a href="#app.support.engine.validator">app.support.engine.validator</a>
  &#8226;   <a href="#asyncio.futures">asyncio.futures</a>
  &#8226;   <a href="#asyncio.log">asyncio.log</a>
  &#8226;   <a href="#concurrent.futures._base">concurrent.futures._base</a>
@@ -32821,6 +32860,7 @@ imported by:
  &#8226;   <a href="#app.support.engine.collision">app.support.engine.collision</a>
  &#8226;   <a href="#app.support.engine.overhang">app.support.engine.overhang</a>
  &#8226;   <a href="#app.support.engine.planner">app.support.engine.planner</a>
+ &#8226;   <a href="#app.support.engine.validator">app.support.engine.validator</a>
  &#8226;   <a href="#app.support.tree_generator">app.support.tree_generator</a>
  &#8226;   <a href="#numpy">numpy</a>
  &#8226;   <a href="#numpy.__config__">numpy.__config__</a>
@@ -69969,7 +70009,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#app.auth.service">app.auth.service</a>
+    <a href="#app.api.routes.auth">app.api.routes.auth</a>
+ &#8226;   <a href="#app.auth.service">app.auth.service</a>
  &#8226;   <a href="#multiprocessing.shared_memory">multiprocessing.shared_memory</a>
  &#8226;   <a href="#starlette.responses">starlette.responses</a>
  &#8226;   <a href="#websockets.frames">websockets.frames</a>
@@ -76652,6 +76693,7 @@ imported by:
  &#8226;   <a href="#app.orientation.scorer">app.orientation.scorer</a>
  &#8226;   <a href="#app.support.detector">app.support.detector</a>
  &#8226;   <a href="#app.support.engine">app.support.engine</a>
+ &#8226;   <a href="#app.support.engine.overhang">app.support.engine.overhang</a>
  &#8226;   <a href="#trimesh">trimesh</a>
  &#8226;   <a href="#trimesh.base">trimesh.base</a>
  &#8226;   <a href="#trimesh.boolean">trimesh.boolean</a>
@@ -78812,7 +78854,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#trimesh">trimesh</a>
+    <a href="#app.support.engine.validator">app.support.engine.validator</a>
+ &#8226;   <a href="#trimesh">trimesh</a>
  &#8226;   <a href="#trimesh.base">trimesh.base</a>
  &#8226;   <a href="#trimesh.points">trimesh.points</a>
  &#8226;   <a href="#trimesh.registration">trimesh.registration</a>
@@ -80619,6 +80662,7 @@ imported by:
  &#8226;   <a href="#app.support.engine.overhang">app.support.engine.overhang</a>
  &#8226;   <a href="#app.support.engine.planner">app.support.engine.planner</a>
  &#8226;   <a href="#app.support.engine.serializer">app.support.engine.serializer</a>
+ &#8226;   <a href="#app.support.engine.validator">app.support.engine.validator</a>
  &#8226;   <a href="#app.support.models">app.support.models</a>
  &#8226;   <a href="#app.support.tree_generator">app.support.tree_generator</a>
  &#8226;   <a href="#asyncio.timeouts">asyncio.timeouts</a>

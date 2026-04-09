@@ -335,6 +335,11 @@ async def analyze(job_id: str) -> AnalyzeResponse:
     )
 
 
+# ── DEBUG HARDCODE ── remove before release ───────────────────────────────────
+_DEBUG_SUPPORT_HARDCODE = True    # ← DEBUG ACTIVE — revert before release
+# ─────────────────────────────────────────────────────────────────────────────
+
+
 @router.get("/analyze/{job_id}/support-preview", response_model=SupportPreviewData)
 async def support_preview(job_id: str, debug: bool = False) -> SupportPreviewData:
     """
@@ -350,6 +355,34 @@ async def support_preview(job_id: str, debug: bool = False) -> SupportPreviewDat
                     positions, active/filtered cluster centroids).  Intended
                     for development; not needed in production.
     """
+    # ── DEBUG: return one hardcoded support at a fixed world position ────────
+    if _DEBUG_SUPPORT_HARDCODE:
+        from app.support.models import SupportColumn, TreeBranch
+        return SupportPreviewData(
+            job_id             = job_id,
+            needs_supports     = True,
+            support_type       = "tree",
+            placement          = "buildplate_only",
+            overhang_positions = [],
+            overhang_severity  = [],
+            support_columns    = [],
+            tree_branches      = [
+                TreeBranch(
+                    start     = [0.0, 0.0, 50.0],   # 3MF space: X=0, Y=0, Z=50mm
+                    end       = [0.0, 0.0,  0.0],   # straight down to bed
+                    radius    = 2.0,
+                    is_tip    = True,
+                    parent_id = None,
+                    branch_id = 0,
+                ),
+            ],
+            trunk_count   = 1,
+            tip_count     = 1,
+            model_center  = [0.0, 0.0, 25.0],
+            model_floor_z = 0.0,
+        )
+    # ─────────────────────────────────────────────────────────────────────────
+
     job = find_job(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")

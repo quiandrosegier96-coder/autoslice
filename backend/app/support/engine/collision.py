@@ -21,7 +21,7 @@ from .bvh import BVH
 from .models import EngineConfig, SupportNode, SupportSegment, Vec3
 
 _MAX_ITER    = 4
-_HIT_EPSILON = 0.4   # mm — ignore hits within this distance of the ray origin
+_HIT_EPSILON = 0.0   # mm — NO dead zone: detect intersections at full range
 
 _ID_COUNTER = 10_000  # start high to avoid collisions with planner IDs
 

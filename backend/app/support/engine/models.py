@@ -205,6 +205,10 @@ class EngineConfig:
     # ── Collision avoidance ───────────────────────────────────────────────────
     enable_collision_avoidance: bool = True
     collision_waypoint_offset_mult: float = 3.0
+    # ── Strict post-build validation ─────────────────────────────────────────
+    # Minimum distance (mm) every segment sample must keep from the mesh.
+    # Segments violating this are hard-rejected (not fixed).
+    validation_clearance_mm: float = 0.8
 
 
 # ── Plan output ───────────────────────────────────────────────────────────────

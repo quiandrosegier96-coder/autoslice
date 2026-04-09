@@ -35,12 +35,21 @@ def verify_password(plain: str, stored: str) -> bool:
 
 
 def create_access_token(user_id: int, email: str) -> str:
-    from app.database import ADMIN_EMAILS
+    from app.database import ADMIN_EMAILS, get_connection
+    # is_admin = hardcoded email list OR DB column (supports runtime grants)
+    db_admin = False
+    try:
+        with get_connection() as conn:
+            row = conn.execute("SELECT COALESCE(is_admin,0) AS is_admin FROM users WHERE id = ?", (user_id,)).fetchone()
+            if row:
+                db_admin = bool(row["is_admin"])
+    except Exception:
+        pass
     expire = datetime.now(timezone.utc) + timedelta(hours=settings.jwt_expire_hours)
     payload = {
         "sub": str(user_id),
         "email": email,
-        "is_admin": email in ADMIN_EMAILS,
+        "is_admin": email in ADMIN_EMAILS or db_admin,
         "exp": expire,
     }
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)

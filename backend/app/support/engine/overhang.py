@@ -23,6 +23,12 @@ import numpy as np
 from .bvh import BVH
 from .models import EngineConfig, OverhangFace, Vec3
 
+try:
+    import trimesh as _trimesh_mod
+    _HAS_TRIMESH = True
+except ImportError:
+    _HAS_TRIMESH = False
+
 # ── Gravity (Z-up) ────────────────────────────────────────────────────────────
 
 _GRAVITY = np.array([0.0, 0.0, -1.0])
@@ -37,6 +43,7 @@ def detect_overhangs(
     config:    EngineConfig,
     floor_z:   float,
     bvh:       BVH,
+    mesh_tm    = None,       # trimesh.Trimesh (optional, for internal-face filter)
 ) -> List[OverhangFace]:
     """
     Return all triangles that need external support.
@@ -96,8 +103,21 @@ def detect_overhangs(
             if hit is not None and hit[0] < gap:
                 continue  # geometry too close below → self-supporting
 
-        normal_v = Vec3(*normals[fi].tolist())
+        normal_v   = Vec3(*normals[fi].tolist())
         centroid_v = Vec3(*centroid.tolist())
+
+        # ── Internal face filter ──────────────────────────────────────────
+        # If a trimesh object is available, probe outward from the centroid
+        # along the face normal.  For an external face the probe lands
+        # outside the mesh; for a cavity face it stays inside → skip it.
+        if mesh_tm is not None:
+            try:
+                from .validator import is_external_face as _is_ext
+                normal_arr = normals[fi]
+                if not _is_ext(centroid, normal_arr, mesh_tm, probe_dist=0.1):
+                    continue   # internal face — skip, no support needed here
+            except Exception:
+                pass   # if check fails, keep the face (conservative)
 
         result.append(OverhangFace(
             index        = int(fi),

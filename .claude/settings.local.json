@@ -332,7 +332,8 @@
       "Bash(sqlite3 \"/c/Users/QUANT/AppData/Roaming/AutoSlice/autoslice.db\" \"UPDATE users SET is_verified=1 WHERE email='y.smets@hotmail.com'; SELECT id, username, email, is_verified FROM users WHERE email='y.smets@hotmail.com';\")",
       "Bash(node -e ':*)",
       "Bash(powershell.exe -Command \"cd 'C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\backend'; python -c \\\\\"import sqlite3; conn = sqlite3.connect\\('autoslice.db'\\); conn.execute\\(\\\\\\\\\\\\\"UPDATE users SET is_verified=1 WHERE email='y.smets@hotmail.com'\\\\\\\\\\\\\"\\); conn.commit\\(\\); row = conn.execute\\(\\\\\\\\\\\\\"SELECT id, username, email, is_verified FROM users WHERE email='y.smets@hotmail.com'\\\\\\\\\\\\\"\\).fetchone\\(\\); print\\(row\\); conn.close\\(\\)\\\\\"\")",
-      "Bash(powershell.exe -Command \"cd 'C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\backend'; python fix_admin.py\")"
+      "Bash(powershell.exe -Command \"cd 'C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\backend'; python fix_admin.py\")",
+      "Bash(GH_TOKEN=\"REDACTED\" npm run dist:release)"
     ]
   }
 }

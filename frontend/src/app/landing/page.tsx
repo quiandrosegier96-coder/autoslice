@@ -32,16 +32,18 @@ function Badge({ children }: { children: React.ReactNode }) {
   );
 }
 
-function GradBtn({ href, children, outline }: { href: string; children: React.ReactNode; outline?: boolean }) {
+function GradBtn({ href, children, outline, download }: { href: string; children: React.ReactNode; outline?: boolean; download?: boolean }) {
   const base = "inline-flex items-center gap-2 px-6 h-11 rounded-xl font-semibold text-sm transition-all duration-150 active:scale-[0.97]";
+  const isExternal = href.startsWith("http");
+  const extraProps = isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {};
   if (outline) return (
-    <Link href={href} className={`${base} border text-zinc-300 hover:text-white hover:bg-white/[0.05]`}
+    <Link href={href} {...extraProps} className={`${base} border text-zinc-300 hover:text-white hover:bg-white/[0.05]`}
       style={{ borderColor: "rgba(255,255,255,0.12)" }}>
       {children}
     </Link>
   );
   return (
-    <Link href={href} className={`${base} text-white shadow-[0_0_24px_rgba(224,36,36,0.4)] hover:shadow-[0_0_36px_rgba(224,36,36,0.6)] hover:-translate-y-0.5`}
+    <Link href={href} {...extraProps} className={`${base} text-white shadow-[0_0_24px_rgba(224,36,36,0.4)] hover:shadow-[0_0_36px_rgba(224,36,36,0.6)] hover:-translate-y-0.5`}
       style={{ background: "linear-gradient(135deg,#e02424,#b81c1c)" }}>
       {children}
     </Link>
@@ -156,7 +158,7 @@ function Hero() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center gap-3 justify-center lg:justify-start">
-              <GradBtn href="/register">
+              <GradBtn href="/api/download" download>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                 </svg>
@@ -785,7 +787,7 @@ function DownloadCTA() {
               Download AutoSlice gratis voor Windows en begin vandaag nog met het converteren van je Bambu-modellen.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <GradBtn href="/register">
+              <GradBtn href="/api/download" download>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                 </svg>

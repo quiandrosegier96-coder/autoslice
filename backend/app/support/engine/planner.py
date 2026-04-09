@@ -101,9 +101,20 @@ def plan_tree(
         nodes.append(tip)
         tip_nodes.append(tip)
 
+        # Offset contact point away from the mesh surface along the average
+        # cluster normal by z_distance_mm.  This ensures the contact node
+        # is NOT on the surface (which would cause the segment endpoint to
+        # sit inside or exactly on the mesh — a guaranteed clearance failure).
+        import math as _math
+        n_avg = cl.avg_normal                          # Vec3 (unit outward normal)
+        contact_pos = Vec3(
+            cl.centroid.x + n_avg.x * config.z_distance_mm,
+            cl.centroid.y + n_avg.y * config.z_distance_mm,
+            cl.centroid.z + n_avg.z * config.z_distance_mm,
+        )
         contact = SupportNode(
             id         = _new_id(),
-            position   = cl.centroid,   # actual overhang surface
+            position   = contact_pos,
             radius     = config.contact_radius_mm,
             parent_id  = tip.id,
             node_type  = "contact",

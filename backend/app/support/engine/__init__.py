@@ -40,6 +40,7 @@ from .optimizer  import optimize
 from .overhang   import classify_support_type, compute_face_normals, detect_overhangs
 from .planner    import plan_tree
 from .serializer import compute_stats, serialise, serialise_skeleton
+from .validator  import filter_valid_segments
 
 log = logging.getLogger(__name__)
 
@@ -82,7 +83,7 @@ def run_pipeline(
     else:
         normals = compute_face_normals(vertices, faces)
 
-    floor_z    = float(mesh.bounds[0][2])
+    floor_z     = float(mesh.bounds[0][2])
     bbox_center = mesh.bounding_box.centroid
 
     return run_pipeline_from_arrays(
@@ -92,6 +93,7 @@ def run_pipeline(
         floor_z     = floor_z,
         bbox_center = bbox_center,
         config      = cfg,
+        mesh_tm     = mesh,          # pass trimesh object for strict validation
     )
 
 
@@ -104,6 +106,7 @@ def run_pipeline_from_arrays(
     floor_z:     float,
     bbox_center: np.ndarray,
     config:      Optional[EngineConfig] = None,
+    mesh_tm:     "Any" = None,
 ) -> TreeSupportPlan:
     """
     Run the full pipeline from raw numpy arrays.
@@ -120,7 +123,8 @@ def run_pipeline_from_arrays(
 
     # ── Step 2: Overhang detection ────────────────────────────────────────────
     log.debug("Engine: detecting overhangs…")
-    overhangs = detect_overhangs(vertices, faces, normals, cfg, floor_z, bvh)
+    overhangs = detect_overhangs(vertices, faces, normals, cfg, floor_z, bvh,
+                                 mesh_tm=mesh_tm)
 
     if not overhangs:
         log.debug("Engine: no overhangs — returning empty plan.")
@@ -151,6 +155,25 @@ def run_pipeline_from_arrays(
     # ── Step 7: Optimisation ─────────────────────────────────────────────────
     log.debug("Engine: optimising graph…")
     nodes, segments = optimize(nodes, segments, cfg, warnings)
+
+    # ── Step 7b: STRICT VALIDATION (zero tolerance) ───────────────────────────
+    # Hard-reject any segment that intersects the mesh, passes through the
+    # mesh interior, or violates minimum clearance.
+    # We NEVER fix or offset — if a segment is invalid it is simply removed.
+    if mesh_tm is not None and segments:
+        log.debug("Engine: strict segment validation (%d segments)…", len(segments))
+        from .validator import filter_valid_segments, DEFAULT_CLEARANCE_MM
+        nodes, segments = filter_valid_segments(
+            segments  = segments,
+            nodes     = nodes,
+            bvh       = bvh,
+            mesh_tm   = mesh_tm,
+            clearance = cfg.validation_clearance_mm
+                        if hasattr(cfg, "validation_clearance_mm")
+                        else DEFAULT_CLEARANCE_MM,
+        )
+        log.debug("Engine: after validation — %d nodes, %d segments.",
+                  len(nodes), len(segments))
 
     # ── Step 8: Build plan ────────────────────────────────────────────────────
     plan = TreeSupportPlan(
