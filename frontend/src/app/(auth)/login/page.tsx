@@ -94,7 +94,7 @@ export default function LoginPage() {
     try {
       const res = await apiPost<{ access_token: string; username: string; email: string; is_admin: boolean }>(
         "/auth/login",
-        { email, password }
+        { email, password, remember }
       );
       saveAuth({ token: res.access_token, username: res.username, email: res.email, is_admin: res.is_admin }, remember);
       router.push("/convert");

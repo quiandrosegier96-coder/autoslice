@@ -45,6 +45,7 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str   # accepts email address or username
     password: str
+    remember: bool = False
 
 
 class AuthResponse(BaseModel):
@@ -100,7 +101,7 @@ def login(req: LoginRequest) -> AuthResponse:
         conn.execute("UPDATE users SET last_login = ? WHERE id = ?",
                      (datetime.now(timezone.utc).isoformat(), user["id"]))
         conn.commit()
-    token = create_access_token(user["id"], user["email"])
+    token = create_access_token(user["id"], user["email"], remember=req.remember)
     return AuthResponse(access_token=token, username=user["username"], email=user["email"],
                         is_admin=user["email"] in ADMIN_EMAILS)
 

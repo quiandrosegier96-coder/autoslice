@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "autoslice-change-this-in-production"
     jwt_algorithm: str = "HS256"
     jwt_expire_hours: int = 24
+    jwt_expire_hours_remembered: int = 720  # 30 days
 
     # Email (Brevo SMTP relay)
     smtp_host: str = "smtp-relay.brevo.com"

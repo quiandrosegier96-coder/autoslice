@@ -34,7 +34,7 @@ def verify_password(plain: str, stored: str) -> bool:
     return secrets.compare_digest(dk.hex(), stored_hash)
 
 
-def create_access_token(user_id: int, email: str) -> str:
+def create_access_token(user_id: int, email: str, remember: bool = False) -> str:
     from app.database import ADMIN_EMAILS, get_connection
     # is_admin = hardcoded email list OR DB column (supports runtime grants)
     db_admin = False
@@ -45,7 +45,8 @@ def create_access_token(user_id: int, email: str) -> str:
                 db_admin = bool(row["is_admin"])
     except Exception:
         pass
-    expire = datetime.now(timezone.utc) + timedelta(hours=settings.jwt_expire_hours)
+    hours = settings.jwt_expire_hours_remembered if remember else settings.jwt_expire_hours
+    expire = datetime.now(timezone.utc) + timedelta(hours=hours)
     payload = {
         "sub": str(user_id),
         "email": email,
