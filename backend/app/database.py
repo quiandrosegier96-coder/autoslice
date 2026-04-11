@@ -17,7 +17,7 @@ def get_connection() -> sqlite3.Connection:
     return conn
 
 
-ADMIN_EMAILS = {"admin@autoslice.be", "admin2@autoslice.be", "geoffroynick@network-it.be", "y.smets@hotmail.com"}
+ADMIN_EMAILS = {"admin@autoslice.be", "admin2@autoslice.be", "quiandro@autoslice.be", "geoffroynick@network-it.be", "y.smets@hotmail.com"}
 
 
 def _add_column_if_missing(conn: sqlite3.Connection, table: str, column: str, col_type: str) -> None:
@@ -154,6 +154,7 @@ def seed_admin_users() -> None:
     from app.auth.service import hash_password
     created_at = datetime.now(timezone.utc).isoformat()
     accounts = [
+        ("admin",  "admin@autoslice.be",  "Admin@Autoslice2026!"),
         ("admin2", "admin2@autoslice.be", "AutoSlice2026!"),
     ]
     with get_connection() as conn:
