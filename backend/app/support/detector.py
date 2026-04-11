@@ -70,7 +70,7 @@ FLOOR_MARGIN_MIN_MM = 0.5     # minimum, mm
 # ── Cache (in-process, per uvicorn worker) ────────────────────────────────────
 
 _cache: dict[str, SupportPreviewData] = {}
-_CACHE_VERSION = "v6"   # bump this to invalidate all in-process cache entries
+_CACHE_VERSION = "v8"   # bump this to invalidate all in-process cache entries
 
 
 def get_support_preview(

@@ -93,7 +93,9 @@ _MIN_XY_SPREAD = 3.0     # minimum horizontal displacement for tip branches
 
 # Collision avoidance
 _COL_MARGIN    = 0.8     # minimum clearance from mesh surface (mm)
-_RAY_NUDGE     = 0.15    # nudge ray-origin off the start surface
+_RAY_NUDGE     = 0.0     # NO dead zone — catch intersections at full range
+_COL_MAX_ITER  = 5       # max waypoint insertion attempts per segment
+_COL_SAMPLES   = 20      # samples along segment for inside-mesh check
 
 
 # ── Internal node ─────────────────────────────────────────────────────────────
@@ -161,8 +163,11 @@ def generate_tree_branches(
         return n
 
     # ── 1. Tip nodes ──────────────────────────────────────────────────────────
+    # Offset 0.3 mm below the overhang surface so the tip is not exactly on
+    # the mesh boundary (avoids false "inside" results in contains() checks).
+    _TIP_Z_OFFSET = 0.3
     tip_nodes: list[_Node] = [
-        mk([c.x, c.y, c.z_top], _TIP_R, tip=True)
+        mk([c.x, c.y, c.z_top - _TIP_Z_OFFSET], _TIP_R, tip=True)
         for c in columns
     ]
 
@@ -232,7 +237,7 @@ def generate_tree_branches(
     children_map = _build_children_map(nodes)
 
     # ── 4. Tip splay — ensure every tip branch has a visible lean ─────────────
-    _splay_tips(nodes, node_map)
+    _splay_tips(nodes, node_map, mesh=mesh)
 
     # ── 5. Radius assignment via depth-based taper ───────────────────────────
     _assign_radii(nodes, node_map, children_map)
@@ -241,6 +246,12 @@ def generate_tree_branches(
     if mesh is not None:
         _avoid_collisions(nodes, node_map, mesh, _nid)
         # Rebuild maps to include any inserted waypoint nodes
+        node_map     = {n.nid: n for n in nodes}
+        children_map = _build_children_map(nodes)
+
+    # ── 6b. Hard validation — remove any segment still intersecting ───────────
+    if mesh is not None:
+        _hard_reject_invalid_segments(nodes, node_map, mesh)
         node_map     = {n.nid: n for n in nodes}
         children_map = _build_children_map(nodes)
 
@@ -404,7 +415,7 @@ def _count_desc(
 
 # ── Splay & radius ────────────────────────────────────────────────────────────
 
-def _splay_tips(nodes: list[_Node], nm: dict[int, _Node]) -> None:
+def _splay_tips(nodes: list[_Node], nm: dict[int, _Node], mesh=None) -> None:
     """
     Adjust tip-node XY positions to guarantee a minimum visible lean.
 
@@ -434,8 +445,20 @@ def _splay_tips(nodes: list[_Node], nm: dict[int, _Node]) -> None:
             dx *= _SPLAY
             dy *= _SPLAY
 
-        n.pos[0] = p.pos[0] + dx
-        n.pos[1] = p.pos[1] + dy
+        new_x = p.pos[0] + dx
+        new_y = p.pos[1] + dy
+
+        # If a trimesh is available, verify the splayed position is outside.
+        # If it landed inside the mesh, keep the original position instead.
+        if mesh is not None:
+            candidate = np.array([new_x, new_y, n.pos[2]], dtype=float)
+            if not _point_inside_mesh(candidate, mesh):
+                n.pos[0] = new_x
+                n.pos[1] = new_y
+            # else: keep original position — hard reject will clean the segment if needed
+        else:
+            n.pos[0] = new_x
+            n.pos[1] = new_y
 
 
 def _assign_radii(
@@ -466,6 +489,62 @@ def _assign_radii(
 
 # ── Collision avoidance ───────────────────────────────────────────────────────
 
+def _segment_intersects_mesh(p1: np.ndarray, p2: np.ndarray, mesh) -> bool:
+    """
+    Return True if the segment p1→p2 clearly intersects the mesh interior.
+
+    Endpoints are intentionally excluded from the inside-mesh check because:
+      - tip nodes sit on the overhang surface → the mesh boundary is ambiguous there
+      - root nodes sit on the build plate → same issue
+
+    Only the middle 60% of the segment is sampled.  Ray-cast uses a small
+    inset on both ends for the same reason.
+    """
+    vec    = p2 - p1
+    length = float(np.linalg.norm(vec))
+    if length < 1e-6:
+        return False
+    direction = vec / length
+
+    # ── Ray cast with endpoint inset ─────────────────────────────────────────
+    inset  = min(1.0, length * 0.12)   # 12% or 1mm, whichever is smaller
+    origin = p1 + direction * inset
+    eff_len = length - 2.0 * inset
+    if eff_len > 0.5:
+        try:
+            locs, _, _ = mesh.ray.intersects_location(
+                ray_origins    = [origin],
+                ray_directions = [direction],
+                multiple_hits  = True,
+            )
+            for loc in locs:
+                d = float(np.linalg.norm(np.asarray(loc, dtype=float) - origin))
+                if 0.0 < d < eff_len:
+                    return True
+        except Exception:
+            pass
+
+    # ── Inside-mesh check — middle 60% of segment only ───────────────────────
+    try:
+        ts     = np.linspace(0.20, 0.80, _COL_SAMPLES)
+        pts    = p1[None, :] + ts[:, None] * vec[None, :]
+        inside = mesh.contains(pts)
+        if np.any(inside):
+            return True
+    except Exception:
+        pass
+
+    return False
+
+
+def _point_inside_mesh(pt: np.ndarray, mesh) -> bool:
+    """Return True if pt is inside the mesh. Conservative: returns False on error."""
+    try:
+        return bool(mesh.contains(pt[None, :])[0])
+    except Exception:
+        return False
+
+
 def _avoid_collisions(
     nodes:   list[_Node],
     nm:      dict[int, _Node],
@@ -473,19 +552,13 @@ def _avoid_collisions(
     nid_ctr: list[int],
 ) -> None:
     """
-    Ray-cast each branch against the model mesh and insert avoidance waypoints.
+    Multi-pass collision avoidance with waypoint insertion.
 
-    For every branch (parent → child):
-      1. Cast a ray from parent toward child.
-      2. If the first hit is within the branch length (+ _COL_MARGIN),
-         a waypoint is inserted at the branch midpoint displaced outward
-         from the mesh's center-of-mass by _COL_MARGIN * 3.
-      3. The child is reparented to the waypoint; the waypoint inherits
-         the original parent.
-
-    This single-pass approach handles the majority of cases.  Deep re-entry
-    geometries may still partially collide, but practical support geometry
-    rarely creates such configurations.
+    For each branch segment up to _COL_MAX_ITER times:
+      1. Check segment via ray-cast + inside-mesh sampling.
+      2. If collision: compute a waypoint pushed outward from the mesh COM.
+      3. Verify the waypoint is outside the mesh — reject if not.
+      4. Insert waypoint and continue checking the child sub-segment.
     """
     try:
         mesh_com = np.array(mesh.center_mass, dtype=float).ravel()[:3]
@@ -493,69 +566,91 @@ def _avoid_collisions(
         try:
             mesh_com = np.array(mesh.centroid, dtype=float).ravel()[:3]
         except Exception:
-            return  # can't determine center — skip avoidance
+            return
 
-    # Snapshot to avoid iterating over newly-added waypoints
-    snapshot = [(n.nid, n.pid) for n in nodes if n.pid is not None]
+    # Snapshot of original edges only — waypoints added during iteration
+    # are handled by _hard_reject_invalid_segments in the next step.
+    snapshot = [(n.nid, n.pid) for n in list(nodes) if n.pid is not None]
 
     for child_nid, parent_nid in snapshot:
-        child  = nm.get(child_nid)
-        parent = nm.get(parent_nid)
-        if child is None or parent is None:
+        # Iterate up to _COL_MAX_ITER times on this edge
+        cur_child_nid  = child_nid
+        cur_parent_nid = parent_nid
+
+        for _iter in range(_COL_MAX_ITER):
+            child  = nm.get(cur_child_nid)
+            parent = nm.get(cur_parent_nid)
+            if child is None or parent is None:
+                break
+
+            p1 = parent.pos.copy()
+            p2 = child.pos.copy()
+
+            if not _segment_intersects_mesh(p1, p2, mesh):
+                break   # clean — done
+
+            # Collision: compute outward waypoint
+            vec    = p2 - p1
+            length = float(np.linalg.norm(vec))
+            if length < _MIN_SEG_MM:
+                break
+
+            mid     = (p1 + p2) * 0.5
+            outward = mid - mesh_com
+            o_norm  = float(np.linalg.norm(outward))
+            outward = outward / (o_norm + 1e-9)
+
+            # Try increasing push distances until waypoint is outside mesh
+            wp_pos = None
+            for mult in (3.0, 5.0, 8.0, 12.0):
+                candidate    = mid + outward * (_COL_MARGIN * mult)
+                candidate[2] = float(np.clip(candidate[2],
+                                             p1[2] + 0.1, p2[2] - 0.1))
+                if not _point_inside_mesh(candidate, mesh):
+                    wp_pos = candidate
+                    break
+
+            if wp_pos is None:
+                break   # can't find a valid waypoint — leave for hard reject
+
+            wp_r = (parent.r + child.r) * 0.5
+            wp   = _Node(nid_ctr[0], wp_pos, wp_r, pid=cur_parent_nid)
+            nm[nid_ctr[0]] = wp
+            nodes.append(wp)
+            nid_ctr[0] += 1
+
+            child.pid     = wp.nid   # parent → wp → child
+            cur_parent_nid = wp.nid  # next iteration checks wp → child
+            # cur_child_nid stays the same
+
+
+# ── Hard segment rejection (zero tolerance post-pass) ─────────────────────────
+
+def _hard_reject_invalid_segments(
+    nodes: list[_Node],
+    nm:    dict[int, _Node],
+    mesh,
+) -> None:
+    """
+    After all avoidance attempts, sever any parent-child edge whose segment
+    still intersects the mesh or passes through its interior.
+
+    A severed child becomes a disconnected subtree — _to_branches will simply
+    not emit it because it has no root ancestor.
+    We prefer missing supports over intersecting ones.
+    """
+    for n in list(nodes):
+        if n.pid is None:
+            continue
+        parent = nm.get(n.pid)
+        if parent is None:
             continue
 
-        p1     = parent.pos
-        p2     = child.pos
-        vec    = p2 - p1
-        length = float(np.linalg.norm(vec))
+        p1 = parent.pos.copy()
+        p2 = n.pos.copy()
 
-        if length < _MIN_SEG_MM:
-            continue
-
-        direction = vec / length
-        origin    = p1 + direction * _RAY_NUDGE   # nudge off start surface
-
-        try:
-            locs, _, _ = mesh.ray.intersects_location(
-                ray_origins   = [origin],
-                ray_directions = [direction],
-                multiple_hits  = True,
-            )
-        except Exception:
-            continue
-
-        if len(locs) == 0:
-            continue
-
-        # Sort by distance and take the first hit that is not a self-hit
-        # (within _RAY_NUDGE of the origin).
-        dists = [float(np.linalg.norm(np.asarray(l, dtype=float) - origin))
-                 for l in locs]
-        valid = [(d, l) for d, l in sorted(zip(dists, locs))
-                 if d > _RAY_NUDGE * 2]
-        if not valid:
-            continue
-        hit_dist = valid[0][0]
-
-        # Hit is past the branch endpoint → not a collision for this branch
-        if hit_dist > length - _RAY_NUDGE + _COL_MARGIN:
-            continue
-
-        # ── Collision detected — insert avoidance waypoint ────────────────
-        mid     = (p1 + p2) * 0.5
-        outward = mid - mesh_com
-        outward /= (float(np.linalg.norm(outward)) + 1e-9)
-
-        wp_pos    = mid + outward * (_COL_MARGIN * 3.0)
-        wp_pos[2] = float(np.clip(wp_pos[2], p1[2] + 0.2, p2[2] - 0.2))
-
-        wp_r = (parent.r + child.r) * 0.5
-        wp   = _Node(nid_ctr[0], wp_pos, wp_r, pid=parent_nid)
-        nm[nid_ctr[0]] = wp
-        nodes.append(wp)
-        nid_ctr[0] += 1
-
-        child.pid = wp.nid       # reroute: parent → waypoint → child
+        if _segment_intersects_mesh(p1, p2, mesh):
+            n.pid = None   # sever: this node becomes a disconnected orphan
 
 
 # ── Segment conversion ────────────────────────────────────────────────────────

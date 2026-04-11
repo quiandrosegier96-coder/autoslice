@@ -1,4 +1,7 @@
-const BASE = "/api";
+// In the Electron/web app API calls go through the Next.js rewrite proxy (/api → backend).
+// In the Android app there is no proxy — calls go directly to the backend server.
+// NEXT_PUBLIC_API_BASE is set at build time for the mobile export.
+const BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "") + "/api";
 
 function getToken(): string | null {
   if (typeof window === "undefined") return null;

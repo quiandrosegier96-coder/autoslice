@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow HTTP to the AutoSlice backend server -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">178.117.208.226</domain>
+    </domain-config>
+</network-security-config>

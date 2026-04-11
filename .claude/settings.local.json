@@ -333,7 +333,19 @@
       "Bash(node -e ':*)",
       "Bash(powershell.exe -Command \"cd 'C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\backend'; python -c \\\\\"import sqlite3; conn = sqlite3.connect\\('autoslice.db'\\); conn.execute\\(\\\\\\\\\\\\\"UPDATE users SET is_verified=1 WHERE email='y.smets@hotmail.com'\\\\\\\\\\\\\"\\); conn.commit\\(\\); row = conn.execute\\(\\\\\\\\\\\\\"SELECT id, username, email, is_verified FROM users WHERE email='y.smets@hotmail.com'\\\\\\\\\\\\\"\\).fetchone\\(\\); print\\(row\\); conn.close\\(\\)\\\\\"\")",
       "Bash(powershell.exe -Command \"cd 'C:\\\\Users\\\\QUANT\\\\GitHub\\\\AutoSlice_GITPPORN\\\\autoslice\\\\backend'; python fix_admin.py\")",
-      "Bash(GH_TOKEN=\"REDACTED\" npm run dist:release)"
+      "Bash(GH_TOKEN=\"REDACTED\" npm run dist:release)",
+      "Bash(npx cap:*)",
+      "Bash(where keytool:*)",
+      "Bash(\"C:/Program Files/Android/Android Studio/jbr/bin/keytool.exe\" -genkeypair -v -keystore \"C:/Users/QUANT/autoslice.jks\" -keyalg RSA -keysize 2048 -validity 9125 -alias autoslice -dname \"CN=quiandro segier, C=BE\" -storepass autoslice2024 -keypass autoslice2024)",
+      "Bash(powershell -File build_electron.ps1)",
+      "Bash(powershell -File \"build/build_electron.ps1\")",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/build/build_electron.ps1\")",
+      "Bash(pyinstaller build/backend.spec --distpath \"electron/resources/backend_tmp\" --workpath \"build/work_backend\" --noconfirm)",
+      "Bash(cp -r c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/.next/standalone c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/electron/resources/frontend)",
+      "Bash(cp -r c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/.next/static c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/electron/resources/frontend/.next/static)",
+      "Bash([ -d \"$FRONTEND/public\" ])",
+      "Bash(cp -r c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/public c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/electron/resources/frontend/public)",
+      "Bash(python -c ':*)"
     ]
   }
 }

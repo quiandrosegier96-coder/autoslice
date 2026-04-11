@@ -140,14 +140,98 @@ select:focus-visible {
   to   { opacity: 1; }
 }
 
-/* ── Light theme ──────────────────────────────────────────────────────────────
-   Inverts all colours + hue-rotates 180° so dark→light while brand red stays red.
-   Images/canvas are counter-inverted so they render normally. */
-[data-theme="light"] body {
-  filter: invert(1) hue-rotate(180deg);
+/* ── Light theme — wit / lichtblauw ──────────────────────────────────────────
+   Echte kleurvariabelen — geen invert-hack meer. */
+[data-theme="light"] {
+  --bg:      #f0f4fa;
+  --surface: #ffffff;
+  --brand:   #2563eb;
 }
-[data-theme="light"] img,
-[data-theme="light"] video,
-[data-theme="light"] canvas {
-  filter: invert(1) hue-rotate(180deg);
+
+[data-theme="light"] body {
+  background-color: #f0f4fa;
+  color: #0f172a;
+  background-image: radial-gradient(ellipse 70% 40% at 50% -10%, rgba(37,99,235,0.08) 0%, transparent 65%);
+}
+
+/* Scrollbar */
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: #cbd5e1; }
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+
+/* Selection */
+[data-theme="light"] ::selection {
+  background: rgba(37, 99, 235, 0.2);
+  color: #0f172a;
+}
+
+/* Inputs */
+[data-theme="light"] input[type="email"],
+[data-theme="light"] input[type="password"],
+[data-theme="light"] input[type="text"],
+[data-theme="light"] input[type="number"],
+[data-theme="light"] select {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  color-scheme: light;
+}
+
+[data-theme="light"] input::placeholder { color: #94a3b8; }
+
+[data-theme="light"] input:focus,
+[data-theme="light"] select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+[data-theme="light"] input:-webkit-autofill,
+[data-theme="light"] input:-webkit-autofill:hover,
+[data-theme="light"] input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  box-shadow:         0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0f172a;
+}
+
+[data-theme="light"] select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+/* Focus ring */
+[data-theme="light"] button:focus-visible,
+[data-theme="light"] a:focus-visible,
+[data-theme="light"] select:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.5);
+}
+
+/* ── Tailwind utility overrides for light mode ───────────────────────────────
+   Surface / card colours used throughout the app */
+[data-theme="light"] .bg-surface-card       { background-color: #ffffff !important; }
+[data-theme="light"] .bg-surface            { background-color: #f8fafc !important; }
+[data-theme="light"] .border-surface-border { border-color: #e2e8f0 !important; }
+[data-theme="light"] .text-zinc-400         { color: #64748b !important; }
+[data-theme="light"] .text-zinc-500         { color: #94a3b8 !important; }
+[data-theme="light"] .text-zinc-300         { color: #475569 !important; }
+[data-theme="light"] .text-white            { color: #0f172a !important; }
+[data-theme="light"] .bg-white\/\[0\.05\]  { background-color: #f1f5f9 !important; }
+[data-theme="light"] .bg-white\/\[0\.06\]  { background-color: #f1f5f9 !important; }
+[data-theme="light"] .border-white\/\[0\.1\]  { border-color: #e2e8f0 !important; }
+[data-theme="light"] .border-white\/\[0\.06\] { border-color: #e2e8f0 !important; }
+[data-theme="light"] .text-brand            { color: #2563eb !important; }
+[data-theme="light"] .bg-brand\/10          { background-color: rgba(37,99,235,0.08) !important; }
+[data-theme="light"] .border-brand\/20      { border-color: rgba(37,99,235,0.2) !important; }
+[data-theme="light"] .border-brand\/30      { border-color: rgba(37,99,235,0.3) !important; }
+[data-theme="light"] .bg-brand             { background-color: #2563eb !important; }
+[data-theme="light"] .hover\:bg-brand\/10:hover { background-color: rgba(37,99,235,0.08) !important; }
+
+/* Sidebar */
+[data-theme="light"] aside {
+  background-color: #ffffff;
+  border-right: 1px solid #e2e8f0;
+}
+
+/* Card hover shadow */
+[data-theme="light"] .card-hover:hover {
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.1);
 }

@@ -336,7 +336,7 @@ async def analyze(job_id: str) -> AnalyzeResponse:
 
 
 # ── DEBUG HARDCODE ── remove before release ───────────────────────────────────
-_DEBUG_SUPPORT_HARDCODE = True    # ← DEBUG ACTIVE — revert before release
+_DEBUG_SUPPORT_HARDCODE = False   # ← set True to activate
 # ─────────────────────────────────────────────────────────────────────────────
 
 
