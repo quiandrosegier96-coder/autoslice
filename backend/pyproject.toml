@@ -1,6 +1,6 @@
 [project]
 name = "autoslice-backend"
-version = "1.5.7"
+version = "1.5.15"
 description = "AutoSlice backend — Bambu 3MF to Anycubic 3MF conversion engine"
 requires-python = ">=3.11"
 
