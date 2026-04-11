@@ -72,7 +72,13 @@ def register(req: RegisterRequest) -> RegisterResponse:
     # Send verification code — admins are auto-verified
     if req.email not in ADMIN_EMAILS:
         code = _generate_verification_code(user["id"])
-        send_verification_email(req.email, code, req.username)
+        # Send email in background thread so slow SMTP never blocks the HTTP response
+        import threading
+        threading.Thread(
+            target=send_verification_email,
+            args=(req.email, code, req.username),
+            daemon=True,
+        ).start()
     else:
         with get_connection() as conn:
             conn.execute("UPDATE users SET is_verified = 1 WHERE id = ?", (user["id"],))
@@ -162,7 +168,12 @@ def resend_verification(req: ResendVerifyRequest) -> dict:
             if datetime.now(timezone.utc) - created < timedelta(seconds=60):
                 raise HTTPException(status_code=429, detail="Wacht even voor je opnieuw verstuurt.")
     code = _generate_verification_code(user["id"])
-    send_verification_email(user["email"], code, user["username"])
+    import threading
+    threading.Thread(
+        target=send_verification_email,
+        args=(user["email"], code, user["username"]),
+        daemon=True,
+    ).start()
     return {"message": "Nieuwe verificatiecode verstuurd."}
 
 
@@ -236,7 +247,12 @@ def forgot_password(req: ForgotPasswordRequest) -> dict:
     raw_token = create_reset_token(req.email)
     if raw_token:
         reset_link = f"{settings.app_base_url}/reset-password?token={raw_token}"
-        send_password_reset_email(req.email, reset_link)
+        import threading
+        threading.Thread(
+            target=send_password_reset_email,
+            args=(req.email, reset_link),
+            daemon=True,
+        ).start()
     return {"message": "If this email is registered, a reset link has been sent."}
 
 
