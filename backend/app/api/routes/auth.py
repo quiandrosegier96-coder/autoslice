@@ -127,7 +127,7 @@ def verify_email(req: VerifyRequest) -> dict:
         if row["used"]:
             raise HTTPException(status_code=400, detail="Deze code is al gebruikt.")
         created = datetime.fromisoformat(row["created_at"])
-        if datetime.now(timezone.utc) - created > timedelta(minutes=15):
+        if datetime.now(timezone.utc) - created > timedelta(hours=24):
             raise HTTPException(status_code=400, detail="Code verlopen. Vraag een nieuwe aan.")
         conn.execute("UPDATE verification_codes SET used = 1 WHERE id = ?", (row["id"],))
         conn.execute("UPDATE users SET is_verified = 1 WHERE id = ?", (user["id"],))

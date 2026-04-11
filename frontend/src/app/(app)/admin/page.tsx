@@ -12,6 +12,7 @@ type UserRow = {
   created_at: string;
   last_login: string | null;
   is_admin: boolean;
+  is_verified: boolean;
   uploads: number;
   conversions: number;
 };
@@ -99,6 +100,7 @@ export default function AdminPage() {
   const [roleConfirm, setRoleConfirm] = useState<{ user: UserRow; grant: boolean } | null>(null);
   const [roleLoading, setRoleLoading] = useState(false);
   const [roleMsg, setRoleMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [verifyLoading, setVerifyLoading] = useState<number | null>(null);
   const currentUser = getUser();
 
   useEffect(() => {
@@ -137,6 +139,20 @@ export default function AdminPage() {
     const hrs = Math.floor(mins / 60);
     if (hrs < 24) return `${hrs}h ago`;
     return `${Math.floor(hrs / 24)}d ago`;
+  }
+
+  async function verifyUser(u: UserRow) {
+    setVerifyLoading(u.id);
+    setRoleMsg(null);
+    try {
+      const updated = await apiPatch<UserRow>(`/admin/users/${u.id}/verify`, {});
+      setUsers((prev) => prev.map((x) => x.id === updated.id ? updated : x));
+      setRoleMsg({ type: "ok", text: `${u.username} is nu geverifieerd.` });
+    } catch (err: unknown) {
+      setRoleMsg({ type: "err", text: err instanceof Error ? err.message : "Verificatie mislukt." });
+    } finally {
+      setVerifyLoading(null);
+    }
   }
 
   async function applyRoleChange() {
@@ -302,7 +318,7 @@ export default function AdminPage() {
                   </div>
                 )}
                 <div className="bg-surface-card border border-surface-border rounded-xl overflow-x-auto">
-                  <table className="w-full min-w-[860px] text-sm">
+                  <table className="w-full min-w-[980px] text-sm">
                     <thead>
                       <tr className="border-b border-surface-border bg-surface/30">
                         <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">User</th>
@@ -311,6 +327,7 @@ export default function AdminPage() {
                         <th className="text-left px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Last Login</th>
                         <th className="text-right px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Uploads</th>
                         <th className="text-right px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Conversions</th>
+                        <th className="text-center px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Verified</th>
                         <th className="text-center px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Role</th>
                         <th className="text-center px-4 py-3 text-xs text-zinc-500 uppercase tracking-wide font-medium">Actions</th>
                       </tr>
@@ -337,6 +354,17 @@ export default function AdminPage() {
                             <td className="px-4 py-3 text-zinc-300 text-right font-mono text-xs">{u.uploads}</td>
                             <td className="px-4 py-3 text-zinc-300 text-right font-mono text-xs">{u.conversions}</td>
                             <td className="px-4 py-3 text-center">
+                              {u.is_verified ? (
+                                <span className="text-xs bg-green-500/10 text-green-400 border border-green-500/20 rounded-full px-2.5 py-0.5">
+                                  ✓ Ja
+                                </span>
+                              ) : (
+                                <span className="text-xs bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-full px-2.5 py-0.5">
+                                  Nee
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-center">
                               {u.is_admin ? (
                                 <span className="text-xs bg-brand/20 text-brand border border-brand/30 rounded-full px-2.5 py-0.5 font-medium">
                                   Admin
@@ -346,25 +374,37 @@ export default function AdminPage() {
                               )}
                             </td>
                             <td className="px-4 py-3 text-center">
-                              {u.is_admin ? (
-                                <button
-                                  onClick={() => { setRoleMsg(null); setRoleConfirm({ user: u, grant: false }); }}
-                                  disabled={isSelf}
-                                  title={isSelf ? "Je kunt je eigen admin rechten niet intrekken" : "Admin rechten intrekken"}
-                                  className="text-xs px-2.5 py-1 rounded-lg border border-yellow-500/30 text-yellow-400
-                                             hover:bg-yellow-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                                >
-                                  Intrekken
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => { setRoleMsg(null); setRoleConfirm({ user: u, grant: true }); }}
-                                  className="text-xs px-2.5 py-1 rounded-lg border border-brand/30 text-brand
-                                             hover:bg-brand/10 transition-colors"
-                                >
-                                  Maak admin
-                                </button>
-                              )}
+                              <div className="flex items-center justify-center gap-2">
+                                {!u.is_verified && (
+                                  <button
+                                    onClick={() => verifyUser(u)}
+                                    disabled={verifyLoading === u.id}
+                                    className="text-xs px-2.5 py-1 rounded-lg border border-green-500/30 text-green-400
+                                               hover:bg-green-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                  >
+                                    {verifyLoading === u.id ? "…" : "Verifieer"}
+                                  </button>
+                                )}
+                                {u.is_admin ? (
+                                  <button
+                                    onClick={() => { setRoleMsg(null); setRoleConfirm({ user: u, grant: false }); }}
+                                    disabled={isSelf}
+                                    title={isSelf ? "Je kunt je eigen admin rechten niet intrekken" : "Admin rechten intrekken"}
+                                    className="text-xs px-2.5 py-1 rounded-lg border border-yellow-500/30 text-yellow-400
+                                               hover:bg-yellow-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                  >
+                                    Intrekken
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => { setRoleMsg(null); setRoleConfirm({ user: u, grant: true }); }}
+                                    className="text-xs px-2.5 py-1 rounded-lg border border-brand/30 text-brand
+                                               hover:bg-brand/10 transition-colors"
+                                  >
+                                    Maak admin
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );

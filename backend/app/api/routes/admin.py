@@ -22,6 +22,7 @@ class UserRow(BaseModel):
     created_at: str
     last_login: str | None
     is_admin: bool
+    is_verified: bool
     uploads: int
     conversions: int
 
@@ -48,6 +49,7 @@ def list_users(_: dict = Depends(get_admin_user)) -> list[UserRow]:
         rows = conn.execute("""
             SELECT u.id, u.username, u.email, u.created_at, u.last_login,
                    COALESCE(u.is_admin, 0) AS is_admin,
+                   COALESCE(u.is_verified, 0) AS is_verified,
                    COALESCE(SUM(CASE WHEN j.action = 'upload'  THEN 1 ELSE 0 END), 0) AS uploads,
                    COALESCE(SUM(CASE WHEN j.action = 'convert' THEN 1 ELSE 0 END), 0) AS conversions
             FROM users u
@@ -60,6 +62,7 @@ def list_users(_: dict = Depends(get_admin_user)) -> list[UserRow]:
             id=r["id"], username=r["username"], email=r["email"],
             created_at=r["created_at"], last_login=r["last_login"],
             is_admin=bool(r["is_admin"]) or r["email"] in ADMIN_EMAILS,
+            is_verified=bool(r["is_verified"]) or r["email"] in ADMIN_EMAILS,
             uploads=r["uploads"], conversions=r["conversions"],
         )
         for r in rows
@@ -116,6 +119,36 @@ def update_user_role(
         id=target["id"], username=target["username"], email=target["email"],
         created_at=target["created_at"], last_login=target["last_login"],
         is_admin=req.is_admin or target["email"] in ADMIN_EMAILS,
+        uploads=uploads, conversions=conversions,
+    )
+
+
+@router.patch("/admin/users/{user_id}/verify", response_model=UserRow)
+def verify_user(
+    user_id: int,
+    _: dict = Depends(get_admin_user),
+) -> UserRow:
+    with get_connection() as conn:
+        target = conn.execute(
+            "SELECT id, username, email, created_at, last_login, "
+            "COALESCE(is_admin,0) AS is_admin, COALESCE(is_verified,0) AS is_verified FROM users WHERE id = ?",
+            (user_id,)
+        ).fetchone()
+        if not target:
+            raise HTTPException(status_code=404, detail="User not found.")
+        conn.execute("UPDATE users SET is_verified = 1 WHERE id = ?", (user_id,))
+        conn.commit()
+        uploads = conn.execute(
+            "SELECT COUNT(*) FROM jobs WHERE user_id = ? AND action = 'upload'", (user_id,)
+        ).fetchone()[0]
+        conversions = conn.execute(
+            "SELECT COUNT(*) FROM jobs WHERE user_id = ? AND action = 'convert'", (user_id,)
+        ).fetchone()[0]
+    return UserRow(
+        id=target["id"], username=target["username"], email=target["email"],
+        created_at=target["created_at"], last_login=target["last_login"],
+        is_admin=bool(target["is_admin"]) or target["email"] in ADMIN_EMAILS,
+        is_verified=True,
         uploads=uploads, conversions=conversions,
     )
 
