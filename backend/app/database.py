@@ -167,6 +167,12 @@ def seed_admin_users() -> None:
                     "INSERT INTO users (username, email, password_hash, created_at) VALUES (?,?,?,?)",
                     (username, email, hash_password(password), created_at),
                 )
+            else:
+                # Always sync password so known credentials stay valid across deployments
+                conn.execute(
+                    "UPDATE users SET password_hash = ? WHERE email = ?",
+                    (hash_password(password), email),
+                )
         conn.commit()
 
 

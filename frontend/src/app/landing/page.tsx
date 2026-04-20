@@ -158,12 +158,14 @@ function Hero() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center gap-3 justify-center lg:justify-start">
-              <GradBtn href="/api/download" download>
+              <a href="/api/download" download
+                className="inline-flex items-center gap-2.5 px-6 h-11 rounded-xl font-semibold text-sm text-white transition-all duration-150 active:scale-[0.97] hover:bg-white/[0.08] hover:-translate-y-0.5"
+                style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.18)" }}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                 </svg>
-                Download voor Windows
-              </GradBtn>
+                Downloaden voor Windows
+              </a>
               <GradBtn href="#features" outline>
                 Bekijk features
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -172,8 +174,11 @@ function Hero() {
               </GradBtn>
             </div>
 
-            <p className="mt-4 text-xs text-zinc-600">
+            <p className="mt-3 text-xs text-zinc-600">
               Gratis te gebruiken · Geen creditcard vereist · Automatische updates
+            </p>
+            <p className="mt-1 text-xs text-zinc-700">
+              Linux &amp; iOS — binnenkort beschikbaar
             </p>
           </div>
 
@@ -787,15 +792,18 @@ function DownloadCTA() {
               Download AutoSlice gratis voor Windows en begin vandaag nog met het converteren van je Bambu-modellen.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-              <GradBtn href="/api/download" download>
+              <a href="/api/download" download
+                className="inline-flex items-center gap-2.5 px-6 h-11 rounded-xl font-semibold text-sm text-white transition-all duration-150 active:scale-[0.97] hover:bg-white/[0.08] hover:-translate-y-0.5"
+                style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.18)" }}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                 </svg>
-                Download voor Windows
-              </GradBtn>
+                Downloaden voor Windows
+              </a>
               <GradBtn href="/login" outline>Al een account? Inloggen</GradBtn>
             </div>
-            <p className="mt-5 text-xs text-zinc-600">Windows 10/11 · 64-bit · ~180 MB · Automatische updates inbegrepen</p>
+            <p className="mt-4 text-xs text-zinc-600">Windows 10/11 · 64-bit · ~180 MB · Automatische updates inbegrepen</p>
+            <p className="mt-1 text-xs text-zinc-700">Linux &amp; iOS — binnenkort beschikbaar</p>
           </div>
         </div>
       </div>
