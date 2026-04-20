@@ -448,26 +448,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Background decorations */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full
-                            bg-brand/[0.11] blur-[120px]" />
-            <div className="absolute -top-20 left-1/3 w-[360px] h-[280px] rounded-full
-                            bg-brand/[0.05] blur-[90px]" />
-            <div className="absolute -bottom-20 -left-10 w-[480px] h-[320px] rounded-full
+            {/* Top-right glow */}
+            <div className="absolute -top-32 -right-32 w-[700px] h-[700px] rounded-full
+                            bg-brand/[0.18] blur-[130px]" />
+            {/* Center-top soft glow */}
+            <div className="absolute -top-10 left-1/3 w-[400px] h-[300px] rounded-full
                             bg-brand/[0.07] blur-[100px]" />
-            <div className="absolute bottom-0 left-0 right-0 h-[260px]">
+            {/* Bottom-left glow */}
+            <div className="absolute -bottom-10 -left-20 w-[560px] h-[380px] rounded-full
+                            bg-brand/[0.14] blur-[110px]" />
+            {/* Bottom-right glow */}
+            <div className="absolute -bottom-10 -right-20 w-[480px] h-[320px] rounded-full
+                            bg-brand/[0.16] blur-[100px]" />
+            {/* Perspective grid floor */}
+            <div className="absolute bottom-0 left-0 right-0 h-[320px]">
               <div
                 className="absolute inset-0"
                 style={{
                   backgroundImage: [
-                    "linear-gradient(rgba(224,36,36,0.085) 1px, transparent 1px)",
-                    "linear-gradient(90deg, rgba(224,36,36,0.085) 1px, transparent 1px)",
+                    "linear-gradient(rgba(224,36,36,0.13) 1px, transparent 1px)",
+                    "linear-gradient(90deg, rgba(224,36,36,0.13) 1px, transparent 1px)",
                   ].join(","),
                   backgroundSize: "44px 44px",
-                  transform: "perspective(300px) rotateX(58deg) scaleX(1.7)",
+                  transform: "perspective(280px) rotateX(60deg) scaleX(1.8)",
                   transformOrigin: "50% 0%",
                 }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#070709]/80 via-[#070709]/20 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#070709]/90 via-[#070709]/30 to-transparent" />
             </div>
           </div>
 
