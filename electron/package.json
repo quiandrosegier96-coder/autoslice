@@ -1,6 +1,6 @@
 {
   "name": "autoslice-desktop",
-  "version": "1.5.16",
+  "version": "1.5.17",
   "description": "AutoSlice — Bambu to Anycubic 3MF converter",
   "main": "main.js",
   "private": true,
