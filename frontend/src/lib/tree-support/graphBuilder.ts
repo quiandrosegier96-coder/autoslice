@@ -228,7 +228,9 @@ export function buildGraph(
         const tip = addNode(makeNode(splayed, config.tipRadiusMm, trunkTop.id, "tip"));
         addSegment(trunkTop, tip);
 
-        // Contact node slightly above the tip (shows where support touches model)
+        // Contact node: placed at the overhang tip position.
+        // The tip node is splayed outward, so the tip→contact segment
+        // approaches the mesh from the side — collision avoider handles it.
         const contact = addNode(makeNode(
           cl.tipPosition.clone(),
           config.tipRadiusMm * 0.6,

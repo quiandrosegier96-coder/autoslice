@@ -25,6 +25,8 @@ import type { BedPlateType }           from "./viewer/BedPlate";
 import type { SupportConfig, SupportStats, TreeSupportResult } from "@/lib/tree-support/types";
 import type { ExtendedViewMode }       from "./viewer/TreeSupportPanel";
 
+const _DEBUG_SUPPORT_COLOR = true; // force bright material so supports are unmistakable
+
 // ── AutoCamera ────────────────────────────────────────────────────────────────
 
 function AutoCamera({ object, rotationEuler }: { object: THREE.Group; rotationEuler?: number[] }) {
@@ -134,9 +136,18 @@ function StaticSupportMesh({
     result.supportMesh.traverse(child => {
       if ((child as THREE.Mesh).isMesh) {
         const m = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
-        m.transparent = opacity < 0.99;
-        m.opacity     = opacity;
-        m.depthWrite  = opacity >= 0.99;
+        if (_DEBUG_SUPPORT_COLOR) {
+          m.color.set("#00ff88");
+          m.emissive.set("#00aa44");
+          m.emissiveIntensity = 0.5;
+          m.transparent = false;
+          m.opacity     = 1;
+          m.depthWrite  = true;
+        } else {
+          m.transparent = opacity < 0.99;
+          m.opacity     = opacity;
+          m.depthWrite  = opacity >= 0.99;
+        }
         m.needsUpdate = true;
       }
     });
@@ -410,6 +421,12 @@ export function ModelViewer({
   }, [pipelineMesh, pipelineSupports, onPipelineReady]);
 
   function handleClientGenerated(result: TreeSupportResult) {
+    console.log("[ModelViewer] client supports generated", {
+      segments: result.segments.length,
+      nodes: result.nodes.size,
+      meshChildren: result.supportMesh.children.length,
+      stats: result.stats,
+    });
     setClientStats(result.stats);
     setGenerating(false);
     onClientSupportGenerated?.(result);
@@ -456,7 +473,7 @@ export function ModelViewer({
           />
 
           {/* Backend support visualization (heatmap + backend tree branches) */}
-          {(showHeatmap || (showSupportM && !treeResult && !showClientTreeSupport)) && (
+          {(showHeatmap || (showSupportM && !treeResult)) && (
             <SupportVisualization
               jobId={jobId}
               debugMode={debugMode}
@@ -475,8 +492,8 @@ export function ModelViewer({
             />
           )}
 
-          {/* Static support mesh (when not animating) */}
-          {treeResult && showSupportM && !showAnimation && (
+          {/* Static support mesh (when not animating) — skip when ClientTreeSupportLayer owns the mesh */}
+          {treeResult && showSupportM && !showAnimation && !showClientTreeSupport && (
             <StaticSupportMesh
               result={treeResult}
               opacity={effectiveMode === "transparent+supports" ? 0.85 : 1}

@@ -86,6 +86,12 @@ export function ClientTreeSupportLayer({
           debugGroupRef.current.add(result.debugGroup);
         }
 
+        console.log("[ClientTreeSupport] result", {
+          segments: result.segments.length,
+          nodes: result.nodes.size,
+          meshChildren: result.supportMesh.children.length,
+          stats: result.stats,
+        });
         setGenerated(true);
         onGenerated?.(result);
       } catch (err) {

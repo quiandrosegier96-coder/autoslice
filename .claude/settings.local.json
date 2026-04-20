@@ -345,7 +345,8 @@
       "Bash(cp -r c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/.next/static c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/electron/resources/frontend/.next/static)",
       "Bash([ -d \"$FRONTEND/public\" ])",
       "Bash(cp -r c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/frontend/public c:/Users/QUANT/GitHub/AutoSlice_GITPPORN/autoslice/electron/resources/frontend/public)",
-      "Bash(python -c ':*)"
+      "Bash(python -c ':*)",
+      "Bash(node -e \"require\\('typescript'\\)\")"
     ]
   }
 }
