@@ -166,6 +166,10 @@ export async function apiConvertDownload(
   filamentColors: string[] = [],
   filamentTypes: string[] = [],
   orientationEulerDeg: number[] = [],
+  scaleFactor = 1.0,
+  fuzzySkin = "none",
+  fuzzyThicknessMm = 0.3,
+  fuzzyPointDistMm = 0.8,
 ): Promise<Blob> {
   const res = await fetch(`${BASE}/convert`, {
     method: "POST",
@@ -186,6 +190,10 @@ export async function apiConvertDownload(
       filament_colors: filamentColors,
       filament_types: filamentTypes,
       orientation_euler_deg: orientationEulerDeg,
+      scale_factor: scaleFactor,
+      fuzzy_skin: fuzzySkin,
+      fuzzy_skin_thickness_mm: fuzzyThicknessMm,
+      fuzzy_skin_point_dist_mm: fuzzyPointDistMm,
     }),
   });
   if (!res.ok) {

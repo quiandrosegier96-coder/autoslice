@@ -16,8 +16,8 @@ from app.models.print_settings import PrintSettings
 from app.models.printer import PrinterProfile, FilamentType
 from app.ingestion.unpacker import UnpackedArchive
 from app.parser.model_parser import ParsedModel
-from app.export.xml_builder import build_settings_configs
-from app.export.mesh_transform import rotate_model_xml, normalize_model_xml
+from app.export.xml_builder import build_settings_configs, build_model_settings_config
+from app.export.mesh_transform import rotate_model_xml, normalize_model_xml, scale_model_xml
 
 # Slicer-specific config files we strip out and replace with our own.
 # We use a prefix match for process/filament/machine settings (Bambu numbers them _1, _2, etc.)
@@ -42,7 +42,8 @@ def export(
     filament_type: FilamentType,
     output_path: Path,
     rotation_matrix: np.ndarray | None = None,
-    parsed_model: ParsedModel | None = None,   # reserved for future merge pass
+    parsed_model: ParsedModel | None = None,
+    scale_factor: float = 1.0,
 ) -> Path:
     """
     Build the output .3mf by:
@@ -72,11 +73,18 @@ def export(
                     modified = rotate_model_xml(raw, rotation_matrix)
                 else:
                     modified = normalize_model_xml(raw)
+                if abs(scale_factor - 1.0) > 0.001:
+                    modified = scale_model_xml(modified, scale_factor)
                 zf.writestr(rel_str, modified)
             else:
                 zf.write(str(f), rel_str)
 
         for zip_path, content in configs.items():
             zf.writestr(zip_path, content)
+
+        # Inject object-to-filament-slot assignment when multicolor is active
+        if settings.color_count > 1 and parsed_model is not None:
+            model_settings_xml = build_model_settings_config(parsed_model, settings.color_count)
+            zf.writestr("Metadata/model_settings.config", model_settings_xml)
 
     return output_path

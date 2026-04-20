@@ -244,6 +244,14 @@ def _make_process_config(settings: PrintSettings) -> dict:
     curr_bed_type, _ = _BED_TYPE_MAP.get(settings.build_plate, _BED_TYPE_DEFAULT)
     cfg["curr_bed_type"] = curr_bed_type
 
+    # Fuzzy skin
+    if settings.fuzzy_skin and settings.fuzzy_skin != "none":
+        cfg["fuzzy_skin"] = settings.fuzzy_skin
+        cfg["fuzzy_skin_thickness"] = str(settings.fuzzy_skin_thickness_mm)
+        cfg["fuzzy_skin_point_distance"] = str(settings.fuzzy_skin_point_dist_mm)
+    else:
+        cfg["fuzzy_skin"] = "none"
+
     # Extrusion mode — absolute (M82).
     # Anycubic Slicer warns when M83 (relative) is active but per-layer G92 E0
     # resets are missing. Absolute mode avoids this entirely: E values are
@@ -445,6 +453,36 @@ def build_settings_configs(
     configs["Metadata/process_settings_1.config"] = json.dumps(process, indent=2)
     configs["Metadata/machine_settings_1.config"] = json.dumps(machine, indent=2)
     return configs
+
+
+def build_model_settings_config(parsed_model: ParsedModel, color_count: int) -> str:
+    """
+    Build Metadata/model_settings.config that assigns each printable object in
+    the model to a filament slot (round-robin).  Only written when color_count > 1.
+
+    Returns an XML string in OrcaSlicer / Anycubic Slicer Next format:
+      <config>
+        <object id="1"><metadata key="extruder" value="1"/></object>
+        <object id="2"><metadata key="extruder" value="2"/></object>
+        ...
+      </config>
+    """
+    _NON_PRINTABLE_TYPES = {"negative_volume", "modifier", "support_blocker", "support_enforcer"}
+    printable = [o for o in parsed_model.objects if o.object_type not in _NON_PRINTABLE_TYPES]
+
+    root = ET.Element("config")
+    for idx, obj in enumerate(printable):
+        slot = (idx % color_count) + 1   # 1-based slot index
+        obj_el = ET.SubElement(root, "object")
+        obj_el.set("id", obj.object_id)
+        meta = ET.SubElement(obj_el, "metadata")
+        meta.set("key", "extruder")
+        meta.set("value", str(slot))
+        name_meta = ET.SubElement(obj_el, "metadata")
+        name_meta.set("key", "name")
+        name_meta.set("value", obj.name or f"object_{obj.object_id}")
+
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(root, encoding="unicode")
 
 
 # Keep old name as alias so nothing else breaks

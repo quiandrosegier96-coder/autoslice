@@ -46,6 +46,10 @@ class ConvertRequest(BaseModel):
     filament_colors: list[str] = []
     filament_types: list[str] = []
     orientation_euler_deg: list[float] = []   # [rx, ry, rz] — empty = no rotation
+    scale_factor: float = 1.0                 # uniform scale (1.0 = no change)
+    fuzzy_skin: str = "none"                  # none | outer | all | allwalls
+    fuzzy_skin_thickness_mm: float = 0.3
+    fuzzy_skin_point_dist_mm: float = 0.8
 
 
 @router.post("/convert")
@@ -109,6 +113,15 @@ async def convert(
         except Exception:
             rotation_matrix = None  # rotation failed — continue with original
 
+    # Apply uniform scale so geometry analysis and export use the scaled dimensions
+    effective_scale = float(req.scale_factor) if req.scale_factor and req.scale_factor > 0 else 1.0
+    if abs(effective_scale - 1.0) > 0.001:
+        try:
+            mesh = mesh.copy()
+            mesh.apply_scale(effective_scale)
+        except Exception:
+            effective_scale = 1.0
+
     try:
         geometry = await loop.run_in_executor(
             None, analyze_mesh, mesh, len(parsed_model.objects)
@@ -137,14 +150,18 @@ async def convert(
         raise HTTPException(status_code=500, detail=f"Settings generation failed: {exc}")
 
     # Store hardware selections in settings for export
-    print_settings.nozzle_size_mm      = req.nozzle_size_mm
-    print_settings.nozzle_type         = req.nozzle_type
-    print_settings.filament_diameter_mm = req.filament_diameter_mm
-    print_settings.build_plate         = req.build_plate
-    print_settings.flush_volume_mm3    = req.flush_volume_mm3
-    print_settings.color_count         = min(req.color_count, printer.max_colors)
-    print_settings.filament_colors     = req.filament_colors
-    print_settings.filament_types      = req.filament_types
+    print_settings.nozzle_size_mm        = req.nozzle_size_mm
+    print_settings.nozzle_type           = req.nozzle_type
+    print_settings.filament_diameter_mm  = req.filament_diameter_mm
+    print_settings.build_plate           = req.build_plate
+    print_settings.flush_volume_mm3      = req.flush_volume_mm3
+    print_settings.color_count           = min(req.color_count, printer.max_colors)
+    print_settings.filament_colors       = req.filament_colors
+    print_settings.filament_types        = req.filament_types
+    print_settings.scale_factor          = effective_scale
+    print_settings.fuzzy_skin            = req.fuzzy_skin
+    print_settings.fuzzy_skin_thickness_mm  = req.fuzzy_skin_thickness_mm
+    print_settings.fuzzy_skin_point_dist_mm = req.fuzzy_skin_point_dist_mm
 
     # Adjust bed temperature based on build plate type
     _VALID_PLATES = {"smooth", "textured", "cold", "high_temp", "glass"}
@@ -166,7 +183,7 @@ async def convert(
     try:
         await loop.run_in_executor(
             None, do_export, archive, print_settings, printer,
-            req.filament_type, output_path, rotation_matrix, parsed_model,
+            req.filament_type, output_path, rotation_matrix, parsed_model, effective_scale,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Export failed: {exc}")

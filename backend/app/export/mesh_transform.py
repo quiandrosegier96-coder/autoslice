@@ -63,6 +63,19 @@ def rotate_model_xml(xml_bytes: bytes, rot_3x3: np.ndarray) -> bytes:
         return xml_bytes
 
 
+def scale_model_xml(xml_bytes: bytes, scale: float) -> bytes:
+    """
+    Uniformly scale all vertex coordinates in a 3MF model XML by `scale`.
+    Returns original bytes unchanged on any error or when scale ≈ 1.
+    """
+    if abs(scale - 1.0) <= 0.001:
+        return xml_bytes
+    try:
+        return _scale(xml_bytes, scale)
+    except Exception:
+        return xml_bytes
+
+
 def normalize_model_xml(xml_bytes: bytes) -> bytes:
     """
     Normalize a 3MF model XML without rotating it.
@@ -288,5 +301,35 @@ def _rotate(xml_bytes: bytes, rot_3x3: np.ndarray) -> bytes:
     for el in root.iter():
         if _local_tag(el) == "item":
             el.attrib["transform"] = _identity_transform()
+
+    return ET.tostring(root, encoding="unicode", xml_declaration=False).encode("utf-8")
+
+
+# ── _scale ────────────────────────────────────────────────────────────────────
+
+def _scale(xml_bytes: bytes, factor: float) -> bytes:
+    for prefix, uri in _NS_MAP.items():
+        ET.register_namespace(prefix, uri)
+
+    root = ET.fromstring(xml_bytes)
+    for el in root.iter():
+        if _local_tag(el) == "vertex":
+            try:
+                el.attrib["x"] = f"{float(el.attrib['x']) * factor:.6f}"
+                el.attrib["y"] = f"{float(el.attrib['y']) * factor:.6f}"
+                el.attrib["z"] = f"{float(el.attrib['z']) * factor:.6f}"
+            except (KeyError, ValueError):
+                pass
+
+    # Scale translation components of any item transforms
+    for el in root.iter():
+        if _local_tag(el) == "item":
+            t = el.attrib.get("transform", "")
+            if t:
+                mat = _parse_transform(t)
+                mat[0, 3] *= factor
+                mat[1, 3] *= factor
+                mat[2, 3] *= factor
+                el.attrib["transform"] = _matrix_to_transform(mat)
 
     return ET.tostring(root, encoding="unicode", xml_declaration=False).encode("utf-8")

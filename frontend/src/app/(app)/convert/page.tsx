@@ -176,6 +176,12 @@ export default function ConvertPage() {
   const [showSupports, setShowSupports] = useState(false);
   const [manualEuler, setManualEuler] = useState<number[]>([]);
 
+  // Scale & fuzzy skin
+  const [scalePct, setScalePct] = useState(100);
+  const [fuzzySkin, setFuzzySkin] = useState<"none" | "outer" | "all" | "allwalls">("none");
+  const [fuzzyThickness, setFuzzyThickness] = useState(0.3);
+  const [fuzzyDist, setFuzzyDist] = useState(0.8);
+
   // Progress simulation
   const [progress, setProgress] = useState(0);
   const [progressText, setProgressText] = useState("");
@@ -431,6 +437,10 @@ export default function ConvertPage() {
         slotColors.slice(0, colorCount),
         slotFilaments.slice(0, colorCount),
         orientEuler,
+        scalePct / 100,
+        fuzzySkin,
+        fuzzyThickness,
+        fuzzyDist,
       );
       if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
       setProgress(100);
@@ -495,6 +505,10 @@ export default function ConvertPage() {
     if (p.buildPlate) setBuildPlate(p.buildPlate as string);
     if (p.flushVolume !== undefined) setFlushVolume(p.flushVolume as number);
     if (p.multiColorMode) handleMultiColorMode(p.multiColorMode as "none" | "ace_pro" | "ace_pro2");
+    if (p.scalePct !== undefined) setScalePct(p.scalePct as number);
+    if (p.fuzzySkin) setFuzzySkin(p.fuzzySkin as "none" | "outer" | "all" | "allwalls");
+    if (p.fuzzyThickness !== undefined) setFuzzyThickness(p.fuzzyThickness as number);
+    if (p.fuzzyDist !== undefined) setFuzzyDist(p.fuzzyDist as number);
   }
 
   function savePreset(name: string) {
@@ -503,6 +517,7 @@ export default function ConvertPage() {
     const preset = {
       selectedPrinter, selectedFilament, nozzleSize, nozzleType,
       buildPlate, flushVolume, multiColorMode, dualUnit,
+      scalePct, fuzzySkin, fuzzyThickness, fuzzyDist,
     };
     const next = { ...presets, [trimmed]: preset };
     setPresets(next);
@@ -1094,6 +1109,96 @@ export default function ConvertPage() {
                              disabled:opacity-50 disabled:cursor-not-allowed" />
               </div>
             </div>
+          </div>
+
+          {/* Row 3 — Scale · Fuzzy skin */}
+          <div className="grid grid-cols-4 gap-4 pt-1">
+
+            {/* Schaal */}
+            <div>
+              <label className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-2">
+                Schaal (%)
+              </label>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                      d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                  </svg>
+                </div>
+                <input type="number" min={10} max={500} step={1} value={scalePct}
+                  onChange={(e) => setScalePct(Math.max(10, Math.min(500, parseFloat(e.target.value) || 100)))}
+                  disabled={settingsDisabled}
+                  className="w-full h-10 pl-9 pr-3 bg-white/[0.05] border border-white/[0.09] rounded-xl text-white text-sm
+                             focus:outline-none focus:border-brand/50 focus:bg-white/[0.07] transition-all duration-150
+                             disabled:opacity-50 disabled:cursor-not-allowed" />
+              </div>
+            </div>
+
+            {/* Fuzzy skin modus */}
+            <div>
+              <label className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-2">
+                Fuzzy skin
+              </label>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                      d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+                  </svg>
+                </div>
+                <select value={fuzzySkin} onChange={(e) => setFuzzySkin(e.target.value as "none" | "outer" | "all" | "allwalls")}
+                  disabled={settingsDisabled} className={SEL}>
+                  <option value="none">Uit</option>
+                  <option value="outer">Buitenwand</option>
+                  <option value="all">Alle wanden</option>
+                  <option value="allwalls">Alle + infill</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Fuzzy dikte */}
+            <div className={fuzzySkin === "none" ? "opacity-40 pointer-events-none" : ""}>
+              <label className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-2">
+                Fuzzy dikte (mm)
+              </label>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 12h16M4 6h16M4 18h7"/>
+                  </svg>
+                </div>
+                <input type="number" min={0.1} max={2} step={0.05} value={fuzzyThickness}
+                  onChange={(e) => setFuzzyThickness(parseFloat(e.target.value) || 0.3)}
+                  disabled={settingsDisabled}
+                  className="w-full h-10 pl-9 pr-3 bg-white/[0.05] border border-white/[0.09] rounded-xl text-white text-sm
+                             focus:outline-none focus:border-brand/50 focus:bg-white/[0.07] transition-all duration-150
+                             disabled:opacity-50 disabled:cursor-not-allowed" />
+              </div>
+            </div>
+
+            {/* Fuzzy punt-afstand */}
+            <div className={fuzzySkin === "none" ? "opacity-40 pointer-events-none" : ""}>
+              <label className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.12em] mb-2">
+                Fuzzy puntafstand (mm)
+              </label>
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="5" cy="12" r="1.5" strokeWidth={1.8}/>
+                    <circle cx="12" cy="12" r="1.5" strokeWidth={1.8}/>
+                    <circle cx="19" cy="12" r="1.5" strokeWidth={1.8}/>
+                  </svg>
+                </div>
+                <input type="number" min={0.2} max={5} step={0.1} value={fuzzyDist}
+                  onChange={(e) => setFuzzyDist(parseFloat(e.target.value) || 0.8)}
+                  disabled={settingsDisabled}
+                  className="w-full h-10 pl-9 pr-3 bg-white/[0.05] border border-white/[0.09] rounded-xl text-white text-sm
+                             focus:outline-none focus:border-brand/50 focus:bg-white/[0.07] transition-all duration-150
+                             disabled:opacity-50 disabled:cursor-not-allowed" />
+              </div>
+            </div>
+
           </div>
         </div>
       </div>

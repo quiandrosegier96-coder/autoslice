@@ -96,3 +96,11 @@ class PrintSettings:
     color_count: int = 1
     filament_colors: list = field(default_factory=list)   # hex e.g. ["#FF0000", "#00FF00"]
     filament_types: list = field(default_factory=list)    # per-slot e.g. ["pla", "pla"]
+
+    # --- Scale ---
+    scale_factor: float = 1.0   # uniform scale multiplier (1.0 = no change)
+
+    # --- Fuzzy skin ---
+    fuzzy_skin: str = "none"                  # none | outer | all | allwalls
+    fuzzy_skin_thickness_mm: float = 0.3
+    fuzzy_skin_point_dist_mm: float = 0.8
