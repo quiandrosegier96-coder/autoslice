@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
-// Required for Next.js static export (mobile/Android build)
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 const OWNER = "quiandrosegier96-coder";
 const REPO  = "autoslice";
