@@ -135,6 +135,12 @@ def init_db() -> None:
                 used       INTEGER NOT NULL DEFAULT 0
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS site_config (
+                key   TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+        """)
         # Schema migrations — add new columns to existing tables without data loss
         _add_column_if_missing(conn, "generation_log", "decision_trace_json", "TEXT")
         _add_column_if_missing(conn, "generation_log", "settings_delta_json",  "TEXT")
@@ -174,6 +180,43 @@ def seed_admin_users() -> None:
                     (hash_password(password), email),
                 )
         conn.commit()
+
+
+DEFAULT_SITE_CONFIG: dict = {
+    "landing_features":   True,
+    "landing_how":        True,
+    "landing_pricing":    True,
+    "landing_apppreview": True,
+    "landing_multicolor": True,
+    "landing_trustbar":   True,
+    "landing_downloadcta":True,
+    "nav_history":        True,
+    "nav_community":      True,
+    "nav_settings":       True,
+    "registration_open":  True,
+    "maintenance_mode":   False,
+}
+
+
+def get_site_config() -> dict:
+    with get_connection() as conn:
+        rows = conn.execute("SELECT key, value FROM site_config").fetchall()
+    config = dict(DEFAULT_SITE_CONFIG)
+    for row in rows:
+        config[row["key"]] = json.loads(row["value"])
+    return config
+
+
+def set_site_config(updates: dict) -> dict:
+    with get_connection() as conn:
+        for key, value in updates.items():
+            if key in DEFAULT_SITE_CONFIG:
+                conn.execute(
+                    "INSERT OR REPLACE INTO site_config (key, value) VALUES (?, ?)",
+                    (key, json.dumps(value)),
+                )
+        conn.commit()
+    return get_site_config()
 
 
 def log_job(job_id: str, user_id: int | None, action: str,

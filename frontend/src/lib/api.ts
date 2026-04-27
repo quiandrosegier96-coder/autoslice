@@ -77,6 +77,34 @@ export async function apiAnalyze(jobId: string) {
   return apiGet(`/analyze/${jobId}`, true);
 }
 
+export type SiteConfig = {
+  landing_features: boolean;
+  landing_how: boolean;
+  landing_pricing: boolean;
+  landing_apppreview: boolean;
+  landing_multicolor: boolean;
+  landing_trustbar: boolean;
+  landing_downloadcta: boolean;
+  nav_history: boolean;
+  nav_community: boolean;
+  nav_settings: boolean;
+  registration_open: boolean;
+  maintenance_mode: boolean;
+};
+
+export async function getSiteConfig(): Promise<SiteConfig> {
+  return apiGet<SiteConfig>("/site-config");
+}
+
+export async function adminSetSiteConfig(updates: Partial<SiteConfig>): Promise<SiteConfig> {
+  const res = await fetch(`${BASE}/admin/site-config`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(updates),
+  });
+  return parseResponse<SiteConfig>(res);
+}
+
 export async function apiScoringReport(jobId: string) {
   return apiGet(`/scoring/report/${jobId}`, true);
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { getSiteConfig, type SiteConfig } from "@/lib/api";
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const BG      = "#050508";
@@ -867,17 +868,22 @@ function LandingFooter() {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
+  const [cfg, setCfg] = useState<SiteConfig | null>(null);
+  useEffect(() => { getSiteConfig().then(setCfg).catch(() => {}); }, []);
+
+  const show = (key: keyof SiteConfig) => cfg === null || cfg[key] !== false;
+
   return (
     <div className="min-h-screen overflow-x-hidden" style={{ background: BG, color: "#e4e4e8", fontFamily: "Inter, system-ui, sans-serif" }}>
       <Navbar />
       <Hero />
-      <TrustBar />
-      <Features />
-      <HowItWorks />
-      <AppPreview />
-      <MultiColorSection />
-      <Pricing />
-      <DownloadCTA />
+      {show("landing_trustbar")   && <TrustBar />}
+      {show("landing_features")   && <Features />}
+      {show("landing_how")        && <HowItWorks />}
+      {show("landing_apppreview") && <AppPreview />}
+      {show("landing_multicolor") && <MultiColorSection />}
+      {show("landing_pricing")    && <Pricing />}
+      {show("landing_downloadcta")&& <DownloadCTA />}
       <LandingFooter />
     </div>
   );

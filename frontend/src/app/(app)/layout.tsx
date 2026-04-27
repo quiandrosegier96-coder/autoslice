@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { clearAuth, getUser, isAdmin as checkIsAdmin, isLoggedIn } from "@/lib/auth";
 import { useLang } from "@/contexts/LangContext";
 import { LANGS, type Lang } from "@/lib/i18n";
+import { getSiteConfig, type SiteConfig } from "@/lib/api";
 
 // ── Icons ─────────────────────────────────────────────────────────────────
 
@@ -297,6 +298,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const [user, setUser]               = useState<{ username: string; email: string; is_admin: boolean } | null>(null);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [siteCfg, setSiteCfg]          = useState<SiteConfig | null>(null);
 
   useEffect(() => {
     if (!isLoggedIn()) {
@@ -304,6 +306,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return;
     }
     setUser(getUser());
+    getSiteConfig().then(setSiteCfg).catch(() => {});
   }, [router]);
 
   // Close user dropdown on outside click
@@ -327,11 +330,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     icon: React.ReactNode;
     disabled?: boolean;
   }> = [
-    { href: "/convert",   label: t("nav_convert"),   icon: <IconBolt /> },
-    { href: "/history",   label: t("nav_history"),   icon: <IconClock /> },
-    { href: "/community", label: t("nav_community"), icon: <IconUsers /> },
-    { href: "/settings",  label: "Instellingen",     icon: <IconGear /> },
-    ...(admin ? [{ href: "/admin", label: t("nav_admin"), icon: <IconShield /> }] : []),
+    { href: "/convert",   label: t("nav_convert"),   icon: <IconBolt />,   show: true },
+    { href: "/history",   label: t("nav_history"),   icon: <IconClock />,  show: siteCfg === null || siteCfg.nav_history },
+    { href: "/community", label: t("nav_community"), icon: <IconUsers />,  show: siteCfg === null || siteCfg.nav_community },
+    { href: "/settings",  label: "Instellingen",     icon: <IconGear />,   show: siteCfg === null || siteCfg.nav_settings },
+    ...(admin ? [{ href: "/admin", label: t("nav_admin"), icon: <IconShield />, show: true }] : []),
   ];
 
   function handleSignOut() {
@@ -377,7 +380,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-            {NAV_ITEMS.map(({ href, label, icon, disabled }) => {
+            {NAV_ITEMS.filter(item => item.show !== false).map(({ href, label, icon, disabled }) => {
               const active = pathname === href || (!disabled && href !== "/" && pathname.startsWith(href + "/"));
 
               if (disabled) {

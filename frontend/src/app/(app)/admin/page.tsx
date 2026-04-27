@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isAdmin, getUser } from "@/lib/auth";
-import { apiGet, apiPatch } from "@/lib/api";
+import { apiGet, apiPatch, getSiteConfig, adminSetSiteConfig, type SiteConfig } from "@/lib/api";
 
 type UserRow = {
   id: number;
@@ -83,9 +83,20 @@ function StatCard({ label, value, icon }: { label: string; value: number; icon: 
   );
 }
 
+function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      onClick={() => onChange(!on)}
+      className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${on ? "bg-brand" : "bg-white/10"}`}
+    >
+      <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${on ? "translate-x-5" : "translate-x-0"}`} />
+    </button>
+  );
+}
+
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<"users" | "recent" | "resets" | "engine" | "feedback">("users");
+  const [tab, setTab] = useState<"users" | "recent" | "resets" | "engine" | "feedback" | "visibility">("users");
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [recent, setRecent] = useState<RecentJob[]>([]);
@@ -95,6 +106,9 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
+  const [siteConfig, setSiteConfig] = useState<SiteConfig | null>(null);
+  const [configSaving, setConfigSaving] = useState(false);
+  const [configMsg, setConfigMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   // Role management
   const [roleConfirm, setRoleConfirm] = useState<{ user: UserRow; grant: boolean } | null>(null);
@@ -112,8 +126,9 @@ export default function AdminPage() {
       apiGet<ResetTokenRow[]>("/admin/reset-tokens", true),
       apiGet<GenerationLogRow[]>("/admin/engine-log", true),
       apiGet<FeedbackRow[]>("/admin/feedback", true),
+      getSiteConfig(),
     ])
-      .then(([s, u, r, rt, el, fb]) => { setStats(s); setUsers(u); setRecent(r); setResets(rt); setEngineLog(el); setFeedbackLog(fb); })
+      .then(([s, u, r, rt, el, fb, cfg]) => { setStats(s); setUsers(u); setRecent(r); setResets(rt); setEngineLog(el); setFeedbackLog(fb); setSiteConfig(cfg); })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to load admin data"))
       .finally(() => setLoading(false));
   }, [router]);
@@ -152,6 +167,25 @@ export default function AdminPage() {
       setRoleMsg({ type: "err", text: err instanceof Error ? err.message : "Verificatie mislukt." });
     } finally {
       setVerifyLoading(null);
+    }
+  }
+
+  async function toggleConfig(key: keyof SiteConfig, value: boolean) {
+    if (!siteConfig) return;
+    const optimistic = { ...siteConfig, [key]: value };
+    setSiteConfig(optimistic);
+    setConfigSaving(true);
+    setConfigMsg(null);
+    try {
+      const updated = await adminSetSiteConfig({ [key]: value });
+      setSiteConfig(updated);
+      setConfigMsg({ type: "ok", text: "Opgeslagen." });
+      setTimeout(() => setConfigMsg(null), 2000);
+    } catch (err: unknown) {
+      setSiteConfig(siteConfig);
+      setConfigMsg({ type: "err", text: err instanceof Error ? err.message : "Opslaan mislukt." });
+    } finally {
+      setConfigSaving(false);
     }
   }
 
@@ -289,6 +323,7 @@ export default function AdminPage() {
                 { id: "resets", label: `Reset Codes${resets.filter(r => !r.used).length > 0 ? ` (${resets.filter(r => !r.used).length})` : ""}` },
               { id: "engine", label: `Engine Log${engineLog.length > 0 ? ` (${engineLog.length})` : ""}` },
               { id: "feedback", label: `Feedback${feedbackLog.length > 0 ? ` (${feedbackLog.length})` : ""}` },
+              { id: "visibility", label: "Zichtbaarheid" },
               ] as const).map(({ id, label }) => (
                 <button
                   key={id}
@@ -611,6 +646,70 @@ export default function AdminPage() {
                     )}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {/* Visibility */}
+            {tab === "visibility" && (
+              <div className="space-y-6">
+                {configMsg && (
+                  <div className={`px-4 py-3 rounded-xl text-sm border ${configMsg.type === "ok" ? "bg-green-500/10 border-green-500/20 text-green-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
+                    {configMsg.text}
+                  </div>
+                )}
+
+                {[
+                  {
+                    heading: "Landingspagina secties",
+                    items: [
+                      { key: "landing_trustbar",    label: "Compatibiliteit balk",    desc: "Balk met Bambu Lab, MakerWorld, Anycubic..." },
+                      { key: "landing_features",    label: "Features sectie",          desc: "6 feature cards (conversie, AI, multicolor...)" },
+                      { key: "landing_how",         label: "Hoe het werkt",            desc: "3-stappen uitleg" },
+                      { key: "landing_apppreview",  label: "AI Analyse sectie",        desc: "Printbaarheidscore en analyse mockup" },
+                      { key: "landing_multicolor",  label: "Multicolor sectie",        desc: "ACE Pro 2 kleurslots showcase" },
+                      { key: "landing_pricing",     label: "Prijzen",                  desc: "Starter / Pro / Team plannen" },
+                      { key: "landing_downloadcta", label: "Download CTA",             desc: "Grote download sectie onderaan" },
+                    ],
+                  },
+                  {
+                    heading: "App navigatie",
+                    items: [
+                      { key: "nav_history",   label: "Geschiedenis tab",  desc: "Conversie history van de gebruiker" },
+                      { key: "nav_community", label: "Community tab",     desc: "Gedeelde community prints" },
+                      { key: "nav_settings",  label: "Instellingen tab",  desc: "Gebruikersinstellingen pagina" },
+                    ],
+                  },
+                  {
+                    heading: "Platform",
+                    items: [
+                      { key: "registration_open", label: "Registratie open",   desc: "Nieuwe gebruikers kunnen zich aanmelden" },
+                      { key: "maintenance_mode",  label: "Onderhoudsmodus",    desc: "Toont een melding aan alle gebruikers" },
+                    ],
+                  },
+                ].map(({ heading, items }) => (
+                  <div key={heading} className="bg-surface-card border border-surface-border rounded-xl overflow-hidden">
+                    <div className="px-5 py-3 border-b border-surface-border bg-surface/30">
+                      <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{heading}</p>
+                    </div>
+                    <div className="divide-y divide-surface-border">
+                      {items.map(({ key, label, desc }) => (
+                        <div key={key} className="flex items-center justify-between px-5 py-4">
+                          <div>
+                            <p className="text-sm font-medium text-white">{label}</p>
+                            <p className="text-xs text-zinc-500 mt-0.5">{desc}</p>
+                          </div>
+                          <Toggle
+                            on={siteConfig ? siteConfig[key as keyof SiteConfig] as boolean : true}
+                            onChange={(v) => toggleConfig(key as keyof SiteConfig, v)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                {configSaving && (
+                  <p className="text-xs text-zinc-500 text-center">Opslaan...</p>
+                )}
               </div>
             )}
           </>

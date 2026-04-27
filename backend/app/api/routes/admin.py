@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.auth.dependencies import get_admin_user
-from app.database import get_connection, ADMIN_EMAILS
+from app.database import get_connection, ADMIN_EMAILS, get_site_config, set_site_config
 
 router = APIRouter()
 
@@ -245,6 +245,21 @@ class FeedbackRow(BaseModel):
     outcome: str
     notes: str | None
     created_at: str
+
+
+@router.get("/site-config")
+def public_site_config() -> dict:
+    return get_site_config()
+
+
+@router.get("/admin/site-config")
+def admin_get_site_config(_: dict = Depends(get_admin_user)) -> dict:
+    return get_site_config()
+
+
+@router.put("/admin/site-config")
+def admin_set_site_config(updates: dict, _: dict = Depends(get_admin_user)) -> dict:
+    return set_site_config(updates)
 
 
 @router.get("/admin/feedback", response_model=list[FeedbackRow])
