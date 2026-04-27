@@ -297,7 +297,7 @@ export default function LoginPage() {
                   {t("login_email")}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
                         d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
@@ -310,7 +310,7 @@ export default function LoginPage() {
                     placeholder="you@example.com"
                     required
                     autoComplete="username"
-                    className="w-full !pl-10 pr-4 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
+                    className="w-full pl-11 pr-4 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
                                text-white placeholder-zinc-600 text-sm
                                focus:outline-none focus:border-brand/50 focus:bg-white/[0.07]
                                focus:shadow-[0_0_0_3px_rgba(224,36,36,0.12)]
@@ -331,7 +331,7 @@ export default function LoginPage() {
                   </Link>
                 </div>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
                         d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
@@ -344,7 +344,7 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     required
                     autoComplete="current-password"
-                    className="w-full !pl-10 pr-11 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
+                    className="w-full pl-11 pr-11 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
                                text-white placeholder-zinc-600 text-sm
                                focus:outline-none focus:border-brand/50 focus:bg-white/[0.07]
                                focus:shadow-[0_0_0_3px_rgba(224,36,36,0.12)]
