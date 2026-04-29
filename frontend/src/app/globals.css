@@ -37,23 +37,41 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #e02424; }
 
 /* ── Inputs ── */
-input[type="email"],
-input[type="password"],
-input[type="text"],
-input[type="number"],
-select {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  color: #e4e4e8;
-  color-scheme: dark;
-  border-radius: 8px;
-  padding: 10px 14px;
-  /* Note: Tailwind !pl-* / !pr-* classes override this padding via !important */
-  width: 100%;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-  font-size: 14px;
-  font-family: inherit;
+/*
+ * Wrapped in @layer base so Tailwind utilities (pl-*, py-*, etc.) always
+ * override these defaults — base layer has lower priority than utilities.
+ * Previously this rule used element+attribute specificity (0,1,1) which
+ * beat class selectors (0,1,0) like pl-9, causing icon/text overlap in
+ * forms that position an icon absolutely inside the input wrapper.
+ */
+@layer base {
+  input[type="email"],
+  input[type="password"],
+  input[type="text"],
+  input[type="number"],
+  select {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    color: #e4e4e8;
+    color-scheme: dark;
+    border-radius: 8px;
+    padding: 10px 14px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    font-size: 14px;
+    font-family: inherit;
+  }
+
+  /* Hide browser number-input spinner arrows — they eat into pr-* padding space */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    appearance: textfield;
+  }
 }
 
 input:focus,

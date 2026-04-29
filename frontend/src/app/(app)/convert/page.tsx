@@ -1206,12 +1206,12 @@ export default function ConvertPage() {
       {/* ══════════════════════════════════════════════════════
           MULTI-COLOR SETTINGS CARD
       ══════════════════════════════════════════════════════ */}
-      <div className="bg-surface-card border border-white/[0.07] rounded-2xl mb-4 overflow-hidden
+      <div className="bg-surface-card border border-white/[0.07] rounded-2xl mb-4
                       shadow-[0_4px_24px_rgba(0,0,0,0.4),0_0_0_1px_rgba(255,255,255,0.02)]">
 
         {/* Card header */}
         <div className="px-6 py-[14px] border-b border-white/[0.07] flex items-center gap-3
-                        bg-gradient-to-r from-white/[0.02] to-transparent">
+                        bg-gradient-to-r from-white/[0.02] to-transparent rounded-t-2xl">
           <div className="w-7 h-7 rounded-lg bg-brand/15 border border-brand/[0.2] flex items-center justify-center shrink-0">
             <svg className="w-3.5 h-3.5 text-brand" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="6"  cy="6"  r="3.2"/>
@@ -1927,7 +1927,7 @@ function SlotSelect({
       {open && (
         <div
           role="listbox"
-          className="absolute z-50 left-0 right-0 mt-1 rounded-lg overflow-hidden py-0.5"
+          className="absolute z-[9999] left-0 right-0 mt-1 rounded-lg overflow-hidden py-0.5"
           style={{
             background: "#1a1a1f",
             border: "1px solid rgba(255,255,255,0.1)",

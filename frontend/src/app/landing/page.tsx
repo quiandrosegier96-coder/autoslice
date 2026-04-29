@@ -51,6 +51,78 @@ function GradBtn({ href, children, outline, download }: { href: string; children
   );
 }
 
+// ── Review types & seed data ─────────────────────────────────────────────────
+interface Review {
+  id: string;
+  name: string;
+  rating: number;
+  text: string;
+  date: string;
+}
+
+const INITIAL_REVIEWS: Review[] = [
+  {
+    id: "1",
+    name: "Jeroen V.",
+    rating: 5,
+    text: "Super handige tool! Bespaart me echt uren werk. Mijn multicolor prints komen er perfect uit.",
+    date: "15 april 2026",
+  },
+  {
+    id: "2",
+    name: "Sarah M.",
+    rating: 4,
+    text: "Eindelijk een manier om Bambu prints direct naar de Kobra 3 te converteren. Werkt perfect!",
+    date: "11 april 2026",
+  },
+  {
+    id: "3",
+    name: "Thomas B.",
+    rating: 5,
+    text: "De AI-analyse is ongelofelijk nauwkeurig. Minder mislukte prints, meer tijd voor ontwerpen.",
+    date: "3 april 2026",
+  },
+  {
+    id: "4",
+    name: "Lisa K.",
+    rating: 4,
+    text: "Preset systeem is top — ik sla al mijn printerprofielen op en laad ze in één klik.",
+    date: "28 maart 2026",
+  },
+  {
+    id: "5",
+    name: "Max R.",
+    rating: 5,
+    text: "Automatische oriëntatie-optimalisatie heeft mij al meerdere mislukte prints bespaard. Aanrader!",
+    date: "19 maart 2026",
+  },
+  {
+    id: "6",
+    name: "Emma D.",
+    rating: 4,
+    text: "Eenvoudig in gebruik, mooie interface en de conversie gaat razendsnel. Echt handig!",
+    date: "10 maart 2026",
+  },
+];
+
+// ── Star rating atom ──────────────────────────────────────────────────────────
+function StarRating({ rating, max = 5, size = "sm" }: { rating: number; max?: number; size?: "xs" | "sm" | "md" }) {
+  const cls = size === "xs" ? "w-3 h-3" : size === "sm" ? "w-4 h-4" : "w-6 h-6";
+  const STAR = "M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z";
+  return (
+    <div className="flex items-center gap-0.5">
+      {Array.from({ length: max }, (_, i) => (
+        <svg key={i} className={cls} viewBox="0 0 20 20"
+          fill={i < rating ? "#FFD700" : "none"}
+          stroke={i < rating ? "#FFD700" : "#4b5563"}
+          strokeWidth={i < rating ? 0 : 1.5}>
+          <path d={STAR} />
+        </svg>
+      ))}
+    </div>
+  );
+}
+
 // ── Navbar ────────────────────────────────────────────────────────────────────
 function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -181,6 +253,13 @@ function Hero() {
             <p className="mt-1 text-xs text-zinc-700">
               Linux &amp; iOS — binnenkort beschikbaar
             </p>
+
+            {/* Mini star rating */}
+            <div className="mt-5 flex items-center gap-2.5 justify-center lg:justify-start">
+              <StarRating rating={4} size="sm" />
+              <span className="text-sm font-bold text-white">4.3/5</span>
+              <span className="text-xs text-zinc-500">Gebaseerd op 128+ reviews</span>
+            </div>
           </div>
 
           {/* Right: App window mockup */}
@@ -866,6 +945,253 @@ function LandingFooter() {
   );
 }
 
+// ── Review modal ─────────────────────────────────────────────────────────────
+function ReviewModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (r: Review) => void }) {
+  const [name, setName]             = useState("");
+  const [rating, setRating]         = useState(5);
+  const [text, setText]             = useState("");
+  const [hoverRating, setHoverRating] = useState(0);
+  const STAR = "M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z";
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim() || !text.trim()) return;
+    const now = new Date();
+    onSubmit({
+      id: `${Date.now()}-${Math.random()}`,
+      name: name.trim(),
+      rating,
+      text: text.trim(),
+      date: now.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }),
+    });
+  }
+
+  const active = hoverRating || rating;
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl p-7 relative"
+        style={{
+          background: "#0c0c10",
+          border: "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 32px_80px rgba(0,0,0,0.6)",
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-bold text-white">Schrijf een review</h3>
+          <button onClick={onClose} className="text-zinc-600 hover:text-zinc-300 transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Name */}
+          <div>
+            <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em] mb-2">
+              Naam
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Jouw naam…"
+              style={{
+                padding: "10px 14px",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "#e4e4e8",
+                borderRadius: "12px",
+                width: "100%",
+                fontSize: "14px",
+                outline: "none",
+              }}
+            />
+          </div>
+
+          {/* Star rating selector */}
+          <div>
+            <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em] mb-3">
+              Beoordeling
+            </label>
+            <div className="flex items-center gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  onClick={() => setRating(star)}
+                  className="transition-transform hover:scale-110"
+                >
+                  <svg className="w-8 h-8" viewBox="0 0 20 20"
+                    fill={active >= star ? "#FFD700" : "none"}
+                    stroke={active >= star ? "#FFD700" : "#4b5563"}
+                    strokeWidth={active >= star ? 0 : 1.5}>
+                    <path d={STAR} />
+                  </svg>
+                </button>
+              ))}
+              <span className="text-sm text-zinc-400 ml-1 tabular-nums">{active}/5</span>
+            </div>
+          </div>
+
+          {/* Review text */}
+          <div>
+            <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-[0.12em] mb-2">
+              Review
+            </label>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Deel jouw ervaring met AutoSlice…"
+              rows={4}
+              style={{
+                padding: "10px 14px",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "#e4e4e8",
+                borderRadius: "12px",
+                width: "100%",
+                fontSize: "14px",
+                outline: "none",
+                resize: "none",
+                fontFamily: "inherit",
+              }}
+            />
+          </div>
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={!name.trim() || !text.trim()}
+            className="w-full h-11 rounded-xl font-semibold text-sm text-white transition-all duration-150
+                       disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5"
+            style={{
+              background: "linear-gradient(135deg,#e02424,#b81c1c)",
+              boxShadow: "0 0 20px rgba(224,36,36,0.35)",
+            }}
+          >
+            Review plaatsen
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Review section ────────────────────────────────────────────────────────────
+function ReviewSection() {
+  const { ref, visible }              = useFadeIn();
+  const [reviews, setReviews]         = useState<Review[]>(INITIAL_REVIEWS);
+  const [showModal, setShowModal]     = useState(false);
+
+  const total  = reviews.length;
+  const avgRaw = reviews.reduce((s, r) => s + r.rating, 0) / Math.max(total, 1);
+  const avgDisplay = avgRaw.toFixed(1);
+  const fullStars  = Math.round(avgRaw);
+
+  return (
+    <section id="reviews" className="py-28" ref={ref}>
+      <div className="max-w-6xl mx-auto px-6">
+        <div className={`transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+
+          {/* Section header */}
+          <div className="text-center mb-14">
+            <Badge>Reviews</Badge>
+            <h2 className="text-4xl font-extrabold text-white mt-5 mb-4 tracking-tight">
+              Reviews van onze gebruikers
+            </h2>
+            <p className="text-zinc-500 text-lg max-w-lg mx-auto">
+              Wat 3D-print enthousiastelingen zeggen over AutoSlice.
+            </p>
+          </div>
+
+          <div className="flex flex-col lg:flex-row gap-12 items-start">
+
+            {/* Left: summary panel */}
+            <div
+              className="lg:w-64 shrink-0 rounded-2xl p-7 flex flex-col items-center lg:items-start border"
+              style={{ background: "rgba(255,255,255,0.02)", borderColor: "rgba(255,255,255,0.07)" }}
+            >
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-6xl font-black text-white leading-none">{avgDisplay}</span>
+                <span className="text-2xl text-zinc-500 font-semibold">/5</span>
+              </div>
+              <div className="mt-3 mb-2">
+                <StarRating rating={fullStars} size="md" />
+              </div>
+              <p className="text-sm text-zinc-500 mb-8">Gebaseerd op {total}+ reviews</p>
+
+              <button
+                onClick={() => setShowModal(true)}
+                className="w-full flex items-center justify-center gap-2 h-10 rounded-xl font-semibold text-sm text-white
+                           transition-all duration-150 hover:-translate-y-0.5"
+                style={{
+                  background: "linear-gradient(135deg,#e02424,#b81c1c)",
+                  boxShadow: "0 0 20px rgba(224,36,36,0.3)",
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Schrijf een review
+              </button>
+            </div>
+
+            {/* Right: review cards grid */}
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {reviews.slice(0, 6).map((review, i) => (
+                <div
+                  key={review.id}
+                  className="rounded-2xl border p-5 flex flex-col gap-3 transition-all duration-700 hover:-translate-y-0.5"
+                  style={{
+                    background: "rgba(255,255,255,0.02)",
+                    borderColor: "rgba(255,255,255,0.07)",
+                    transitionDelay: `${i * 60}ms`,
+                    opacity: visible ? 1 : 0,
+                    transform: visible ? "translateY(0)" : "translateY(16px)",
+                  }}
+                >
+                  <StarRating rating={review.rating} size="sm" />
+                  <p className="text-sm text-zinc-300 leading-relaxed flex-1">
+                    &ldquo;{review.text}&rdquo;
+                  </p>
+                  <div
+                    className="flex items-center justify-between pt-3 border-t"
+                    style={{ borderColor: "rgba(255,255,255,0.06)" }}
+                  >
+                    <span className="text-xs font-semibold text-zinc-400">— {review.name}</span>
+                    <span className="text-[11px] text-zinc-600">{review.date}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {showModal && (
+        <ReviewModal
+          onClose={() => setShowModal(false)}
+          onSubmit={(r) => {
+            setReviews((prev) => [r, ...prev]);
+            setShowModal(false);
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const [cfg, setCfg] = useState<SiteConfig | null>(null);
@@ -878,6 +1204,7 @@ export default function LandingPage() {
       <Navbar />
       <Hero />
       {show("landing_trustbar")   && <TrustBar />}
+      <ReviewSection />
       {show("landing_features")   && <Features />}
       {show("landing_how")        && <HowItWorks />}
       {show("landing_apppreview") && <AppPreview />}
