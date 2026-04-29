@@ -200,3 +200,62 @@ class AutoSettingsResponse(BaseModel):
     warnings:      list[PrintWarning]
     convert_hints: ConvertHints
     engine_version: str = "1.0.0"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Orientation suggestion schemas
+# ─────────────────────────────────────────────────────────────────────────────
+
+class Rotation3D(BaseModel):
+    x: float = 0.0
+    y: float = 0.0
+    z: float = 0.0
+
+
+class OrientationRequest(BaseModel):
+    """Input payload for POST /ai/orientation-suggestion."""
+
+    width_mm:         float = Field(gt=0, description="Model bounding-box width in mm.")
+    depth_mm:         float = Field(gt=0, description="Model bounding-box depth in mm.")
+    height_mm:        float = Field(gt=0, description="Model bounding-box height (Z) in mm.")
+    volume_mm3:       float = Field(gt=0, description="Estimated model volume in mm³.")
+    surface_area_mm2: float = Field(gt=0, description="Total mesh surface area in mm².")
+    overhang_ratio:   float = Field(ge=0.0, le=1.0, description="Fraction of surface area classified as overhang.")
+    thin_wall_ratio:  float = Field(ge=0.0, le=1.0, description="Fraction of surface area with sub-nozzle wall thickness.")
+    current_rotation: Rotation3D = Field(default_factory=Rotation3D, description="Current model rotation in degrees.")
+
+
+class OrientationHints(BaseModel):
+    """
+    Apply Orientation bridge — maps to the single ConvertRequest field
+    that controls model rotation.
+
+    Frontend usage:
+      1. Receive OrientationSuggestion
+      2. Display recommendation + scores + warnings
+      3. On 'Apply Orientation' click, merge into the convert form:
+           form.orientation_euler_deg = hints.orientation_euler_deg
+      4. User reviews, then submits normally via POST /api/convert
+      5. Rules engine and slicing pipeline run unchanged
+
+    If the model is already optimal, orientation_euler_deg is [0, 0, 0]
+    and convert.py will not apply any rotation.
+    """
+
+    orientation_euler_deg: list[float] = Field(
+        description="[rx, ry, rz] in degrees. Maps to ConvertRequest.orientation_euler_deg."
+    )
+
+
+class OrientationSuggestion(BaseModel):
+    """Full response returned by POST /ai/orientation-suggestion."""
+
+    recommended_rotation:               Rotation3D
+    confidence:                         int   = Field(ge=0, le=100)
+    estimated_support_reduction_percent: float = Field(ge=0.0, le=100.0)
+    bed_adhesion_score:                 int   = Field(ge=0, le=100)
+    stability_score:                    int   = Field(ge=0, le=100)
+    warnings:                           list[str]
+    explanation:                        str
+    orientation_hints:                  OrientationHints
+    engine_version:                     str = "1.0.0"

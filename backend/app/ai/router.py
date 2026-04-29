@@ -1,5 +1,5 @@
 """
-AutoSlice — AI auto-settings router.
+AutoSlice — AI router.
 
 POST /api/ai/auto-settings
   Accepts explicit model geometry features and print intent.
@@ -9,6 +9,11 @@ GET  /api/ai/auto-settings/{job_id}
   Pipeline-integrated variant: looks up an uploaded job, runs the geometry
   analysis pipeline (same steps as /api/analyze), then feeds the result
   directly into the AI engine. No geometry numbers required from the caller.
+
+POST /api/ai/orientation-suggestion
+  Accepts bounding-box geometry features and current rotation.
+  Returns the recommended 90° rotation with confidence, scores, and warnings.
+  Advisory only — slicing is unchanged unless the user clicks Apply Orientation.
 """
 
 import asyncio
@@ -16,8 +21,15 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.ai import auto_settings
-from app.ai.schemas import AutoSettingsRequest, AutoSettingsResponse, FilamentType, ModelFeatures
+from app.ai import auto_settings, orientation
+from app.ai.schemas import (
+    AutoSettingsRequest,
+    AutoSettingsResponse,
+    FilamentType,
+    ModelFeatures,
+    OrientationRequest,
+    OrientationSuggestion,
+)
 from app.ingestion.handler import find_job
 from app.ingestion.unpacker import unpack
 from app.parser.model_parser import parse_model_files
@@ -123,3 +135,40 @@ async def auto_settings_for_job(
         return auto_settings.run(request)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Auto-settings engine error: {exc}") from exc
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# POST /api/ai/orientation-suggestion
+# Advisory only — never modifies slicing behaviour unless the user applies it.
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.post(
+    "/ai/orientation-suggestion",
+    response_model=OrientationSuggestion,
+    summary="Suggest the best 90° model rotation before slicing",
+    response_description=(
+        "Recommended rotation, confidence, support-reduction estimate, "
+        "scores, warnings, and orientation_hints for the Apply Orientation flow."
+    ),
+)
+def orientation_suggestion(request: OrientationRequest) -> OrientationSuggestion:
+    """
+    Analyse bounding-box geometry features and suggest the optimal 90° rotation.
+
+    Returns an advisory suggestion only. Slicing behaviour is unchanged unless
+    the user explicitly clicks **Apply Orientation**, which merges
+    `orientation_hints.orientation_euler_deg` into the convert form and submits
+    the normal `POST /api/convert` request.
+
+    - **width_mm / depth_mm / height_mm**: model bounding-box dimensions
+    - **volume_mm3 / surface_area_mm2**: volumetric geometry features
+    - **overhang_ratio**: fraction of surface area classified as overhang (0–1)
+    - **thin_wall_ratio**: fraction of surface area with sub-nozzle wall thickness (0–1)
+    - **current_rotation**: current model rotation in degrees (default 0, 0, 0)
+    """
+    try:
+        return orientation.suggest(request)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500, detail=f"Orientation engine error: {exc}"
+        ) from exc
