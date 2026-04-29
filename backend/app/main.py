@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import upload, analyze, convert, auth, printers, admin, feedback, diagnostics, scoring, ratings, gcode, community
 from app.api.routes import support_engine, download
 from app.ai import router as ai_router
+from app.reviews import router as reviews_router
 from app.config import settings
 from app.database import init_db, seed_admin_users
 
@@ -51,6 +52,7 @@ app.include_router(community.router,       prefix="/api", tags=["community"])
 app.include_router(support_engine.router,  tags=["support-engine"])
 app.include_router(download.router,        prefix="/api", tags=["download"])
 app.include_router(ai_router.router,       prefix="/api", tags=["ai"])
+app.include_router(reviews_router.router,  prefix="/api", tags=["reviews"])
 
 
 @app.get("/health")

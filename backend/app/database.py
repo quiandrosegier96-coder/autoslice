@@ -141,6 +141,18 @@ def init_db() -> None:
                 value TEXT NOT NULL
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS reviews (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                name        TEXT    NOT NULL,
+                rating      INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+                text        TEXT    NOT NULL,
+                app_version TEXT,
+                approved    INTEGER NOT NULL DEFAULT 0,
+                created_at  TEXT    NOT NULL,
+                approved_at TEXT
+            )
+        """)
         # Schema migrations — add new columns to existing tables without data loss
         _add_column_if_missing(conn, "generation_log", "decision_trace_json", "TEXT")
         _add_column_if_missing(conn, "generation_log", "settings_delta_json",  "TEXT")
