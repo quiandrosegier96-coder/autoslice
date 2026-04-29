@@ -54,6 +54,8 @@ const STEPS = {
   en: ["Create your account", "Confirm your email", "Start converting"],
   fr: ["Créer votre compte", "Confirmez votre e-mail", "Commencez à convertir"],
   de: ["Konto erstellen", "E-Mail bestätigen", "Mit Konvertieren beginnen"],
+  es: ["Crear tu cuenta", "Confirma tu e-mail", "Empieza a convertir"],
+  ko: ["계정 만들기", "이메일 확인", "변환 시작"],
 };
 
 const HEADING = {
@@ -61,12 +63,16 @@ const HEADING = {
   en: "Get started",
   fr: "Commencer",
   de: "Loslegen",
+  es: "Empezar",
+  ko: "시작하기",
 };
 const SUBHEADING = {
   nl: "Maak je gratis account aan.",
   en: "Create your free account.",
   fr: "Créez votre compte gratuit.",
   de: "Erstellen Sie Ihr kostenloses Konto.",
+  es: "Crea tu cuenta gratuita.",
+  ko: "무료 계정을 만드세요.",
 };
 
 export default function RegisterPage() {
@@ -153,7 +159,7 @@ export default function RegisterPage() {
 
           {/* Steps */}
           <p className="text-xs font-semibold text-zinc-600 uppercase tracking-[0.14em] mb-5">
-            {lang === "nl" ? "Hoe het werkt" : lang === "fr" ? "Comment ça marche" : lang === "de" ? "So funktioniert es" : "How it works"}
+            {lang === "nl" ? "Hoe het werkt" : lang === "fr" ? "Comment ça marche" : lang === "de" ? "So funktioniert es" : lang === "es" ? "Cómo funciona" : lang === "ko" ? "사용 방법" : "How it works"}
           </p>
           <div className="space-y-4">
             {steps.map((step, i) => (
@@ -178,6 +184,10 @@ export default function RegisterPage() {
                 ? "En vous inscrivant, vous acceptez nos conditions de service."
                 : lang === "de"
                 ? "Mit der Registrierung stimmen Sie unseren Nutzungsbedingungen zu."
+                : lang === "es"
+                ? "Al registrarte, aceptas nuestros términos de servicio."
+                : lang === "ko"
+                ? "등록함으로써 서비스 약관에 동의합니다."
                 : "By registering you agree to our terms of service."}
             </p>
           </div>
@@ -219,15 +229,9 @@ export default function RegisterPage() {
                   {t("reg_username")}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </span>
                   <input type="text" value={username} onChange={(e) => setUsername(e.target.value)}
-                    placeholder="yourname" required minLength={3} autoComplete="username"
-                    className="w-full pl-11 pr-4 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
+                    placeholder={t("reg_placeholder_username")} required minLength={3} autoComplete="username"
+                    className="w-full px-5 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
                                text-white placeholder-zinc-600 text-sm
                                focus:outline-none focus:border-brand/50 focus:bg-white/[0.07]
                                focus:shadow-[0_0_0_3px_rgba(224,36,36,0.12)]
@@ -241,15 +245,9 @@ export default function RegisterPage() {
                   {t("reg_email")}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                  </span>
                   <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com" required autoComplete="email"
-                    className="w-full pl-11 pr-4 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
+                    placeholder={t("reg_placeholder_email")} required autoComplete="email"
+                    className="w-full px-5 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
                                text-white placeholder-zinc-600 text-sm
                                focus:outline-none focus:border-brand/50 focus:bg-white/[0.07]
                                focus:shadow-[0_0_0_3px_rgba(224,36,36,0.12)]
@@ -263,16 +261,10 @@ export default function RegisterPage() {
                   {t("reg_password")}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                  </span>
                   <input type={showPw ? "text" : "password"} value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={t("reg_placeholder_pw")} required minLength={8} autoComplete="new-password"
-                    className="w-full pl-11 pr-11 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
+                    className="w-full pl-5 pr-12 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
                                text-white placeholder-zinc-600 text-sm
                                focus:outline-none focus:border-brand/50 focus:bg-white/[0.07]
                                focus:shadow-[0_0_0_3px_rgba(224,36,36,0.12)]
@@ -311,16 +303,10 @@ export default function RegisterPage() {
                   {t("reg_confirm")}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                  </span>
                   <input type={showConfirm ? "text" : "password"} value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                     placeholder={t("reg_placeholder_confirm")} required autoComplete="new-password"
-                    className={`w-full pl-11 pr-11 py-3 bg-white/[0.05] border rounded-xl
+                    className={`w-full pl-5 pr-12 py-3 bg-white/[0.05] border rounded-xl
                                text-white placeholder-zinc-600 text-sm
                                focus:outline-none focus:bg-white/[0.07]
                                transition-all duration-150 ${

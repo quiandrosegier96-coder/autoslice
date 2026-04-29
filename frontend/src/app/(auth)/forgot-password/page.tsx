@@ -33,15 +33,15 @@ function AuthBackground() {
   );
 }
 
-const HEADING    = { nl: "Wachtwoord vergeten?", en: "Forgot your password?", fr: "Mot de passe oublié ?", de: "Passwort vergessen?" };
-const BODY       = { nl: "Voer je e-mailadres in en we sturen je een herstelcode.", en: "Enter your email and we'll send you a reset code.", fr: "Entrez votre e-mail et nous vous enverrons un code de réinitialisation.", de: "Geben Sie Ihre E-Mail ein und wir senden Ihnen einen Reset-Code." };
-const SUCCESS_H  = { nl: "E-mail verzonden!", en: "Email sent!", fr: "E-mail envoyé !", de: "E-Mail gesendet!" };
-const SUCCESS_B  = { nl: "Controleer je inbox voor de herstelcode.", en: "Check your inbox for the reset code.", fr: "Vérifiez votre boîte de réception.", de: "Prüfen Sie Ihren Posteingang." };
-const BTN_SUBMIT = { nl: "Stuur herstelcode", en: "Send reset code", fr: "Envoyer le code", de: "Code senden" };
-const BTN_WAIT   = { nl: "Verzenden…", en: "Sending…", fr: "Envoi…", de: "Senden…" };
-const BTN_GOTO   = { nl: "Naar aanmeldpagina", en: "Go to login", fr: "Aller à la connexion", de: "Zur Anmeldung" };
-const BACK       = { nl: "← Terug naar aanmelden", en: "← Back to login", fr: "← Retour à la connexion", de: "← Zurück zur Anmeldung" };
-const EMAIL_LBL  = { nl: "E-mailadres", en: "Email address", fr: "Adresse e-mail", de: "E-Mail-Adresse" };
+const HEADING    = { nl: "Wachtwoord vergeten?", en: "Forgot your password?", fr: "Mot de passe oublié ?", de: "Passwort vergessen?", es: "¿Olvidaste tu contraseña?", ko: "비밀번호를 잊으셨나요?" };
+const BODY       = { nl: "Voer je e-mailadres in en we sturen je een herstelcode.", en: "Enter your email and we'll send you a reset code.", fr: "Entrez votre e-mail et nous vous enverrons un code de réinitialisation.", de: "Geben Sie Ihre E-Mail ein und wir senden Ihnen einen Reset-Code.", es: "Ingresa tu e-mail y te enviaremos un código de restablecimiento.", ko: "이메일을 입력하면 재설정 코드를 보내드립니다." };
+const SUCCESS_H  = { nl: "E-mail verzonden!", en: "Email sent!", fr: "E-mail envoyé !", de: "E-Mail gesendet!", es: "¡Correo enviado!", ko: "이메일 전송됨!" };
+const SUCCESS_B  = { nl: "Controleer je inbox voor de herstelcode.", en: "Check your inbox for the reset code.", fr: "Vérifiez votre boîte de réception.", de: "Prüfen Sie Ihren Posteingang.", es: "Revisa tu bandeja de entrada.", ko: "받은 편지함에서 재설정 코드를 확인하세요." };
+const BTN_SUBMIT = { nl: "Stuur herstelcode", en: "Send reset code", fr: "Envoyer le code", de: "Code senden", es: "Enviar código", ko: "코드 전송" };
+const BTN_WAIT   = { nl: "Verzenden…", en: "Sending…", fr: "Envoi…", de: "Senden…", es: "Enviando…", ko: "전송 중…" };
+const BTN_GOTO   = { nl: "Naar aanmeldpagina", en: "Go to login", fr: "Aller à la connexion", de: "Zur Anmeldung", es: "Ir al inicio de sesión", ko: "로그인으로 이동" };
+const BACK       = { nl: "← Terug naar aanmelden", en: "← Back to login", fr: "← Retour à la connexion", de: "← Zurück zur Anmeldung", es: "← Volver al inicio de sesión", ko: "← 로그인으로 돌아가기" };
+const EMAIL_LBL  = { nl: "E-mailadres", en: "Email address", fr: "Adresse e-mail", de: "E-Mail-Adresse", es: "Dirección de e-mail", ko: "이메일 주소" };
 
 export default function ForgotPasswordPage() {
   const { lang, setLang, t } = useLang();

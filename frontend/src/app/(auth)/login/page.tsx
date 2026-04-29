@@ -31,6 +31,16 @@ const FEATURES = {
     { icon: "🛡", title: "Zuverlässig & sicher", desc: "Ihre Dateien sind geschützt und privat." },
     { icon: "🎛", title: "Optimiertes Ergebnis", desc: "Konsistente und hochwertige Ausgabe." },
   ],
+  es: [
+    { icon: "⚡", title: "Conversión rápida", desc: "Convierte archivos 3MF a G-code en segundos." },
+    { icon: "🛡", title: "Fiable y seguro", desc: "Tus archivos están protegidos y son privados." },
+    { icon: "🎛", title: "Resultado optimizado", desc: "Resultados consistentes y de alta calidad." },
+  ],
+  ko: [
+    { icon: "⚡", title: "빠른 변환", desc: "3MF 파일을 몇 초 만에 G-code로 변환합니다." },
+    { icon: "🛡", title: "안정적이고 안전", desc: "파일이 보호되고 비공개로 유지됩니다." },
+    { icon: "🎛", title: "최적화된 결과", desc: "일관되고 고품질의 출력을 제공합니다." },
+  ],
 };
 
 const TAGLINE = {
@@ -38,6 +48,8 @@ const TAGLINE = {
   en: "SMART 3MF → G-CODE CONVERSION",
   fr: "CONVERSION SMART 3MF → G-CODE",
   de: "SMART 3MF → G-CODE KONVERTIERUNG",
+  es: "CONVERSIÓN SMART 3MF → G-CODE",
+  ko: "스마트 3MF → G-CODE 변환",
 };
 
 const WELCOME = {
@@ -45,6 +57,8 @@ const WELCOME = {
   en: "Welcome back",
   fr: "Bon retour",
   de: "Willkommen zurück",
+  es: "Bienvenido de nuevo",
+  ko: "다시 오신 것을 환영합니다",
 };
 
 const SUBTITLE = {
@@ -52,6 +66,8 @@ const SUBTITLE = {
   en: "Sign in to continue with AutoSlice.",
   fr: "Connectez-vous pour continuer avec AutoSlice.",
   de: "Melden Sie sich an, um mit AutoSlice fortzufahren.",
+  es: "Inicia sesión para continuar con AutoSlice.",
+  ko: "AutoSlice를 계속 사용하려면 로그인하세요.",
 };
 
 const FOOTER = {
@@ -59,6 +75,8 @@ const FOOTER = {
   en: "Built for makers & professionals",
   fr: "Conçu pour les makers & professionnels",
   de: "Für Maker & Profis entwickelt",
+  es: "Creado para makers y profesionales",
+  ko: "메이커와 전문가를 위해 제작",
 };
 
 export default function LoginPage() {
