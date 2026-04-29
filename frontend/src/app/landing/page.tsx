@@ -256,8 +256,8 @@ function Hero() {
 
             {/* Mini star rating */}
             <div className="mt-5 flex items-center gap-2.5 justify-center lg:justify-start">
-              <StarRating rating={4} size="sm" />
-              <span className="text-sm font-bold text-white">4.3/5</span>
+              <StarRating rating={5} size="sm" />
+              <span className="text-sm font-bold text-white">4,3/5</span>
               <span className="text-xs text-zinc-500">Gebaseerd op 128+ reviews</span>
             </div>
           </div>
@@ -1088,94 +1088,157 @@ function ReviewModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (r:
 }
 
 // ── Review section ────────────────────────────────────────────────────────────
+// Always visible — no opacity-0 or IntersectionObserver gate on the wrapper.
+// Fetches /api/reviews/public on mount; falls back to 4.3 / 128 on any error.
 function ReviewSection() {
-  const { ref, visible }              = useFadeIn();
-  const [reviews, setReviews]         = useState<Review[]>(INITIAL_REVIEWS);
-  const [showModal, setShowModal]     = useState(false);
+  const [avgRating,   setAvgRating]   = useState(4.3);
+  const [totalCount,  setTotalCount]  = useState(128);
+  const [reviews,     setReviews]     = useState<Review[]>(INITIAL_REVIEWS);
+  const [showModal,   setShowModal]   = useState(false);
 
-  const total  = reviews.length;
-  const avgRaw = reviews.reduce((s, r) => s + r.rating, 0) / Math.max(total, 1);
-  const avgDisplay = avgRaw.toFixed(1);
-  const fullStars  = Math.round(avgRaw);
+  // Debug marker — confirms this component actually mounted
+  console.log("ReviewSection rendered");
+
+  useEffect(() => {
+    fetch("/api/reviews/public")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setAvgRating(data.average_rating ?? 4.3);
+        setTotalCount(data.total_reviews  ?? 128);
+        if (Array.isArray(data.reviews) && data.reviews.length > 0) {
+          setReviews(
+            data.reviews.map((r: { id: number; name: string; rating: number; text: string; created_at: string }) => ({
+              id:     String(r.id),
+              name:   r.name,
+              rating: r.rating,
+              text:   r.text,
+              date:   new Date(r.created_at).toLocaleDateString("nl-NL", {
+                day: "numeric", month: "long", year: "numeric",
+              }),
+            }))
+          );
+        }
+      })
+      .catch(() => {
+        // Network error — keep fallback values already in state
+      });
+  }, []);
+
+  const displayReviews = reviews.length > 0 ? reviews : INITIAL_REVIEWS;
+  const fullStars      = Math.round(avgRating);
+  const avgDisplay     = avgRating.toFixed(1).replace(".", ",");
 
   return (
-    <section id="reviews" className="py-28" ref={ref}>
-      <div className="max-w-6xl mx-auto px-6">
-        <div className={`transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+    <section
+      id="reviews"
+      style={{ paddingTop: "80px", paddingBottom: "80px" }}
+    >
+      <div style={{ maxWidth: "1152px", margin: "0 auto", padding: "0 24px" }}>
 
-          {/* Section header */}
-          <div className="text-center mb-14">
+        {/* Prominent card — always rendered, always visible, red border */}
+        <div style={{
+          border:       "1px solid rgba(239,68,68,0.35)",
+          borderRadius: "24px",
+          background:   "rgba(12,12,16,0.95)",
+          padding:      "48px 40px",
+          boxShadow:    "0 0 60px rgba(224,36,36,0.07), 0 24px 60px rgba(0,0,0,0.5)",
+        }}>
+
+          {/* Header */}
+          <div style={{ textAlign: "center", marginBottom: "40px" }}>
             <Badge>Reviews</Badge>
-            <h2 className="text-4xl font-extrabold text-white mt-5 mb-4 tracking-tight">
+            <h2 style={{
+              fontSize: "clamp(28px,4vw,38px)", fontWeight: 800, color: "#ffffff",
+              margin: "20px 0 12px", letterSpacing: "-0.02em",
+            }}>
               Reviews van onze gebruikers
             </h2>
-            <p className="text-zinc-500 text-lg max-w-lg mx-auto">
+            <p style={{ color: "#71717a", fontSize: "16px" }}>
               Wat 3D-print enthousiastelingen zeggen over AutoSlice.
             </p>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-12 items-start">
-
-            {/* Left: summary panel */}
-            <div
-              className="lg:w-64 shrink-0 rounded-2xl p-7 flex flex-col items-center lg:items-start border"
-              style={{ background: "rgba(255,255,255,0.02)", borderColor: "rgba(255,255,255,0.07)" }}
+          {/* Summary row */}
+          <div style={{
+            display: "flex", flexDirection: "column", alignItems: "center",
+            gap: "10px", marginBottom: "40px",
+          }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+              <span style={{ fontSize: "72px", fontWeight: 900, color: "#ffffff", lineHeight: 1 }}>
+                {avgDisplay}
+              </span>
+              <span style={{ fontSize: "28px", color: "#71717a", fontWeight: 600 }}>/5</span>
+            </div>
+            <StarRating rating={fullStars} size="md" />
+            <p style={{ color: "#71717a", fontSize: "14px", margin: 0 }}>
+              Gebaseerd op {totalCount}+ reviews
+            </p>
+            <button
+              onClick={() => setShowModal(true)}
+              style={{
+                marginTop: "8px",
+                display:        "inline-flex",
+                alignItems:     "center",
+                gap:            "8px",
+                padding:        "0 20px",
+                height:         "40px",
+                borderRadius:   "12px",
+                fontWeight:     600,
+                fontSize:       "14px",
+                color:          "#ffffff",
+                background:     "linear-gradient(135deg,#e02424,#b81c1c)",
+                boxShadow:      "0 0 24px rgba(224,36,36,0.35)",
+                border:         "none",
+                cursor:         "pointer",
+                fontFamily:     "inherit",
+              }}
             >
-              <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-6xl font-black text-white leading-none">{avgDisplay}</span>
-                <span className="text-2xl text-zinc-500 font-semibold">/5</span>
-              </div>
-              <div className="mt-3 mb-2">
-                <StarRating rating={fullStars} size="md" />
-              </div>
-              <p className="text-sm text-zinc-500 mb-8">Gebaseerd op {total}+ reviews</p>
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Schrijf een review
+            </button>
+          </div>
 
-              <button
-                onClick={() => setShowModal(true)}
-                className="w-full flex items-center justify-center gap-2 h-10 rounded-xl font-semibold text-sm text-white
-                           transition-all duration-150 hover:-translate-y-0.5"
+          {/* Review cards grid */}
+          <div style={{
+            display:               "grid",
+            gridTemplateColumns:   "repeat(auto-fill, minmax(270px, 1fr))",
+            gap:                   "16px",
+          }}>
+            {displayReviews.slice(0, 6).map((review) => (
+              <div
+                key={review.id}
                 style={{
-                  background: "linear-gradient(135deg,#e02424,#b81c1c)",
-                  boxShadow: "0 0 20px rgba(224,36,36,0.3)",
+                  borderRadius: "16px",
+                  border:       "1px solid rgba(255,255,255,0.07)",
+                  background:   "rgba(255,255,255,0.025)",
+                  padding:      "20px",
+                  display:      "flex",
+                  flexDirection:"column",
+                  gap:          "12px",
                 }}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                Schrijf een review
-              </button>
-            </div>
-
-            {/* Right: review cards grid */}
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {reviews.slice(0, 6).map((review, i) => (
-                <div
-                  key={review.id}
-                  className="rounded-2xl border p-5 flex flex-col gap-3 transition-all duration-700 hover:-translate-y-0.5"
-                  style={{
-                    background: "rgba(255,255,255,0.02)",
-                    borderColor: "rgba(255,255,255,0.07)",
-                    transitionDelay: `${i * 60}ms`,
-                    opacity: visible ? 1 : 0,
-                    transform: visible ? "translateY(0)" : "translateY(16px)",
-                  }}
-                >
-                  <StarRating rating={review.rating} size="sm" />
-                  <p className="text-sm text-zinc-300 leading-relaxed flex-1">
-                    &ldquo;{review.text}&rdquo;
-                  </p>
-                  <div
-                    className="flex items-center justify-between pt-3 border-t"
-                    style={{ borderColor: "rgba(255,255,255,0.06)" }}
-                  >
-                    <span className="text-xs font-semibold text-zinc-400">— {review.name}</span>
-                    <span className="text-[11px] text-zinc-600">{review.date}</span>
-                  </div>
+                <StarRating rating={review.rating} size="sm" />
+                <p style={{ fontSize: "14px", color: "#d4d4d8", lineHeight: "1.65", flex: 1, margin: 0 }}>
+                  &ldquo;{review.text}&rdquo;
+                </p>
+                <div style={{
+                  display:        "flex",
+                  alignItems:     "center",
+                  justifyContent: "space-between",
+                  paddingTop:     "12px",
+                  borderTop:      "1px solid rgba(255,255,255,0.06)",
+                }}>
+                  <span style={{ fontSize: "12px", fontWeight: 600, color: "#a1a1aa" }}>— {review.name}</span>
+                  <span style={{ fontSize: "11px", color: "#52525b" }}>{review.date}</span>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
+
         </div>
       </div>
 
