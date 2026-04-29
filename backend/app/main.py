@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import upload, analyze, convert, auth, printers, admin, feedback, diagnostics, scoring, ratings, gcode, community
 from app.api.routes import support_engine, download
+from app.ai import router as ai_router
 from app.config import settings
 from app.database import init_db, seed_admin_users
 
@@ -23,7 +24,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="AutoSlice API",
     description="Converts Bambu/MakerWorld 3MF project files into optimized Anycubic 3MF files.",
-    version="1.5.31",
+    version="1.5.35",
     lifespan=lifespan,
 )
 
@@ -49,6 +50,7 @@ app.include_router(gcode.router,           prefix="/api", tags=["gcode"])
 app.include_router(community.router,       prefix="/api", tags=["community"])
 app.include_router(support_engine.router,  tags=["support-engine"])
 app.include_router(download.router,        prefix="/api", tags=["download"])
+app.include_router(ai_router.router,       prefix="/api", tags=["ai"])
 
 
 @app.get("/health")
