@@ -14,7 +14,7 @@ const BRAND   = "#e02424";
 // ── Landing translations ──────────────────────────────────────────────────────
 const LANDING_T = {
   nl: {
-    nav_features:"Features", nav_how:"Hoe het werkt", nav_pricing:"Prijzen", nav_login:"Inloggen", nav_cta:"Gratis starten",
+    nav_features:"Features", nav_how:"Hoe het werkt", nav_pricing:"Prijzen", nav_reviews:"Reviews", nav_blog:"Blog", nav_download:"Download", nav_login:"Inloggen", nav_cta:"Gratis starten",
     hero_badge:"Windows app — nu beschikbaar", hero_h1a:"Van Bambu naar", hero_h1b:"in seconden.",
     hero_sub:"AutoSlice converteert elk Bambu of MakerWorld .3mf bestand automatisch naar een geoptimaliseerd Anycubic printprofiel — met AI-analyse, multicolor support en meer.",
     hero_dl:"Downloaden voor Windows", hero_feat_btn:"Bekijk features",
@@ -67,7 +67,7 @@ const LANDING_T = {
     blog3_excerpt:"Een overzicht van alle nieuwe functies in versie 1.5: verbeterde AI-analyse, exporteerbare presets en de nieuwe community-pagina.",
   },
   en: {
-    nav_features:"Features", nav_how:"How it works", nav_pricing:"Pricing", nav_login:"Log in", nav_cta:"Start for free",
+    nav_features:"Features", nav_how:"How it works", nav_pricing:"Pricing", nav_reviews:"Reviews", nav_blog:"Blog", nav_download:"Download", nav_login:"Log in", nav_cta:"Start for free",
     hero_badge:"Windows app — now available", hero_h1a:"From Bambu to", hero_h1b:"in seconds.",
     hero_sub:"AutoSlice automatically converts any Bambu or MakerWorld .3mf file into an optimized Anycubic print profile — with AI analysis, multicolor support and more.",
     hero_dl:"Download for Windows", hero_feat_btn:"View features",
@@ -120,7 +120,7 @@ const LANDING_T = {
     blog3_excerpt:"An overview of all new features in version 1.5: improved AI analysis, exportable presets and the new community page.",
   },
   fr: {
-    nav_features:"Fonctionnalités", nav_how:"Comment ça marche", nav_pricing:"Tarifs", nav_login:"Se connecter", nav_cta:"Commencer gratuitement",
+    nav_features:"Fonctionnalités", nav_how:"Comment ça marche", nav_pricing:"Tarifs", nav_reviews:"Avis", nav_blog:"Blog", nav_download:"Télécharger", nav_login:"Se connecter", nav_cta:"Commencer gratuitement",
     hero_badge:"Application Windows — disponible maintenant", hero_h1a:"De Bambu vers", hero_h1b:"en quelques secondes.",
     hero_sub:"AutoSlice convertit automatiquement tout fichier Bambu ou MakerWorld .3mf en un profil d'impression Anycubic optimisé — avec analyse IA, support multicolore et plus encore.",
     hero_dl:"Télécharger pour Windows", hero_feat_btn:"Voir les fonctionnalités",
@@ -173,7 +173,7 @@ const LANDING_T = {
     blog3_excerpt:"Un aperçu de toutes les nouvelles fonctionnalités de la version 1.5 : analyse IA améliorée, préréglages exportables et la nouvelle page communauté.",
   },
   de: {
-    nav_features:"Funktionen", nav_how:"So funktioniert es", nav_pricing:"Preise", nav_login:"Anmelden", nav_cta:"Kostenlos starten",
+    nav_features:"Funktionen", nav_how:"So funktioniert es", nav_pricing:"Preise", nav_reviews:"Bewertungen", nav_blog:"Blog", nav_download:"Download", nav_login:"Anmelden", nav_cta:"Kostenlos starten",
     hero_badge:"Windows-App — jetzt verfügbar", hero_h1a:"Von Bambu zu", hero_h1b:"in Sekunden.",
     hero_sub:"AutoSlice konvertiert automatisch jede Bambu- oder MakerWorld-.3mf-Datei in ein optimiertes Anycubic-Druckprofil — mit KI-Analyse, Multicolor-Unterstützung und mehr.",
     hero_dl:"Für Windows herunterladen", hero_feat_btn:"Funktionen ansehen",
@@ -226,7 +226,7 @@ const LANDING_T = {
     blog3_excerpt:"Eine Übersicht aller neuen Funktionen in Version 1.5: verbesserte KI-Analyse, exportierbare Presets und die neue Community-Seite.",
   },
   es: {
-    nav_features:"Características", nav_how:"Cómo funciona", nav_pricing:"Precios", nav_login:"Iniciar sesión", nav_cta:"Empezar gratis",
+    nav_features:"Características", nav_how:"Cómo funciona", nav_pricing:"Precios", nav_reviews:"Reseñas", nav_blog:"Blog", nav_download:"Descargar", nav_login:"Iniciar sesión", nav_cta:"Empezar gratis",
     hero_badge:"Aplicación Windows — ya disponible", hero_h1a:"De Bambu a", hero_h1b:"en segundos.",
     hero_sub:"AutoSlice convierte automáticamente cualquier archivo Bambu o MakerWorld .3mf en un perfil de impresión Anycubic optimizado — con análisis IA, soporte multicolor y más.",
     hero_dl:"Descargar para Windows", hero_feat_btn:"Ver características",
@@ -279,7 +279,7 @@ const LANDING_T = {
     blog3_excerpt:"Un resumen de todas las nuevas funciones en la versión 1.5: análisis IA mejorado, preajustes exportables y la nueva página de comunidad.",
   },
   ko: {
-    nav_features:"기능", nav_how:"사용 방법", nav_pricing:"가격", nav_login:"로그인", nav_cta:"무료로 시작",
+    nav_features:"기능", nav_how:"사용 방법", nav_pricing:"가격", nav_reviews:"리뷰", nav_blog:"블로그", nav_download:"다운로드", nav_login:"로그인", nav_cta:"무료로 시작",
     hero_badge:"Windows 앱 — 지금 사용 가능", hero_h1a:"Bambu에서", hero_h1b:"로, 몇 초 만에.",
     hero_sub:"AutoSlice는 모든 Bambu 또는 MakerWorld .3mf 파일을 최적화된 Anycubic 프린트 프로필로 자동 변환합니다 — AI 분석, 멀티컬러 지원 등.",
     hero_dl:"Windows용 다운로드", hero_feat_btn:"기능 보기",
@@ -458,6 +458,7 @@ function StarRating({ rating, max = 5, size = "sm" }: { rating: number; max?: nu
 function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const { lang, setLang } = useLang();
   const lt = useLT();
 
@@ -466,6 +467,15 @@ function Navbar() {
     window.addEventListener("scroll", fn, { passive: true });
     return () => window.removeEventListener("scroll", fn);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const fn = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", fn);
+    return () => document.removeEventListener("mousedown", fn);
+  }, [open]);
 
   return (
     <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? "border-b" : ""}`}
@@ -492,7 +502,7 @@ function Navbar() {
           ))}
         </nav>
 
-        {/* Language switcher */}
+        {/* Language switcher — desktop only */}
         <div className="hidden md:flex items-center gap-0.5 bg-white/5 border border-white/[0.08] rounded-full px-2 py-1.5 backdrop-blur-sm">
           {LANGS.map(({ code, label }) => (
             <button key={code} onClick={() => setLang(code as Lang)}
@@ -510,37 +520,72 @@ function Navbar() {
           <GradBtn href="/register">{lt.nav_cta}</GradBtn>
         </div>
 
-        {/* Mobile hamburger */}
-        <button onClick={() => setOpen(!open)} className="md:hidden text-zinc-400 hover:text-white transition-colors">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={open ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
-          </svg>
-        </button>
-      </div>
+        {/* Hamburger — always visible */}
+        <div ref={menuRef} className="relative">
+          <button
+            onClick={() => setOpen(!open)}
+            aria-label="Menu"
+            className="flex flex-col justify-center items-center w-9 h-9 rounded-lg gap-[5px] transition-colors duration-150 hover:bg-white/[0.06]"
+            style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            <span className={`block h-[2px] w-5 rounded-full bg-zinc-400 transition-all duration-200 ${open ? "rotate-45 translate-y-[7px]" : ""}`} />
+            <span className={`block h-[2px] w-5 rounded-full bg-zinc-400 transition-all duration-200 ${open ? "opacity-0" : ""}`} />
+            <span className={`block h-[2px] w-5 rounded-full bg-zinc-400 transition-all duration-200 ${open ? "-rotate-45 -translate-y-[7px]" : ""}`} />
+          </button>
 
-      {/* Mobile menu */}
+      {/* Dropdown menu — all screen sizes */}
       {open && (
-        <div className="md:hidden border-t px-6 py-4 space-y-3" style={{ background: "rgba(5,5,8,0.95)", borderColor: "rgba(255,255,255,0.07)" }}>
-          {([[`#features`,lt.nav_features],[`#how`,lt.nav_how],[`#pricing`,lt.nav_pricing]] as [string,string][]).map(([href,label]) => (
-            <a key={href} href={href} onClick={() => setOpen(false)} className="block text-sm text-zinc-400 hover:text-white py-1 transition-colors">{label}</a>
+        <div className="absolute top-12 right-0 w-64 border rounded-2xl py-2 z-50"
+          style={{ background: "rgba(10,10,14,0.98)", borderColor: "rgba(255,255,255,0.09)", backdropFilter: "blur(20px)", boxShadow: "0 16px 48px rgba(0,0,0,0.6)" }}>
+
+          {/* Nav links */}
+          {([
+            [`#features`, lt.nav_features,  "M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"],
+            [`#how`,      lt.nav_how,        "M13 10V3L4 14h7v7l9-11h-7z"],
+            [`#reviews`,  lt.nav_reviews,    "M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"],
+            [`#blog`,     lt.nav_blog,       "M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 12h6m-6-4h6"],
+            [`#pricing`,  lt.nav_pricing,    "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"],
+            [`#download`, lt.nav_download,   "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"],
+          ] as [string, string, string][]).map(([href, label, icon]) => (
+            <a key={href} href={href} onClick={() => setOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-400 hover:text-white hover:bg-white/[0.04] transition-colors duration-150">
+              <svg className="w-4 h-4 shrink-0 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={icon} />
+              </svg>
+              {label}
+            </a>
           ))}
-          {/* Mobile language switcher */}
-          <div className="flex items-center gap-0.5 bg-white/5 border border-white/[0.08] rounded-full px-2 py-1.5 w-fit">
-            {LANGS.map(({ code, label }) => (
-              <button key={code} onClick={() => setLang(code as Lang)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all duration-150 ${
-                  lang === code ? "bg-brand text-white shadow-[0_0_10px_rgba(224,36,36,0.4)]" : "text-zinc-500 hover:text-zinc-300"
-                }`}>
-                {label}
-              </button>
-            ))}
+
+          <div className="mx-3 my-2 h-px" style={{ background: "rgba(255,255,255,0.07)" }} />
+
+          {/* Language switcher */}
+          <div className="px-4 py-2">
+            <div className="flex items-center gap-0.5 bg-white/5 border border-white/[0.08] rounded-full px-2 py-1.5 w-fit">
+              {LANGS.map(({ code, label }) => (
+                <button key={code} onClick={() => setLang(code as Lang)}
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-all duration-150 ${
+                    lang === code ? "bg-brand text-white shadow-[0_0_10px_rgba(224,36,36,0.4)]" : "text-zinc-500 hover:text-zinc-300"
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex flex-col gap-2 pt-2 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-            <Link href="/login" className="text-sm text-zinc-400 py-1">{lt.nav_login}</Link>
+
+          <div className="mx-3 my-2 h-px" style={{ background: "rgba(255,255,255,0.07)" }} />
+
+          {/* Auth */}
+          <div className="px-4 py-2 flex flex-col gap-2">
+            <Link href="/login" onClick={() => setOpen(false)}
+              className="text-sm text-zinc-400 hover:text-white transition-colors py-1">
+              {lt.nav_login}
+            </Link>
             <GradBtn href="/register">{lt.nav_cta}</GradBtn>
           </div>
         </div>
       )}
+        </div>
+      </div>
     </header>
   );
 }
@@ -1216,7 +1261,7 @@ function DownloadCTA() {
   const { ref, visible } = useFadeIn();
   const lt = useLT();
   return (
-    <section ref={ref} className="py-28">
+    <section id="download" ref={ref} className="py-28">
       <div className="max-w-6xl mx-auto px-6">
         <div className={`relative rounded-3xl overflow-hidden p-14 text-center transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
           style={{ background: "linear-gradient(135deg, rgba(224,36,36,0.12) 0%, rgba(224,36,36,0.04) 60%, rgba(255,255,255,0.02) 100%)", border: "1px solid rgba(224,36,36,0.2)" }}>
@@ -1689,7 +1734,7 @@ function BlogSection() {
     { cat: lt.blog3_cat, title: lt.blog3_title, date: lt.blog3_date, excerpt: lt.blog3_excerpt },
   ];
   return (
-    <section ref={ref} style={{
+    <section id="blog" ref={ref} style={{
       paddingTop: "80px", paddingBottom: "80px",
       opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(28px)",
       transition: "opacity 0.6s ease, transform 0.6s ease",
