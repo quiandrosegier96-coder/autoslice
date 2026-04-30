@@ -8,7 +8,7 @@ import asyncio
 import dataclasses
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.ingestion.handler import find_job
@@ -29,6 +29,7 @@ from app.explain.generator import generate_explanations
 from app.orientation.models import OrientationReport
 from app.orientation.scorer import score_orientations
 from app.geometry.nozzle_risk import assess_nozzle_risk
+from app.auth.dependencies import get_current_user
 
 router = APIRouter()
 
@@ -143,7 +144,7 @@ class AnalyzeResponse(BaseModel):
 # ---------- Route ----------
 
 @router.get("/analyze/{job_id}", response_model=AnalyzeResponse)
-async def analyze(job_id: str) -> AnalyzeResponse:
+async def analyze(job_id: str, current_user: dict = Depends(get_current_user)) -> AnalyzeResponse:
     """
     Full analysis pipeline for a previously uploaded 3MF file.
 
@@ -341,7 +342,7 @@ _DEBUG_SUPPORT_HARDCODE = False   # ← set True to activate
 
 
 @router.get("/analyze/{job_id}/support-preview", response_model=SupportPreviewData)
-async def support_preview(job_id: str, debug: bool = False) -> SupportPreviewData:
+async def support_preview(job_id: str, debug: bool = False, current_user: dict = Depends(get_current_user)) -> SupportPreviewData:
     """
     Compute and return support visualization data for the uploaded model.
     Result is cached in-process after the first call.

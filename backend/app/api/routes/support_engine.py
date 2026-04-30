@@ -29,8 +29,9 @@ import logging
 from functools import lru_cache
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.auth.dependencies import get_current_user
 from app.ingestion.handler import find_job
 from app.ingestion.unpacker import unpack
 from app.geometry.mesh_loader import merge_meshes
@@ -116,6 +117,7 @@ async def get_tree_support_engine(
     tip_radius:         float = Query(0.5,   ge=0.2,  le=3.0),
     collision:          bool  = Query(True),
     verify_unsupported: bool  = Query(True),
+    current_user: dict = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """
     Run the full tree support generation engine.
@@ -152,6 +154,7 @@ async def get_tree_support_skeleton(
     tip_radius:         float = Query(0.5,   ge=0.2,  le=3.0),
     collision:          bool  = Query(False),   # skip for speed
     verify_unsupported: bool  = Query(False),   # skip for speed
+    current_user: dict = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """
     Fast skeleton response — segments + stats only.
@@ -179,6 +182,7 @@ async def get_debug_tags(
     job_id:         str,
     overhang_angle: float = Query(45.0,  ge=10.0, le=80.0),
     clearance:      float = Query(_DEFAULT_CLEARANCE, ge=0.0, le=5.0),
+    current_user: dict = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """
     Return per-segment validation tags for debug visualisation:
@@ -233,6 +237,7 @@ async def get_debug_tags(
 async def get_support_decision(
     job_id:         str,
     overhang_angle: float = Query(45.0, ge=10.0, le=80.0),
+    current_user: dict = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """
     Lightweight: return only the support type decision (tree/standard/none)

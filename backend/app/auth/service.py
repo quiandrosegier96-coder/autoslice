@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 from jose import jwt, JWTError
 
-from app.config import settings
+from app.config import settings, get_jwt_secret
 from app.database import get_connection
 
 _ITERATIONS = 260_000
@@ -53,12 +53,12 @@ def create_access_token(user_id: int, email: str, remember: bool = False) -> str
         "is_admin": email in ADMIN_EMAILS or db_admin,
         "exp": expire,
     }
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return jwt.encode(payload, get_jwt_secret(), algorithm=settings.jwt_algorithm)
 
 
 def decode_token(token: str) -> dict:
     try:
-        return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        return jwt.decode(token, get_jwt_secret(), algorithms=[settings.jwt_algorithm])
     except JWTError:
         return {}
 

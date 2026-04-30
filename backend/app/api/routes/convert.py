@@ -17,7 +17,7 @@ import numpy as np
 from app.ingestion.handler import find_job
 from app.ingestion.unpacker import unpack
 from app.parser.model_parser import parse_model_files
-from app.auth.dependencies import get_optional_user
+from app.auth.dependencies import get_current_user
 from app.database import log_job, log_generation_v2
 from app.diagnostics.models import DecisionTrace
 from app.geometry.analyzer import analyze_mesh
@@ -55,7 +55,7 @@ class ConvertRequest(BaseModel):
 @router.post("/convert")
 async def convert(
     req: ConvertRequest,
-    current_user: dict | None = Depends(get_optional_user),
+    current_user: dict = Depends(get_current_user),
 ):
     job = find_job(req.job_id)
     if job is None:

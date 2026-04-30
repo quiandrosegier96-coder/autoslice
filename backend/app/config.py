@@ -46,7 +46,7 @@ class Settings(BaseSettings):
         return self.data_dir / "filaments"
 
     # Auth
-    jwt_secret_key: str = "autoslice-change-this-in-production"
+    jwt_secret_key: str | None = None
     jwt_algorithm: str = "HS256"
     jwt_expire_hours: int = 24
     jwt_expire_hours_remembered: int = 720  # 30 days
@@ -66,4 +66,14 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+if not settings.jwt_secret_key:
+    raise RuntimeError("Missing required environment variable: JWT_SECRET_KEY")
 settings.upload_dir.mkdir(parents=True, exist_ok=True)
+
+
+def get_jwt_secret() -> str:
+    """Return the JWT signing secret. Raises RuntimeError if not configured."""
+    secret = settings.jwt_secret_key
+    if not secret:
+        raise RuntimeError("Missing required environment variable: JWT_SECRET_KEY")
+    return secret

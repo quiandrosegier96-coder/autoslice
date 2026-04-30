@@ -19,7 +19,7 @@ POST /api/ai/orientation-suggestion
 import asyncio
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.ai import auto_settings, orientation
 from app.ai.schemas import (
@@ -35,6 +35,7 @@ from app.ingestion.unpacker import unpack
 from app.parser.model_parser import parse_model_files
 from app.geometry.analyzer import analyze_mesh
 from app.geometry.mesh_loader import merge_meshes
+from app.auth.dependencies import get_current_user
 
 router = APIRouter()
 
@@ -49,7 +50,7 @@ router = APIRouter()
     summary="Generate AI-recommended print settings from explicit features",
     response_description="Generated settings, risk score, and warnings for the given model.",
 )
-def auto_settings_from_features(request: AutoSettingsRequest) -> AutoSettingsResponse:
+def auto_settings_from_features(request: AutoSettingsRequest, current_user: dict = Depends(get_current_user)) -> AutoSettingsResponse:
     """
     Analyse model geometry features and return AI-generated slicer settings.
 
@@ -82,6 +83,7 @@ async def auto_settings_for_job(
         default="standard",
         description="Target quality level.",
     ),
+    current_user: dict = Depends(get_current_user),
 ) -> AutoSettingsResponse:
     """
     Full pipeline integration: unpack → parse → geometry analysis → AI engine.
@@ -151,7 +153,7 @@ async def auto_settings_for_job(
         "scores, warnings, and orientation_hints for the Apply Orientation flow."
     ),
 )
-def orientation_suggestion(request: OrientationRequest) -> OrientationSuggestion:
+def orientation_suggestion(request: OrientationRequest, current_user: dict = Depends(get_current_user)) -> OrientationSuggestion:
     """
     Analyse bounding-box geometry features and suggest the optimal 90° rotation.
 
