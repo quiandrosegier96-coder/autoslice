@@ -328,6 +328,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     href: string;
     label: string;
     icon: React.ReactNode;
+    show: boolean;
     disabled?: boolean;
   }> = [
     { href: "/convert",   label: t("nav_convert"),   icon: <IconBolt />,   show: true },
