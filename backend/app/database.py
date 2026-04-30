@@ -202,6 +202,7 @@ DEFAULT_SITE_CONFIG: dict = {
     "landing_multicolor": True,
     "landing_trustbar":   True,
     "landing_downloadcta":True,
+    "landing_blog":       True,
     "nav_history":        True,
     "nav_community":      True,
     "nav_settings":       True,

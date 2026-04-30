@@ -668,6 +668,7 @@ export default function AdminPage() {
                       { key: "landing_multicolor",  label: "Multicolor sectie",        desc: "ACE Pro 2 kleurslots showcase" },
                       { key: "landing_pricing",     label: "Prijzen",                  desc: "Starter / Pro / Team plannen" },
                       { key: "landing_downloadcta", label: "Download CTA",             desc: "Grote download sectie onderaan" },
+                      { key: "landing_blog",        label: "Blog sectie",              desc: "3 blog cards (Tutorial, Handleiding, Update)" },
                     ],
                   },
                   {

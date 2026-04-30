@@ -58,6 +58,13 @@ const LANDING_T = {
     rev_based:"Gebaseerd op", rev_count_suffix:"+ reviews", rev_write:"Schrijf een review",
     modal_title:"Schrijf een review", modal_name_lbl:"Naam", modal_name_ph:"Jouw naam…",
     modal_rating_lbl:"Beoordeling", modal_text_lbl:"Review", modal_text_ph:"Deel jouw ervaring met AutoSlice…", modal_submit:"Review plaatsen",
+    blog_badge:"Blog", blog_h2:"Laatste nieuws", blog_sub:"Tips, tutorials en updates over AutoSlice en 3D printen.", blog_read:"Lees meer →",
+    blog1_cat:"Tutorial", blog1_title:"Bambu naar Anycubic converteren: stap voor stap", blog1_date:"15 april 2026",
+    blog1_excerpt:"Leer hoe je elk Bambu Studio of MakerWorld .3mf bestand omzet naar een kant-en-klaar Anycubic printprofiel in minder dan een minuut.",
+    blog2_cat:"Handleiding", blog2_title:"Multicolor printen met ACE Pro 2 en AutoSlice", blog2_date:"3 april 2026",
+    blog2_excerpt:"Alles over het instellen van 8 kleurslots, filamentwissel en flush-volumes voor perfecte multicolor prints.",
+    blog3_cat:"Update", blog3_title:"AutoSlice 1.5: AI-analyse, presets en meer", blog3_date:"20 maart 2026",
+    blog3_excerpt:"Een overzicht van alle nieuwe functies in versie 1.5: verbeterde AI-analyse, exporteerbare presets en de nieuwe community-pagina.",
   },
   en: {
     nav_features:"Features", nav_how:"How it works", nav_pricing:"Pricing", nav_login:"Log in", nav_cta:"Start for free",
@@ -104,6 +111,13 @@ const LANDING_T = {
     rev_based:"Based on", rev_count_suffix:"+ reviews", rev_write:"Write a review",
     modal_title:"Write a review", modal_name_lbl:"Name", modal_name_ph:"Your name…",
     modal_rating_lbl:"Rating", modal_text_lbl:"Review", modal_text_ph:"Share your experience with AutoSlice…", modal_submit:"Post review",
+    blog_badge:"Blog", blog_h2:"Latest news", blog_sub:"Tips, tutorials and updates about AutoSlice and 3D printing.", blog_read:"Read more →",
+    blog1_cat:"Tutorial", blog1_title:"Converting Bambu to Anycubic: step by step", blog1_date:"April 15, 2026",
+    blog1_excerpt:"Learn how to convert any Bambu Studio or MakerWorld .3mf file into a ready-to-use Anycubic print profile in under a minute.",
+    blog2_cat:"Guide", blog2_title:"Multicolor printing with ACE Pro 2 and AutoSlice", blog2_date:"April 3, 2026",
+    blog2_excerpt:"Everything about setting up 8 color slots, filament changes and flush volumes for perfect multicolor prints.",
+    blog3_cat:"Update", blog3_title:"AutoSlice 1.5: AI analysis, presets and more", blog3_date:"March 20, 2026",
+    blog3_excerpt:"An overview of all new features in version 1.5: improved AI analysis, exportable presets and the new community page.",
   },
   fr: {
     nav_features:"Fonctionnalités", nav_how:"Comment ça marche", nav_pricing:"Tarifs", nav_login:"Se connecter", nav_cta:"Commencer gratuitement",
@@ -150,6 +164,13 @@ const LANDING_T = {
     rev_based:"Basé sur", rev_count_suffix:"+ avis", rev_write:"Écrire un avis",
     modal_title:"Écrire un avis", modal_name_lbl:"Nom", modal_name_ph:"Votre nom…",
     modal_rating_lbl:"Note", modal_text_lbl:"Avis", modal_text_ph:"Partagez votre expérience avec AutoSlice…", modal_submit:"Publier l'avis",
+    blog_badge:"Blog", blog_h2:"Dernières actualités", blog_sub:"Conseils, tutoriels et mises à jour sur AutoSlice et l'impression 3D.", blog_read:"Lire la suite →",
+    blog1_cat:"Tutoriel", blog1_title:"Convertir Bambu en Anycubic : étape par étape", blog1_date:"15 avril 2026",
+    blog1_excerpt:"Apprenez à convertir n'importe quel fichier Bambu Studio ou MakerWorld .3mf en un profil d'impression Anycubic prêt à l'emploi en moins d'une minute.",
+    blog2_cat:"Guide", blog2_title:"Impression multicolore avec ACE Pro 2 et AutoSlice", blog2_date:"3 avril 2026",
+    blog2_excerpt:"Tout sur la configuration de 8 emplacements de couleur, les changements de filament et les volumes de purge pour des impressions multicolores parfaites.",
+    blog3_cat:"Mise à jour", blog3_title:"AutoSlice 1.5 : analyse IA, préréglages et plus", blog3_date:"20 mars 2026",
+    blog3_excerpt:"Un aperçu de toutes les nouvelles fonctionnalités de la version 1.5 : analyse IA améliorée, préréglages exportables et la nouvelle page communauté.",
   },
   de: {
     nav_features:"Funktionen", nav_how:"So funktioniert es", nav_pricing:"Preise", nav_login:"Anmelden", nav_cta:"Kostenlos starten",
@@ -196,6 +217,13 @@ const LANDING_T = {
     rev_based:"Basierend auf", rev_count_suffix:"+ Bewertungen", rev_write:"Bewertung schreiben",
     modal_title:"Bewertung schreiben", modal_name_lbl:"Name", modal_name_ph:"Ihr Name…",
     modal_rating_lbl:"Bewertung", modal_text_lbl:"Rezension", modal_text_ph:"Teilen Sie Ihre Erfahrung mit AutoSlice…", modal_submit:"Bewertung posten",
+    blog_badge:"Blog", blog_h2:"Neueste Beiträge", blog_sub:"Tipps, Tutorials und Updates zu AutoSlice und 3D-Druck.", blog_read:"Weiterlesen →",
+    blog1_cat:"Tutorial", blog1_title:"Bambu zu Anycubic konvertieren: Schritt für Schritt", blog1_date:"15. April 2026",
+    blog1_excerpt:"Lernen Sie, wie Sie jede Bambu Studio- oder MakerWorld-.3mf-Datei in weniger als einer Minute in ein fertiges Anycubic-Druckprofil umwandeln.",
+    blog2_cat:"Anleitung", blog2_title:"Multicolor-Druck mit ACE Pro 2 und AutoSlice", blog2_date:"3. April 2026",
+    blog2_excerpt:"Alles über die Einrichtung von 8 Farbslots, Filamentwechsel und Spülvolumen für perfekte Multicolor-Drucke.",
+    blog3_cat:"Update", blog3_title:"AutoSlice 1.5: KI-Analyse, Presets und mehr", blog3_date:"20. März 2026",
+    blog3_excerpt:"Eine Übersicht aller neuen Funktionen in Version 1.5: verbesserte KI-Analyse, exportierbare Presets und die neue Community-Seite.",
   },
   es: {
     nav_features:"Características", nav_how:"Cómo funciona", nav_pricing:"Precios", nav_login:"Iniciar sesión", nav_cta:"Empezar gratis",
@@ -242,6 +270,13 @@ const LANDING_T = {
     rev_based:"Basado en", rev_count_suffix:"+ reseñas", rev_write:"Escribir una reseña",
     modal_title:"Escribir una reseña", modal_name_lbl:"Nombre", modal_name_ph:"Tu nombre…",
     modal_rating_lbl:"Valoración", modal_text_lbl:"Reseña", modal_text_ph:"Comparte tu experiencia con AutoSlice…", modal_submit:"Publicar reseña",
+    blog_badge:"Blog", blog_h2:"Últimas noticias", blog_sub:"Consejos, tutoriales y actualizaciones sobre AutoSlice e impresión 3D.", blog_read:"Leer más →",
+    blog1_cat:"Tutorial", blog1_title:"Convertir Bambu a Anycubic: paso a paso", blog1_date:"15 de abril de 2026",
+    blog1_excerpt:"Aprende a convertir cualquier archivo Bambu Studio o MakerWorld .3mf en un perfil de impresión Anycubic listo en menos de un minuto.",
+    blog2_cat:"Guía", blog2_title:"Impresión multicolor con ACE Pro 2 y AutoSlice", blog2_date:"3 de abril de 2026",
+    blog2_excerpt:"Todo sobre la configuración de 8 ranuras de color, cambios de filamento y volúmenes de purga para impresiones multicolor perfectas.",
+    blog3_cat:"Actualización", blog3_title:"AutoSlice 1.5: análisis IA, preajustes y más", blog3_date:"20 de marzo de 2026",
+    blog3_excerpt:"Un resumen de todas las nuevas funciones en la versión 1.5: análisis IA mejorado, preajustes exportables y la nueva página de comunidad.",
   },
   ko: {
     nav_features:"기능", nav_how:"사용 방법", nav_pricing:"가격", nav_login:"로그인", nav_cta:"무료로 시작",
@@ -288,6 +323,13 @@ const LANDING_T = {
     rev_based:"기반", rev_count_suffix:"+ 리뷰", rev_write:"리뷰 작성",
     modal_title:"리뷰 작성", modal_name_lbl:"이름", modal_name_ph:"이름을 입력하세요…",
     modal_rating_lbl:"평점", modal_text_lbl:"리뷰", modal_text_ph:"AutoSlice 경험을 공유하세요…", modal_submit:"리뷰 게시",
+    blog_badge:"블로그", blog_h2:"최신 소식", blog_sub:"AutoSlice와 3D 프린팅에 관한 팁, 튜토리얼 및 업데이트.", blog_read:"더 읽기 →",
+    blog1_cat:"튜토리얼", blog1_title:"Bambu를 Anycubic으로 변환하기: 단계별 가이드", blog1_date:"2026년 4월 15일",
+    blog1_excerpt:"Bambu Studio 또는 MakerWorld의 .3mf 파일을 1분 이내에 Anycubic 프린트 프로필로 변환하는 방법을 알아보세요.",
+    blog2_cat:"가이드", blog2_title:"ACE Pro 2와 AutoSlice로 멀티컬러 프린팅", blog2_date:"2026년 4월 3일",
+    blog2_excerpt:"완벽한 멀티컬러 프린팅을 위한 8개 색상 슬롯 설정, 필라멘트 교체, 플러시 볼륨에 관한 모든 것.",
+    blog3_cat:"업데이트", blog3_title:"AutoSlice 1.5: AI 분석, 프리셋 등", blog3_date:"2026년 3월 20일",
+    blog3_excerpt:"버전 1.5의 모든 새 기능 개요: 개선된 AI 분석, 내보낼 수 있는 프리셋, 새 커뮤니티 페이지.",
   },
 };
 
@@ -1581,6 +1623,104 @@ function ReviewSection() {
   );
 }
 
+// ── Blog ─────────────────────────────────────────────────────────────────────
+const BLOG_CAT_COLORS: Record<string, { bg: string; text: string }> = {
+  Tutorial:   { bg: "rgba(59,130,246,0.12)",  text: "#60a5fa" },
+  Tutoriel:   { bg: "rgba(59,130,246,0.12)",  text: "#60a5fa" },
+  튜토리얼:   { bg: "rgba(59,130,246,0.12)",  text: "#60a5fa" },
+  Guide:      { bg: "rgba(34,197,94,0.12)",   text: "#4ade80" },
+  Handleiding:{ bg: "rgba(34,197,94,0.12)",   text: "#4ade80" },
+  Anleitung:  { bg: "rgba(34,197,94,0.12)",   text: "#4ade80" },
+  Guía:       { bg: "rgba(34,197,94,0.12)",   text: "#4ade80" },
+  가이드:     { bg: "rgba(34,197,94,0.12)",   text: "#4ade80" },
+  Update:     { bg: "rgba(251,191,36,0.12)",  text: "#fbbf24" },
+  "Mise à jour":{ bg: "rgba(251,191,36,0.12)", text: "#fbbf24" },
+  업데이트:   { bg: "rgba(251,191,36,0.12)",  text: "#fbbf24" },
+  Actualización:{ bg: "rgba(251,191,36,0.12)", text: "#fbbf24" },
+};
+
+function BlogCard({ cat, title, date, excerpt, readLabel }: {
+  cat: string; title: string; date: string; excerpt: string; readLabel: string;
+}) {
+  const color = BLOG_CAT_COLORS[cat] ?? { bg: "rgba(224,36,36,0.1)", text: BRAND };
+  return (
+    <div style={{
+      background:   "rgba(255,255,255,0.025)",
+      border:       "1px solid rgba(255,255,255,0.07)",
+      borderRadius: "20px",
+      padding:      "28px",
+      display:      "flex",
+      flexDirection:"column",
+      gap:          "16px",
+      transition:   "border-color 0.2s, transform 0.2s",
+    }}
+      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(224,36,36,0.3)"; (e.currentTarget as HTMLDivElement).style.transform = "translateY(-3px)"; }}
+      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.07)"; (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)"; }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+        <span style={{
+          display: "inline-block", padding: "3px 10px", borderRadius: "20px",
+          fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
+          background: color.bg, color: color.text,
+        }}>
+          {cat}
+        </span>
+        <span style={{ fontSize: "12px", color: "#52525b" }}>{date}</span>
+      </div>
+      <h3 style={{ fontSize: "17px", fontWeight: 700, color: "#f4f4f5", lineHeight: 1.35, margin: 0 }}>
+        {title}
+      </h3>
+      <p style={{ fontSize: "14px", color: "#71717a", lineHeight: 1.65, margin: 0, flex: 1 }}>
+        {excerpt}
+      </p>
+      <span style={{ fontSize: "13px", fontWeight: 600, color: BRAND, marginTop: "4px" }}>
+        {readLabel}
+      </span>
+    </div>
+  );
+}
+
+function BlogSection() {
+  const lt = useLT();
+  const { ref, visible } = useFadeIn();
+  const posts = [
+    { cat: lt.blog1_cat, title: lt.blog1_title, date: lt.blog1_date, excerpt: lt.blog1_excerpt },
+    { cat: lt.blog2_cat, title: lt.blog2_title, date: lt.blog2_date, excerpt: lt.blog2_excerpt },
+    { cat: lt.blog3_cat, title: lt.blog3_title, date: lt.blog3_date, excerpt: lt.blog3_excerpt },
+  ];
+  return (
+    <section ref={ref} style={{
+      paddingTop: "80px", paddingBottom: "80px",
+      opacity: visible ? 1 : 0, transform: visible ? "translateY(0)" : "translateY(28px)",
+      transition: "opacity 0.6s ease, transform 0.6s ease",
+    }}>
+      <div style={{ maxWidth: "1152px", margin: "0 auto", padding: "0 24px" }}>
+        <div style={{ textAlign: "center", marginBottom: "48px" }}>
+          <Badge>{lt.blog_badge}</Badge>
+          <h2 style={{
+            fontSize: "clamp(28px,4vw,40px)", fontWeight: 800, color: "#ffffff",
+            margin: "20px 0 12px", letterSpacing: "-0.02em",
+          }}>
+            {lt.blog_h2}
+          </h2>
+          <p style={{ color: "#71717a", fontSize: "16px", maxWidth: "480px", margin: "0 auto" }}>
+            {lt.blog_sub}
+          </p>
+        </div>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+          gap: "20px",
+        }}>
+          {posts.map((p, i) => (
+            <BlogCard key={i} cat={p.cat} title={p.title} date={p.date} excerpt={p.excerpt} readLabel={lt.blog_read} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
   const [cfg, setCfg] = useState<SiteConfig | null>(null);
@@ -1599,6 +1739,7 @@ export default function LandingPage() {
       {show("landing_apppreview") && <AppPreview />}
       {show("landing_multicolor") && <MultiColorSection />}
       {show("landing_pricing")    && <Pricing />}
+      {show("landing_blog")       && <BlogSection />}
       {show("landing_downloadcta")&& <DownloadCTA />}
       <LandingFooter />
     </div>

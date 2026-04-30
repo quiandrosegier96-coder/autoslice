@@ -85,6 +85,7 @@ export type SiteConfig = {
   landing_multicolor: boolean;
   landing_trustbar: boolean;
   landing_downloadcta: boolean;
+  landing_blog: boolean;
   nav_history: boolean;
   nav_community: boolean;
   nav_settings: boolean;
