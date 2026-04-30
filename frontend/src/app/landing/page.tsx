@@ -39,7 +39,7 @@ const LANDING_T = {
     multi_sub:"Werk met ACE Pro en ACE Pro 2 configuraties tot 8 kleurslots. AutoSlice vertaalt Bambu-kleurinformatie automatisch naar de juiste Anycubic filamentslots.",
     multi_b1:"Automatische kleurdetectie uit .3mf bronbestand", multi_b2:"Instelbare flush-volumes per filamentwissel",
     multi_b3:"Dubbele unit ondersteuning (8 slots)", multi_b4:"Aangepaste filamenttypes per slot (PLA, PETG, TPU)",
-    price_badge:"Prijzen", price_h2:"Simpele, eerlijke prijzen", price_sub:"Begin gratis. Upgrade wanneer je klaar bent.", price_popular:"Meest populair",
+    price_badge:"Prijzen", price_h2:"Simpele, eerlijke prijzen", price_sub:"Start nu gratis, upgrade wanneer je er klaar voor bent.", price_popular:"Meest populair",
     p0_name:"Starter", p0_price:"Gratis", p0_sub:"Voor altijd", p0_cta:"Gratis starten",
     p0_f1:"15 conversies per maand", p0_f2:"Basisprinter instellingen", p0_f3:"3 opgeslagen presets", p0_f4:"Community support", p0_f5:"Automatische updates",
     p1_name:"Pro", p1_price:"€7,99", p1_sub:"per maand", p1_cta:"Pro proberen",
