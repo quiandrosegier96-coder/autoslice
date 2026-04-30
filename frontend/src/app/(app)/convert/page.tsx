@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { isLoggedIn, getUser } from "@/lib/auth";
@@ -1867,13 +1868,29 @@ function SlotSelect({
   disabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const selectedLabel = options.find((o) => o.value === value)?.label ?? value.toUpperCase();
+
+  function updateRect() {
+    if (triggerRef.current) setRect(triggerRef.current.getBoundingClientRect());
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    updateRect();
+    window.addEventListener("scroll", updateRect, true);
+    window.addEventListener("resize", updateRect);
+    return () => {
+      window.removeEventListener("scroll", updateRect, true);
+      window.removeEventListener("resize", updateRect);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
     function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (triggerRef.current && !triggerRef.current.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -1893,45 +1910,22 @@ function SlotSelect({
     }
   }
 
-  return (
-    <div ref={ref} className="relative w-full" onKeyDown={handleKey}>
-      {/* Trigger */}
-      <button
-        type="button"
-        onClick={() => !disabled && setOpen((v) => !v)}
-        disabled={disabled}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        className="w-full h-7 px-2 flex items-center justify-between rounded-lg text-xs
-                   disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
-        style={{
-          WebkitAppearance: "none",
-          appearance: "none",
-          background: "#1a1a1f",
-          border: `1px solid ${open ? "rgba(224,36,36,0.5)" : "rgba(255,255,255,0.1)"}`,
-          boxShadow: open ? "0 0 0 3px rgba(224,36,36,0.08)" : undefined,
-          color: "#e4e4e8",
-        }}
-      >
-        <span className="truncate" style={{ color: "#e4e4e8" }}>{selectedLabel || "\u00A0"}</span>
-        <svg
-          className="shrink-0 ml-1 opacity-50"
-          style={{ transform: open ? "rotate(180deg)" : undefined, transition: "transform 0.15s" }}
-          width="10" height="10" viewBox="0 0 10 10" fill="none"
-        >
-          <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      </button>
-
-      {/* Dropdown */}
-      {open && (
+  const dropdown = open && rect && typeof document !== "undefined"
+    ? createPortal(
         <div
           role="listbox"
-          className="absolute z-[9999] left-0 right-0 mt-1 rounded-lg overflow-hidden py-0.5"
           style={{
-            background: "#1a1a1f",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
+            position: "fixed",
+            top: rect.bottom + 4,
+            left: rect.left,
+            width: rect.width,
+            zIndex: 9999,
+            background: "#18181b",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: "8px",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.75)",
+            overflow: "hidden",
+            padding: "2px 0",
           }}
         >
           {options.map((o) => (
@@ -1940,19 +1934,53 @@ function SlotSelect({
               role="option"
               aria-selected={o.value === value}
               onMouseDown={(e) => { e.preventDefault(); onChange(o.value); setOpen(false); }}
-              className="px-2 py-1.5 text-xs cursor-pointer transition-colors duration-75"
               style={{
+                padding: "6px 8px",
+                fontSize: "12px",
+                cursor: "pointer",
                 color: o.value === value ? "#ffffff" : "#a1a1aa",
-                background: o.value === value ? "rgba(224,36,36,0.15)" : undefined,
+                background: o.value === value ? "rgba(224,36,36,0.18)" : "transparent",
+                transition: "background 0.07s",
               }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.07)"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = o.value === value ? "rgba(224,36,36,0.15)" : ""; }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.08)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = o.value === value ? "rgba(224,36,36,0.18)" : "transparent"; }}
             >
               {o.label}
             </div>
           ))}
-        </div>
-      )}
+        </div>,
+        document.body
+      )
+    : null;
+
+  return (
+    <div className="relative w-full" onKeyDown={handleKey}>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => { if (!disabled) { updateRect(); setOpen((v) => !v); } }}
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="w-full h-7 px-2 flex items-center justify-between rounded-lg text-xs
+                   disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
+        style={{
+          background: "#1a1a1f",
+          border: `1px solid ${open ? "rgba(224,36,36,0.5)" : "rgba(255,255,255,0.1)"}`,
+          boxShadow: open ? "0 0 0 3px rgba(224,36,36,0.08)" : undefined,
+          color: "#e4e4e8",
+        }}
+      >
+        <span className="truncate" style={{ color: "#e4e4e8" }}>{selectedLabel || " "}</span>
+        <svg
+          className="shrink-0 ml-1 opacity-50"
+          style={{ transform: open ? "rotate(180deg)" : undefined, transition: "transform 0.15s" }}
+          width="10" height="10" viewBox="0 0 10 10" fill="none"
+        >
+          <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {dropdown}
     </div>
   );
 }
