@@ -8,6 +8,7 @@ import { isLoggedIn, getUser } from "@/lib/auth";
 import { useLang } from "@/contexts/LangContext";
 import { apiUpload, apiAnalyze, apiConvertDownload, apiGet, apiPost } from "@/lib/api";
 import { useToast, ToastContainer } from "@/components/Toast";
+import type { TreeSupportResult } from "@/lib/tree-support/types";
 
 const ModelViewer = dynamic(
   () => import("@/components/ModelViewer").then((m) => m.ModelViewer),
@@ -177,6 +178,7 @@ export default function ConvertPage() {
   const [ratingDone, setRatingDone] = useState(false);
   const [applyOrientation, setApplyOrientation] = useState(false);
   const [showSupports, setShowSupports] = useState(false);
+  const [treeResult, setTreeResult] = useState<TreeSupportResult | null>(null);
   const [manualEuler, setManualEuler] = useState<number[]>([]);
 
   // Scale & fuzzy skin
@@ -237,6 +239,10 @@ export default function ConvertPage() {
       }
     });
   }, [router]);
+
+  useEffect(() => {
+    setTreeResult(null);
+  }, [jobId, showSupports, manualEuler]);
 
   // ── Keyboard shortcuts ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -492,6 +498,7 @@ export default function ConvertPage() {
     setRatingLoading(false);
     setApplyOrientation(false);
     setShowSupports(false);
+    setTreeResult(null);
     setManualEuler([]);
     setProgress(0);
     setProgressText("");
@@ -1624,13 +1631,19 @@ export default function ConvertPage() {
             </div>
           </div>
           <div className="p-4">
-            <ModelViewer jobId={jobId} showSupports={showSupports}
-              rotationEuler={manualEuler.length === 3 ? manualEuler : undefined} />
+            <ModelViewer
+              jobId={jobId}
+              showSupports={showSupports}
+              showClientTreeSupport={showSupports && !!analysis?.geometry.overhang.has_overhangs}
+              treeResult={treeResult}
+              onClientSupportGenerated={setTreeResult}
+              rotationEuler={manualEuler.length === 3 ? manualEuler : undefined}
+            />
             {analysis?.geometry.overhang.has_overhangs && (
               <label className="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer select-none w-fit mt-3">
                 <input type="checkbox" checked={showSupports} onChange={(e) => setShowSupports(e.target.checked)}
                   className="w-4 h-4 rounded accent-orange-500" />
-                <span>Show support regions</span>
+                <span>Show tree supports</span>
                 {showSupports && analysis.geometry.overhang.overhang_area_ratio > 0 && (
                   <span className="text-xs text-zinc-600">
                     ({(analysis.geometry.overhang.overhang_area_ratio * 100).toFixed(0)}% of surface)

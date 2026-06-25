@@ -485,6 +485,7 @@ export function ModelViewer({
           {/* Client-side tree generator (runs once, builds result) */}
           {showClientTreeSupport && loadedObject && (
             <ClientTreeSupportLayer
+              key={JSON.stringify(rotationEuler ?? [])}
               object={loadedObject}
               config={clientSupportConfig}
               onGenerated={handleClientGenerated}
