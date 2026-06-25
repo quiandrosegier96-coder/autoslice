@@ -64,28 +64,30 @@ class RegisterResponse(BaseModel):
 
 @router.post("/auth/register", response_model=RegisterResponse)
 def register(req: RegisterRequest) -> RegisterResponse:
+    username = req.username.strip()
+    email = str(req.email).strip().lower()
     if len(req.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
     try:
-        user = register_user(req.username, req.email, req.password)
+        user = register_user(username, email, req.password)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     # Send verification code — admins are auto-verified
-    if req.email not in ADMIN_EMAILS:
+    if email not in ADMIN_EMAILS:
         code = _generate_verification_code(user["id"])
         # Send email in background thread so slow SMTP never blocks the HTTP response
         import threading
         threading.Thread(
             target=send_verification_email,
-            args=(req.email, code, req.username),
+            args=(email, code, username),
             daemon=True,
         ).start()
     else:
         with get_connection() as conn:
             conn.execute("UPDATE users SET is_verified = 1 WHERE id = ?", (user["id"],))
             conn.commit()
-    return RegisterResponse(needs_verification=req.email not in ADMIN_EMAILS,
-                            email=req.email, username=req.username)
+    return RegisterResponse(needs_verification=email not in ADMIN_EMAILS,
+                            email=email, username=username)
 
 
 @router.post("/auth/login", response_model=AuthResponse)

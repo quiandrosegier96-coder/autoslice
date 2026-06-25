@@ -38,7 +38,7 @@ def build_rels_xml() -> str:
 _NON_PRINTABLE = {"negative_volume", "modifier", "support_blocker", "support_enforcer"}
 
 
-def build_3mf_xml(parsed_model: ParsedModel, rotation_matrix=None) -> str:
+def build_3mf_xml(parsed_model: ParsedModel, rotation_matrix=None, scale_factor: float = 1.0) -> str:
     """
     Build a clean 3MF model XML with ALL printable objects merged into a single
     <object> so slicers never see unwanted part splits.
@@ -57,7 +57,10 @@ def build_3mf_xml(parsed_model: ParsedModel, rotation_matrix=None) -> str:
     build_el  = ET.SubElement(root, f"{{{_3MF_NS}}}build")
 
     # Collect printable objects
-    printable = [o for o in parsed_model.objects if o.object_type not in _NON_PRINTABLE]
+    printable = [
+        o for o in parsed_model.objects
+        if o.object_type not in _NON_PRINTABLE and o.vertices and o.triangles
+    ]
     if not printable:
         return '<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(root, encoding="unicode")
 
@@ -72,14 +75,17 @@ def build_3mf_xml(parsed_model: ParsedModel, rotation_matrix=None) -> str:
         offset += len(obj.vertices)
 
     # Apply rotation + re-seat on build plate
-    if rotation_matrix is not None and all_verts:
+    if all_verts and (rotation_matrix is not None or abs(scale_factor - 1.0) > 0.001):
         try:
             verts_arr = np.array(all_verts, dtype=np.float64)
-            rotated   = (rotation_matrix @ verts_arr.T).T
-            z_min     = float(rotated[:, 2].min())
+            if rotation_matrix is not None:
+                verts_arr = (rotation_matrix @ verts_arr.T).T
+            if abs(scale_factor - 1.0) > 0.001:
+                verts_arr *= float(scale_factor)
+            z_min = float(verts_arr[:, 2].min())
             if abs(z_min) > 0.001:
-                rotated[:, 2] -= z_min
-            all_verts = [(float(v[0]), float(v[1]), float(v[2])) for v in rotated]
+                verts_arr[:, 2] -= z_min
+            all_verts = [(float(v[0]), float(v[1]), float(v[2])) for v in verts_arr]
         except Exception:
             pass  # rotation failed — keep original verts
 

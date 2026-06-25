@@ -60,7 +60,7 @@ export default function ForgotPasswordPage() {
     setError("");
     setLoading(true);
     try {
-      await apiPost("/auth/forgot-password", { email });
+      await apiPost("/auth/forgot-password", { email: email.trim().toLowerCase() });
       setSent(true);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-[#0a0a0d] overflow-hidden flex flex-col">
+    <div className="relative min-h-screen bg-[#0a0a0d] overflow-x-hidden flex flex-col">
       <AuthBackground />
 
       {/* Language switcher */}
@@ -173,6 +173,7 @@ export default function ForgotPasswordPage() {
                       </span>
                       <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                         placeholder="you@example.com" required autoComplete="email"
+                        inputMode="email" autoCapitalize="none" spellCheck={false}
                         className="w-full pl-10 pr-4 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
                                    text-white placeholder-zinc-600 text-sm
                                    focus:outline-none focus:border-brand/50 focus:bg-white/[0.07]

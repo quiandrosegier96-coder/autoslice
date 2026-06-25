@@ -95,13 +95,15 @@ export default function RegisterPage() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
+    const cleanedUsername = username.trim();
+    const cleanedEmail = email.trim().toLowerCase();
     if (password !== confirm) { setError(t("reg_err_match")); return; }
     if (password.length < 8) { setError(t("reg_err_length")); return; }
     setLoading(true);
     try {
       const res = await apiPost<{ needs_verification: boolean; email: string; username: string }>(
         "/auth/register",
-        { username, email, password }
+        { username: cleanedUsername, email: cleanedEmail, password }
       );
       if (res.needs_verification) {
         router.push(`/verify-email?email=${encodeURIComponent(res.email)}&username=${encodeURIComponent(res.username)}`);
@@ -118,7 +120,7 @@ export default function RegisterPage() {
   const steps = STEPS[lang] ?? STEPS.en;
 
   return (
-    <div className="relative min-h-screen bg-[#0a0a0d] overflow-hidden flex flex-col">
+    <div className="relative min-h-screen bg-[#0a0a0d] overflow-x-hidden flex flex-col">
       <AuthBackground />
 
       {/* Language switcher */}
@@ -247,6 +249,7 @@ export default function RegisterPage() {
                 <div className="relative">
                   <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                     placeholder={t("reg_placeholder_email")} required autoComplete="email"
+                    inputMode="email" autoCapitalize="none" spellCheck={false}
                     className="w-full px-5 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
                                text-white placeholder-zinc-600 text-sm
                                focus:outline-none focus:border-brand/50 focus:bg-white/[0.07]

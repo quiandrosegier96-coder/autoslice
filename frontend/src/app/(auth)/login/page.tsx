@@ -109,17 +109,18 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
+    const identifier = email.trim();
     try {
       const res = await apiPost<{ access_token: string; username: string; email: string; is_admin: boolean }>(
         "/auth/login",
-        { email, password, remember }
+        { email: identifier, password, remember }
       );
       saveAuth({ token: res.access_token, username: res.username, email: res.email, is_admin: res.is_admin }, remember);
       router.push("/convert");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Login failed";
       if (msg === "EMAIL_NOT_VERIFIED") {
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        router.push(`/verify-email?email=${encodeURIComponent(identifier)}`);
         return;
       }
       setError(msg);
@@ -131,7 +132,7 @@ export default function LoginPage() {
   const features = FEATURES[lang] ?? FEATURES.en;
 
   return (
-    <div className="relative min-h-screen bg-[#0a0a0d] overflow-hidden flex flex-col">
+    <div className="relative min-h-screen bg-[#0a0a0d] overflow-x-hidden flex flex-col">
 
       {/* ── Background glows ── */}
       <div className="pointer-events-none select-none absolute inset-0">
@@ -165,7 +166,7 @@ export default function LoginPage() {
 
       {/* ── Notice modal ── */}
       {showNotice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/75 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 py-6 bg-black/75 backdrop-blur-md">
           <div className="w-full max-w-md bg-[#131316] border border-white/8 rounded-2xl p-7 shadow-[0_24px_64px_rgba(0,0,0,0.7)]">
             <div className="flex items-center gap-3 mb-5">
               <div className="w-9 h-9 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center shrink-0">
@@ -322,11 +323,14 @@ export default function LoginPage() {
                     </svg>
                   </span>
                   <input
-                    type="text"
+                    type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
                     required
+                    inputMode="email"
+                    autoCapitalize="none"
+                    spellCheck={false}
                     autoComplete="username"
                     className="w-full pl-11 pr-4 py-3 bg-white/[0.05] border border-white/[0.09] rounded-xl
                                text-white placeholder-zinc-600 text-sm

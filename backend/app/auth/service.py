@@ -64,6 +64,10 @@ def decode_token(token: str) -> dict:
 
 
 def register_user(username: str, email: str, password: str) -> dict:
+    username = username.strip()
+    email = email.strip().lower()
+    if not username:
+        raise ValueError("Username is required.")
     password_hash = hash_password(password)
     created_at = datetime.now(timezone.utc).isoformat()
     with get_connection() as conn:
@@ -87,6 +91,7 @@ def create_reset_token(email: str) -> str | None:
     Returns the raw token (to be emailed) or None if email is unknown.
     """
     from datetime import datetime, timezone
+    email = email.strip().lower()
     with get_connection() as conn:
         user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
         if not user:
@@ -125,11 +130,13 @@ def reset_password(token: str, new_password: str) -> None:
 
 def login_user(identifier: str, password: str) -> dict:
     """Accept either an email address or a username as the login identifier."""
+    identifier = identifier.strip()
+    email_identifier = identifier.lower()
     with get_connection() as conn:
         row = conn.execute(
             "SELECT id, username, email, password_hash FROM users "
-            "WHERE email = ? OR username = ?",
-            (identifier, identifier),
+            "WHERE lower(email) = ? OR username = ?",
+            (email_identifier, identifier),
         ).fetchone()
     if row is None or not verify_password(password, row["password_hash"]):
         raise ValueError("Invalid email/username or password.")
