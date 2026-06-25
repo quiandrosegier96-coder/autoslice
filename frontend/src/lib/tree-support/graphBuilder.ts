@@ -30,9 +30,8 @@ const BRANCH_FRAC      = 0.55;   // trunk top at this fraction of [plateY..tipY]
 const SPLAY_MULT       = 1.20;   // outward lean multiplier for tip branches
 const MIN_XZ_SPREAD    = 3.0;    // minimum XZ displacement from parent (mm)
 const TAPER            = 0.74;   // radius multiplier per level
-const TRUNK_R_MIN      = 1.5;
-const TRUNK_R_MAX      = 4.0;
-const BRANCH_R_MIN     = 0.6;
+const TRUNK_R_MAX      = 2.4;
+const BRANCH_R_MIN     = 0.35;
 const MIN_SEGMENT_MM   = 1.5;
 
 // ── Node counter ──────────────────────────────────────────────────────────────
@@ -203,8 +202,8 @@ export function buildGraph(
     const n = group.length;
 
     // Trunk radius scales with number of supported clusters
-    const trunkRBase = Math.min(TRUNK_R_MIN + Math.sqrt(n) * 0.5, TRUNK_R_MAX);
-    const trunkRTop  = trunkRBase * TAPER;
+    const trunkRBase = Math.min(config.trunkRadiusMm + Math.sqrt(n) * 0.12, TRUNK_R_MAX);
+    const trunkRTop  = Math.max(trunkRBase * TAPER, config.branchRadiusMm);
 
     // Trunk XZ centroid
     const centXZ = xzCentroid(group);
@@ -242,7 +241,7 @@ export function buildGraph(
     } else {
       // ── Two-level: sub-trunk → tips ────────────────────────────────────
       const subGroups = subGroupClusters(group, config.mergeDistanceMm * 0.5);
-      const subBranchR = trunkRTop * TAPER;
+      const subBranchR = Math.max(config.branchRadiusMm, trunkRTop * TAPER);
 
       for (const sub of subGroups) {
         const subCentXZ = xzCentroid(sub);
@@ -266,7 +265,7 @@ export function buildGraph(
 
         for (const cl of sub) {
           const splayed = splayedTip(subTrunk.position, cl.tipPosition);
-          const tip = addNode(makeNode(splayed, config.tipRadiusMm, subTrunk.id, "tip"));
+          const tip = addNode(makeNode(splayed, tipR, subTrunk.id, "tip"));
           addSegment(subTrunk, tip);
 
           const contact = addNode(makeNode(
@@ -277,7 +276,6 @@ export function buildGraph(
           ));
           addSegment(tip, contact);
 
-          void tipR; // radius already assigned via config.tipRadiusMm
         }
       }
     }

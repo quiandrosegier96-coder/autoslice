@@ -22,20 +22,20 @@ import type { TreeNode, TreeSegment, SupportConfig } from "./types";
 // ── Materials (shared across all support instances) ────────────────────────────
 
 const MAT_TRUNK = new THREE.MeshStandardMaterial({
-  color: 0x55d88a, roughness: 0.72, metalness: 0.0,
-  transparent: true, opacity: 0.88,
+  color: 0x12d84e, roughness: 0.62, metalness: 0.0,
+  emissive: 0x063d18, emissiveIntensity: 0.12,
   side: THREE.DoubleSide,
 });
 const MAT_TIP = new THREE.MeshStandardMaterial({
-  color: 0x6fe29c, roughness: 0.68, metalness: 0.0,
-  transparent: true, opacity: 0.9,
+  color: 0x22e866, roughness: 0.58, metalness: 0.0,
+  emissive: 0x07451c, emissiveIntensity: 0.14,
 });
 const MAT_CONTACT = new THREE.MeshStandardMaterial({
-  color: 0xffb454, roughness: 0.55, metalness: 0.0,
+  color: 0x36ff76, roughness: 0.5, metalness: 0.0,
+  emissive: 0x0a4f20, emissiveIntensity: 0.16,
 });
 const MAT_WAYPOINT = new THREE.MeshStandardMaterial({
-  color: 0x8fb9a0, roughness: 0.8, metalness: 0.0,
-  transparent: true, opacity: 0.75,
+  color: 0x18c957, roughness: 0.75, metalness: 0.0,
 });
 
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
