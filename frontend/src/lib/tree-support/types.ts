@@ -124,10 +124,10 @@ export interface TreeSupportResult {
 
 export const DEFAULT_CONFIG: SupportConfig = {
   overhangAngleDeg:  45,
-  branchAngleDeg:    40,
-  trunkRadiusMm:     2.0,
-  branchRadiusMm:    1.0,
-  tipRadiusMm:       0.5,
+  branchAngleDeg:    38,
+  trunkRadiusMm:     1.8,
+  branchRadiusMm:    0.85,
+  tipRadiusMm:       0.4,
   collisionMarginMm: 0.8,
   mergeDistanceMm:   25.0,
   zDistanceMm:       0.2,
@@ -136,5 +136,5 @@ export const DEFAULT_CONFIG: SupportConfig = {
   nozzleDiameterMm:  0.4,
   layerHeightMm:     0.2,
   clusterCellMm:     5.0,
-  radialSegments:    8,
+  radialSegments:    12,
 };

@@ -88,10 +88,13 @@ async def _load_mesh(job_id: str):
         raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found.")
 
     try:
-        archive_path = job["archive_path"]
-        files        = await asyncio.to_thread(unpack, archive_path)
-        model_data   = await asyncio.to_thread(parse_model_files, files)
-        mesh         = await asyncio.to_thread(merge_meshes, model_data)
+        archive    = await asyncio.to_thread(unpack, job.archive_path, job.extract_dir)
+        model_data = await asyncio.to_thread(
+            parse_model_files,
+            archive.model_files,
+            archive.object_type_map,
+        )
+        mesh       = await asyncio.to_thread(merge_meshes, model_data.objects)
     except Exception as e:
         log.exception("Mesh load failed for job %s", job_id)
         raise HTTPException(status_code=500, detail=f"Mesh load error: {e}") from e
@@ -199,7 +202,6 @@ async def get_debug_tags(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
-    from app.geometry.mesh_loader import merge_meshes
     from app.support.engine.bvh import BVH
     import numpy as np
 

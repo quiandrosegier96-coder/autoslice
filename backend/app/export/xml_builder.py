@@ -242,9 +242,23 @@ def _make_process_config(settings: PrintSettings) -> dict:
     }
     # Tree support extras
     if settings.support_type == "tree":
-        cfg["support_style"] = "tree_slim"
-        cfg["tree_support_branch_angle"] = "40"
-        cfg["tree_support_wall_count"] = "1"
+        cfg.update({
+            # Anycubic Slicer Next is Orca/Bambu-derived. These explicit tree
+            # keys keep the imported project in organic/tree mode instead of
+            # falling back to sparse vertical columns.
+            "support_style": "tree_slim",
+            "support_base_pattern": "rectilinear",
+            "support_base_pattern_spacing": "2.5",
+            "support_expansion": "0",
+            "tree_support_branch_angle": "40",
+            "tree_support_branch_distance": "5",
+            "tree_support_branch_diameter": "2",
+            "tree_support_tip_diameter": "0.8",
+            "tree_support_top_rate": "15%",
+            "tree_support_wall_count": "1",
+            "tree_support_with_infill": "0",
+            "tree_support_auto_brim": "1",
+        })
 
     # Bed type — tell Anycubic Slicer which plate is active
     curr_bed_type, _ = _BED_TYPE_MAP.get(settings.build_plate, _BED_TYPE_DEFAULT)

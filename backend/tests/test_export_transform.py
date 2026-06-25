@@ -141,6 +141,48 @@ def test_absolute_extrusion_mode_no_per_layer_reset():
 
 # ── Test 2: transform parsing round-trip ─────────────────────────────────────
 
+def test_tree_support_config_exports_slicer_tree_parameters():
+    """
+    Tree support exports must include concrete Anycubic/Orca tree parameters.
+    Without these, Slicer Next can import the project as simple column supports.
+    """
+    from app.export.xml_builder import _make_process_config
+    from app.models.print_settings import PrintSettings
+
+    s = PrintSettings(
+        layer_height_mm=0.2,
+        first_layer_height_mm=0.25,
+        wall_count=3,
+        top_layers=4,
+        bottom_layers=4,
+        infill_percent=15,
+        infill_pattern="gyroid",
+        supports_enabled=True,
+        support_type="tree",
+        support_density_percent=12,
+        support_angle_threshold_deg=45,
+        brim_enabled=False,
+        brim_width_mm=5.0,
+        skirt_loops=1,
+        nozzle_temp_c=220,
+        bed_temp_c=60,
+        print_speed_mm_s=160,
+        first_layer_speed_mm_s=30,
+        fan_speed_percent=100,
+        fan_first_layer=False,
+    )
+
+    cfg = _make_process_config(s)
+
+    assert cfg["enable_support"] == "1"
+    assert cfg["support_type"] == "tree(auto)"
+    assert cfg["support_style"] == "tree_slim"
+    assert cfg["tree_support_branch_distance"] == "5"
+    assert cfg["tree_support_branch_diameter"] == "2"
+    assert cfg["tree_support_tip_diameter"] == "0.8"
+    assert cfg["tree_support_auto_brim"] == "1"
+
+
 def test_parse_transform_roundtrip():
     """_parse_transform and _matrix_to_transform must be inverses."""
     original = "1.0 0.0 0.0  0.0 1.0 0.0  0.0 0.0 1.0  10.5 -3.2 7.8"

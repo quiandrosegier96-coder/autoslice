@@ -22,17 +22,20 @@ import type { TreeNode, TreeSegment, SupportConfig } from "./types";
 // ── Materials (shared across all support instances) ────────────────────────────
 
 const MAT_TRUNK = new THREE.MeshStandardMaterial({
-  color: 0x4a9eff, roughness: 0.6, metalness: 0.0,
+  color: 0x55d88a, roughness: 0.72, metalness: 0.0,
+  transparent: true, opacity: 0.88,
   side: THREE.DoubleSide,
 });
 const MAT_TIP = new THREE.MeshStandardMaterial({
-  color: 0xff9f40, roughness: 0.5, metalness: 0.0,
+  color: 0x6fe29c, roughness: 0.68, metalness: 0.0,
+  transparent: true, opacity: 0.9,
 });
 const MAT_CONTACT = new THREE.MeshStandardMaterial({
-  color: 0xff4f4f, roughness: 0.4, metalness: 0.0,
+  color: 0xffb454, roughness: 0.55, metalness: 0.0,
 });
 const MAT_WAYPOINT = new THREE.MeshStandardMaterial({
-  color: 0xa0a0a0, roughness: 0.7, metalness: 0.0,
+  color: 0x8fb9a0, roughness: 0.8, metalness: 0.0,
+  transparent: true, opacity: 0.75,
 });
 
 const Y_AXIS = new THREE.Vector3(0, 1, 0);
@@ -94,12 +97,14 @@ export function buildSupportMesh(
     group.add(mesh);
   }
 
-  // Sphere at each contact node
+  // Small spheres at branch joints make the preview read as a continuous
+  // organic tree instead of separate straight sticks.
   for (const node of nodes.values()) {
-    if (node.type !== "contact") continue;
+    if (node.type === "root") continue;
     const r = Math.max(node.radius, 0.1);
-    const geo  = new THREE.SphereGeometry(r, segs, Math.ceil(segs * 0.5));
-    const mesh = new THREE.Mesh(geo, MAT_CONTACT);
+    const radiusScale = node.type === "contact" ? 0.75 : 1.05;
+    const geo  = new THREE.SphereGeometry(r * radiusScale, segs, Math.ceil(segs * 0.5));
+    const mesh = new THREE.Mesh(geo, matFor(node.type));
     mesh.position.copy(node.position);
     group.add(mesh);
   }

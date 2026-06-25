@@ -25,7 +25,7 @@ import type { BedPlateType }           from "./viewer/BedPlate";
 import type { SupportConfig, SupportStats, TreeSupportResult } from "@/lib/tree-support/types";
 import type { ExtendedViewMode }       from "./viewer/TreeSupportPanel";
 
-const _DEBUG_SUPPORT_COLOR = true; // force bright material so supports are unmistakable
+const _DEBUG_SUPPORT_COLOR = false; // keep normal slicer-like support material outside debug mode
 
 // ── AutoCamera ────────────────────────────────────────────────────────────────
 
