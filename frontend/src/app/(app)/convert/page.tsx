@@ -137,7 +137,9 @@ const difficultyColor: Record<string, string> = {
 };
 
 // ── Shared select style ────────────────────────────────────────────────────────
-const SEL = "w-full h-10 pl-9 pr-3 bg-white/[0.05] border border-white/[0.09] rounded-xl text-white text-sm focus:outline-none focus:border-brand/50 focus:bg-white/[0.07] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed";
+const SEL = "w-full h-10 bg-white/[0.05] border border-white/[0.09] rounded-xl text-white text-sm focus:outline-none focus:border-brand/50 focus:bg-white/[0.07] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed";
+const ICON_FIELD_STYLE = { paddingLeft: "3.25rem", paddingRight: "2.5rem" };
+const ICON_ONLY_LEFT_STYLE = { paddingLeft: "3.25rem" };
 
 export default function ConvertPage() {
   const router = useRouter();
@@ -969,7 +971,7 @@ export default function ConvertPage() {
                   </svg>
                 </div>
                 <select value={selectedPrinter} onChange={(e) => handlePrinterChange(e.target.value)}
-                  disabled={settingsDisabled} className={SEL}>
+                  disabled={settingsDisabled} className={SEL} style={ICON_FIELD_STYLE}>
                   {printers.map((p) => (
                     <option key={p.id} value={p.id}>{p.display_name}</option>
                   ))}
@@ -995,7 +997,7 @@ export default function ConvertPage() {
                     setSelectedFilament(e.target.value);
                     setSlotFilaments(prev => { const a = [...prev]; a[0] = e.target.value; return a; });
                   }}
-                  disabled={settingsDisabled} className={SEL}>
+                  disabled={settingsDisabled} className={SEL} style={ICON_FIELD_STYLE}>
                   {availableFilaments.map((f) => (
                     <option key={f} value={f}>{FILAMENT_LABELS[f] ?? f.toUpperCase()}</option>
                   ))}
@@ -1016,7 +1018,7 @@ export default function ConvertPage() {
                   </svg>
                 </div>
                 <select value={nozzleSize} onChange={(e) => setNozzleSize(parseFloat(e.target.value))}
-                  disabled={settingsDisabled} className={SEL}>
+                  disabled={settingsDisabled} className={SEL} style={ICON_FIELD_STYLE}>
                   {NOZZLE_SIZES.map((n) => (
                     <option key={n.value} value={n.value}>{n.label}</option>
                   ))}
@@ -1041,7 +1043,7 @@ export default function ConvertPage() {
                   </svg>
                 </div>
                 <select value={nozzleType} onChange={(e) => setNozzleType(e.target.value)}
-                  disabled={settingsDisabled} className={SEL}>
+                  disabled={settingsDisabled} className={SEL} style={ICON_FIELD_STYLE}>
                   {NOZZLE_TYPES.map((n) => (
                     <option key={n.value} value={n.value}>{n.label}</option>
                   ))}
@@ -1061,8 +1063,9 @@ export default function ConvertPage() {
                     <circle cx="12" cy="12" r="8" strokeWidth={1.8} strokeDasharray="2 3"/>
                   </svg>
                 </div>
-                <div className="w-full h-10 pl-9 pr-3 flex items-center bg-white/[0.03] border border-white/[0.06]
-                                rounded-xl text-sm text-zinc-500 cursor-not-allowed select-none">
+                <div className="w-full h-10 pr-3 flex items-center bg-white/[0.03] border border-white/[0.06]
+                                rounded-xl text-sm text-zinc-500 cursor-not-allowed select-none"
+                  style={ICON_ONLY_LEFT_STYLE}>
                   1.75 mm
                 </div>
               </div>
@@ -1082,7 +1085,7 @@ export default function ConvertPage() {
                   </svg>
                 </div>
                 <select value={buildPlate} onChange={(e) => setBuildPlate(e.target.value)}
-                  disabled={settingsDisabled} className={SEL}>
+                  disabled={settingsDisabled} className={SEL} style={ICON_FIELD_STYLE}>
                   {BUILD_PLATES.map((b) => (
                     <option key={b.value} value={b.value}>{b.label}</option>
                   ))}
@@ -1107,7 +1110,8 @@ export default function ConvertPage() {
                   disabled={settingsDisabled}
                   className="w-full h-10 pl-9 pr-3 bg-white/[0.05] border border-white/[0.09] rounded-xl text-white text-sm
                              focus:outline-none focus:border-brand/50 focus:bg-white/[0.07] transition-all duration-150
-                             disabled:opacity-50 disabled:cursor-not-allowed" />
+                             disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={ICON_ONLY_LEFT_STYLE} />
               </div>
             </div>
           </div>
@@ -1132,7 +1136,8 @@ export default function ConvertPage() {
                   disabled={settingsDisabled}
                   className="w-full h-10 pl-9 pr-3 bg-white/[0.05] border border-white/[0.09] rounded-xl text-white text-sm
                              focus:outline-none focus:border-brand/50 focus:bg-white/[0.07] transition-all duration-150
-                             disabled:opacity-50 disabled:cursor-not-allowed" />
+                             disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={ICON_ONLY_LEFT_STYLE} />
               </div>
             </div>
 
@@ -1149,7 +1154,7 @@ export default function ConvertPage() {
                   </svg>
                 </div>
                 <select value={fuzzySkin} onChange={(e) => setFuzzySkin(e.target.value as "none" | "outer" | "all" | "allwalls")}
-                  disabled={settingsDisabled} className={SEL}>
+                  disabled={settingsDisabled} className={SEL} style={ICON_FIELD_STYLE}>
                   <option value="none">Uit</option>
                   <option value="outer">Buitenwand</option>
                   <option value="all">Alle wanden</option>
@@ -1174,7 +1179,8 @@ export default function ConvertPage() {
                   disabled={settingsDisabled}
                   className="w-full h-10 pl-9 pr-3 bg-white/[0.05] border border-white/[0.09] rounded-xl text-white text-sm
                              focus:outline-none focus:border-brand/50 focus:bg-white/[0.07] transition-all duration-150
-                             disabled:opacity-50 disabled:cursor-not-allowed" />
+                             disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={ICON_ONLY_LEFT_STYLE} />
               </div>
             </div>
 
@@ -1196,7 +1202,8 @@ export default function ConvertPage() {
                   disabled={settingsDisabled}
                   className="w-full h-10 pl-9 pr-3 bg-white/[0.05] border border-white/[0.09] rounded-xl text-white text-sm
                              focus:outline-none focus:border-brand/50 focus:bg-white/[0.07] transition-all duration-150
-                             disabled:opacity-50 disabled:cursor-not-allowed" />
+                             disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={ICON_ONLY_LEFT_STYLE} />
               </div>
             </div>
 

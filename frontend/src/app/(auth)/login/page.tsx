@@ -316,7 +316,7 @@ export default function LoginPage() {
                   {t("login_email")}
                 </label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
+                  <span className="absolute left-4 top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center text-zinc-600 pointer-events-none">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
                         d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
@@ -337,6 +337,7 @@ export default function LoginPage() {
                                focus:outline-none focus:border-brand/50 focus:bg-white/[0.07]
                                focus:shadow-[0_0_0_3px_rgba(224,36,36,0.12)]
                                transition-all duration-150"
+                    style={{ paddingLeft: "3.25rem" }}
                   />
                 </div>
               </div>
@@ -353,7 +354,7 @@ export default function LoginPage() {
                   </Link>
                 </div>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none">
+                  <span className="absolute left-4 top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center text-zinc-600 pointer-events-none">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
                         d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
@@ -371,6 +372,7 @@ export default function LoginPage() {
                                focus:outline-none focus:border-brand/50 focus:bg-white/[0.07]
                                focus:shadow-[0_0_0_3px_rgba(224,36,36,0.12)]
                                transition-all duration-150"
+                    style={{ paddingLeft: "3.25rem", paddingRight: "3.25rem" }}
                   />
                   <button
                     type="button"
