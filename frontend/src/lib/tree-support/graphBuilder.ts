@@ -27,12 +27,12 @@ import type { TreeNode, TreeSegment, OverhangCluster, SupportConfig, NodeType } 
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const BRANCH_FRAC      = 0.55;   // trunk top at this fraction of [plateY..tipY]
-const SPLAY_MULT       = 1.20;   // outward lean multiplier for tip branches
 const MIN_XZ_SPREAD    = 3.0;    // minimum XZ displacement from parent (mm)
 const TAPER            = 0.74;   // radius multiplier per level
 const TRUNK_R_MAX      = 2.4;
 const BRANCH_R_MIN     = 0.35;
-const MIN_SEGMENT_MM   = 1.5;
+const MIN_SEGMENT_MM   = 0.25;
+const TIP_STANDOFF_MM  = 1.8;
 
 // ── Node counter ──────────────────────────────────────────────────────────────
 let _nextId = 0;
@@ -101,24 +101,31 @@ function constrainBranchY(
   return branchY;
 }
 
-/** Apply splay to a tip position so it has a visible lean from parent. */
-function splayedTip(parent: THREE.Vector3, tip: THREE.Vector3): THREE.Vector3 {
-  const dx = tip.x - parent.x;
-  const dz = tip.z - parent.z;
+/** Ensure nearby branch nodes separate slightly without overshooting their target. */
+function spreadBranchNode(parent: THREE.Vector3, target: THREE.Vector3): THREE.Vector3 {
+  const dx = target.x - parent.x;
+  const dz = target.z - parent.z;
   const d  = Math.sqrt(dx * dx + dz * dz);
 
-  let ndx = dx;
-  let ndz = dz;
+  if (d >= MIN_XZ_SPREAD) return target.clone();
+  if (d < 1e-6) return new THREE.Vector3(parent.x + MIN_XZ_SPREAD, target.y, parent.z);
 
-  if (d < MIN_XZ_SPREAD) {
-    if (d < 1e-6) { ndx = MIN_XZ_SPREAD; ndz = 0; }
-    else { const s = MIN_XZ_SPREAD / d; ndx *= s; ndz *= s; }
-  } else {
-    ndx *= SPLAY_MULT;
-    ndz *= SPLAY_MULT;
+  const s = MIN_XZ_SPREAD / d;
+  return new THREE.Vector3(parent.x + dx * s, target.y, parent.z + dz * s);
+}
+
+/** Keep the final contact segment short and mostly vertical, like slicer tips. */
+function tipApproachPoint(parent: THREE.Vector3, contact: THREE.Vector3, config: SupportConfig): THREE.Vector3 {
+  const standoff = Math.max(TIP_STANDOFF_MM, config.tipRadiusMm * 4, config.layerHeightMm * 4);
+  const minAboveParent = parent.y + Math.max(0.35, config.layerHeightMm * 2);
+  let y = contact.y - standoff;
+
+  if (y < minAboveParent) {
+    y = THREE.MathUtils.lerp(minAboveParent, contact.y, 0.55);
   }
+  y = Math.min(y, contact.y - Math.max(0.25, config.layerHeightMm));
 
-  return new THREE.Vector3(parent.x + ndx, tip.y, parent.z + ndz);
+  return new THREE.Vector3(contact.x, y, contact.z);
 }
 
 /**
@@ -223,15 +230,15 @@ export function buildGraph(
     if (n <= 3) {
       // ── Direct branches: trunk top → each tip ──────────────────────────
       for (const cl of group) {
-        const splayed = splayedTip(trunkTop.position, cl.tipPosition);
-        const tip = addNode(makeNode(splayed, config.tipRadiusMm, trunkTop.id, "tip"));
+        const contactPos = cl.tipPosition.clone();
+        const approachPos = tipApproachPoint(trunkTop.position, contactPos, config);
+        const tip = addNode(makeNode(approachPos, config.tipRadiusMm, trunkTop.id, "tip"));
         addSegment(trunkTop, tip);
 
-        // Contact node: placed at the overhang tip position.
-        // The tip node is splayed outward, so the tip→contact segment
-        // approaches the mesh from the side — collision avoider handles it.
+        // Contact node: placed at the overhang tip position. The final
+        // tip-to-contact segment stays vertical to avoid piercing the model.
         const contact = addNode(makeNode(
-          cl.tipPosition.clone(),
+          contactPos,
           config.tipRadiusMm * 0.6,
           tip.id,
           "contact",
@@ -251,8 +258,8 @@ export function buildGraph(
         const rawSubY   = branchY + (subMinY - branchY) * 0.55;
         const subY      = Math.max(Math.min(rawSubY, subMinY - 0.5), branchY + 0.5);
 
-        // Splay sub-trunk endpoint from trunk centroid
-        const splSubPos = splayedTip(
+        // Spread sub-trunk endpoint from trunk centroid without overshooting.
+        const splSubPos = spreadBranchNode(
           trunkTop.position,
           new THREE.Vector3(subCentXZ.x, subY, subCentXZ.z),
         );
@@ -264,12 +271,13 @@ export function buildGraph(
         const tipR = Math.max(subBranchR * TAPER, BRANCH_R_MIN);
 
         for (const cl of sub) {
-          const splayed = splayedTip(subTrunk.position, cl.tipPosition);
-          const tip = addNode(makeNode(splayed, tipR, subTrunk.id, "tip"));
+          const contactPos = cl.tipPosition.clone();
+          const approachPos = tipApproachPoint(subTrunk.position, contactPos, config);
+          const tip = addNode(makeNode(approachPos, tipR, subTrunk.id, "tip"));
           addSegment(subTrunk, tip);
 
           const contact = addNode(makeNode(
-            cl.tipPosition.clone(),
+            contactPos,
             config.tipRadiusMm * 0.6,
             tip.id,
             "contact",
