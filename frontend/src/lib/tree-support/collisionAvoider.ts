@@ -1,86 +1,106 @@
 /**
- * AutoSlice — Branch collision avoider (v2).
+ * AutoSlice - tree support collision pruning.
  *
- * Uses Three.js Raycaster to detect when a tree branch intersects the source
- * mesh, and inserts waypoint nodes to steer around the collision.
- *
- * Strategy
- * ────────
- * Pre-pass:
- *   For every non-root node check if the node is already inside the mesh using
- *   the ray-parity (even-odd) rule.  If so, push it out along the nearest
- *   surface normal.
- *
- * Per-segment:
- *   1. Cast a ray from start → end along the segment direction.
- *   2. If a hit is found within the segment length:
- *      a. Compute a waypoint at the hit point pushed along the outward surface
- *         normal by (collisionMarginMm × 3).
- *      b. Clamp waypoint Y to the segment Y range so we stay below the model.
- *      c. Insert the waypoint node and two replacement segments.
- *   3. Repeat up to MAX_ITERS times per segment.
+ * The preview must never draw green support members through the red model.
+ * When a generated route intersects the model before its final contact point,
+ * this module rejects that route instead of trying to bend it around the mesh.
+ * That is closer to slicer behavior and avoids ugly sideways branches.
  */
 
 import * as THREE from "three";
-import type { TreeNode, TreeSegment, GraphResult, SupportConfig } from "./types";
+import type { GraphResult, SupportConfig } from "./types";
 
-const MAX_ITERS    = 8;
-const HIT_EPSILON  = 0.3;   // mm — ignore hits this close to ray origin
+const HIT_EPSILON = 0.3;
+const CONTACT_CLEARANCE_MM = 1.2;
 const PARITY_DIRS: THREE.Vector3[] = [
-  new THREE.Vector3( 0,  1,  0),
-  new THREE.Vector3( 1,  0,  0),
-  new THREE.Vector3( 0,  0,  1),
+  new THREE.Vector3(0, 1, 0),
+  new THREE.Vector3(1, 0, 0),
+  new THREE.Vector3(0, 0, 1),
 ];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/**
- * Ray-parity inside-mesh test.
- * Casts rays in PARITY_DIRS and counts how many directions yield an odd number
- * of hits.  If the majority is odd the point is inside the mesh.
- */
 function isInsideMesh(
-  point:     THREE.Vector3,
-  meshes:    THREE.Mesh[],
+  point: THREE.Vector3,
+  meshes: THREE.Mesh[],
   raycaster: THREE.Raycaster,
 ): boolean {
-  const saved = raycaster.firstHitOnly;
+  const savedFirstHitOnly = raycaster.firstHitOnly;
+  const savedNear = raycaster.near;
+  const savedFar = raycaster.far;
+
   raycaster.firstHitOnly = false;
+  raycaster.near = 0.001;
+  raycaster.far = Infinity;
+
   let votes = 0;
   for (const dir of PARITY_DIRS) {
     raycaster.set(point, dir);
     const hits = raycaster.intersectObjects(meshes, false);
     if ((hits.length & 1) === 1) votes++;
   }
-  raycaster.firstHitOnly = saved;
+
+  raycaster.firstHitOnly = savedFirstHitOnly;
+  raycaster.near = savedNear;
+  raycaster.far = savedFar;
   return votes >= 2;
 }
 
-/**
- * Convert a face normal (object-space) to world-space.
- * Returns a unit vector pointing away from the mesh surface.
- */
-function toWorldNormal(face: THREE.Face, mesh: THREE.Mesh): THREE.Vector3 {
-  const nm = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
-  return face.normal.clone().applyMatrix3(nm).normalize();
+function removeSubtree(result: GraphResult, nodeId: number): void {
+  const stack = [nodeId];
+  const removeIds = new Set<number>();
+
+  while (stack.length > 0) {
+    const id = stack.pop()!;
+    if (removeIds.has(id)) continue;
+    removeIds.add(id);
+    const node = result.nodes.get(id);
+    if (node) stack.push(...node.childIds);
+  }
+
+  for (const id of removeIds) result.nodes.delete(id);
+
+  result.segments = result.segments.filter(
+    (seg) => !removeIds.has(seg.startNodeId) && !removeIds.has(seg.endNodeId),
+  );
+
+  for (const node of result.nodes.values()) {
+    node.childIds = node.childIds.filter((id) => !removeIds.has(id));
+    if (node.parentId !== null && removeIds.has(node.parentId)) node.parentId = null;
+  }
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
+function firstSegmentHit(
+  a: THREE.Vector3,
+  b: THREE.Vector3,
+  meshes: THREE.Mesh[],
+  raycaster: THREE.Raycaster,
+): THREE.Intersection | null {
+  const dir = b.clone().sub(a);
+  const len = dir.length();
+  if (len < 1e-6) return null;
 
-/**
- * Mutate the GraphResult in-place: insert waypoints wherever branches
- * intersect the model.
- *
- * @param result       Graph to modify (nodes + segments).
- * @param targetObject Root Object3D of the model (multi-mesh safe).
- * @param config       Support config — uses collisionMarginMm.
- */
+  const savedNear = raycaster.near;
+  const savedFar = raycaster.far;
+  const savedFirstHitOnly = raycaster.firstHitOnly;
+
+  raycaster.firstHitOnly = true;
+  raycaster.near = HIT_EPSILON;
+  raycaster.far = Math.max(HIT_EPSILON, len - HIT_EPSILON);
+  raycaster.set(a, dir.divideScalar(len));
+
+  const hits = raycaster.intersectObjects(meshes, false);
+
+  raycaster.near = savedNear;
+  raycaster.far = savedFar;
+  raycaster.firstHitOnly = savedFirstHitOnly;
+
+  return hits.length > 0 ? hits[0] : null;
+}
+
 export function avoidCollisions(
-  result:       GraphResult,
+  result: GraphResult,
   targetObject: THREE.Object3D,
-  config:       SupportConfig,
+  config: SupportConfig,
 ): void {
-  // Collect every mesh
   const meshes: THREE.Mesh[] = [];
   targetObject.traverse((child) => {
     if ((child as THREE.Mesh).isMesh) meshes.push(child as THREE.Mesh);
@@ -88,142 +108,30 @@ export function avoidCollisions(
   if (meshes.length === 0) return;
 
   const margin = Math.max(config.collisionMarginMm * 3.0, 2.0);
-
   const raycaster = new THREE.Raycaster();
-  raycaster.firstHitOnly = true;
 
-  // ── Pre-pass: push nodes that are already inside the mesh outside ──────────
+  const invalidNodeIds: number[] = [];
   for (const node of result.nodes.values()) {
-    if (node.type === "root") continue;   // build-plate root is always safe
-    if (!isInsideMesh(node.position, meshes, raycaster)) continue;
-
-    // Find the nearest exit point by casting in +Y
-    raycaster.firstHitOnly = true;
-    raycaster.set(node.position, new THREE.Vector3(0, 1, 0));
-    const hits = raycaster.intersectObjects(meshes, false);
-    if (hits.length > 0) {
-      const h = hits[0];
-      if (h.face) {
-        let wn = toWorldNormal(h.face, h.object as THREE.Mesh);
-        // Ensure normal points outward (away from interior)
-        if (wn.y < 0) wn = wn.negate();
-        node.position.copy(h.point).addScaledVector(wn, margin);
-      } else {
-        node.position.y = h.point.y + margin;
-      }
-    } else {
-      // Fallback: nudge downward below the model
-      node.position.y -= margin * 2;
-    }
+    if (node.type === "root" || node.type === "contact") continue;
+    if (isInsideMesh(node.position, meshes, raycaster)) invalidNodeIds.push(node.id);
   }
 
-  // ── Per-segment pass ───────────────────────────────────────────────────────
-  let nextNodeId = Math.max(...result.nodes.keys()) + 1;
-  let nextSegId  = result.segments.reduce(
-    (m: number, s: TreeSegment) => Math.max(m, s.id), 0,
-  ) + 1;
-
-  // Snapshot — we'll mutate result.segments during the loop
-  const originalSegments = [...result.segments];
-
-  for (const seg of originalSegments) {
-    avoidSegment(seg, result, meshes, raycaster, margin, nextNodeId, nextSegId);
-    // Recompute id counters after possible insertions
-    nextNodeId = Math.max(...result.nodes.keys()) + 1;
-    nextSegId  = result.segments.reduce(
-      (m: number, s: TreeSegment) => Math.max(m, s.id), 0,
-    ) + 1;
+  for (const id of invalidNodeIds) {
+    if (result.nodes.has(id)) removeSubtree(result, id);
   }
-}
 
-// ── Internal segment fixer ────────────────────────────────────────────────────
-
-function avoidSegment(
-  seg:        TreeSegment,
-  result:     GraphResult,
-  meshes:     THREE.Mesh[],
-  raycaster:  THREE.Raycaster,
-  margin:     number,
-  nextNodeId: number,
-  nextSegId:  number,
-): void {
-  raycaster.firstHitOnly = true;
-
-  for (let iter = 0; iter < MAX_ITERS; iter++) {
+  for (const seg of [...result.segments]) {
     const a = result.nodes.get(seg.startNodeId);
     const b = result.nodes.get(seg.endNodeId);
-    if (!a || !b) return;
+    if (!a || !b) continue;
 
-    const dir = b.position.clone().sub(a.position);
-    const len = dir.length();
-    if (len < 1e-6) return;
-    dir.divideScalar(len);
+    const hit = firstSegmentHit(a.position, b.position, meshes, raycaster);
+    if (!hit) continue;
 
-    raycaster.set(a.position, dir);
-    const hits = raycaster.intersectObjects(meshes, false);
-    if (hits.length === 0) return;
+    const len = a.position.distanceTo(b.position);
+    const allowedContactTouch =
+      b.type === "contact" && hit.distance >= len - Math.max(CONTACT_CLEARANCE_MM, margin * 0.5);
 
-    const hit = hits[0];
-    // Skip hits at the very start (rounding) or at/past the endpoint
-    if (hit.distance < HIT_EPSILON || hit.distance > len - HIT_EPSILON) return;
-
-    // ── Determine push direction from surface normal ──────────────────────
-    let pushDir: THREE.Vector3;
-    if (hit.face) {
-      pushDir = toWorldNormal(hit.face, hit.object as THREE.Mesh);
-      // If normal faces the same direction as the ray, we hit a back face —
-      // flip it so we always push outward (away from mesh interior).
-      if (pushDir.dot(dir) > 0) pushDir.negate();
-    } else {
-      // Fallback: push perpendicular to segment, horizontal plane
-      pushDir = new THREE.Vector3(-dir.z, 0, dir.x).normalize();
-    }
-
-    // ── Waypoint position ─────────────────────────────────────────────────
-    const wPos = hit.point.clone().addScaledVector(pushDir, margin);
-
-    // Clamp Y to the segment Y range so the waypoint stays below the model
-    const lo = Math.min(a.position.y, b.position.y);
-    const hi = Math.max(a.position.y, b.position.y);
-    wPos.y = Math.max(lo, Math.min(hi, wPos.y));
-
-    // ── Insert waypoint node ──────────────────────────────────────────────
-    const rMid: number = (seg.radiusStart + seg.radiusEnd) * 0.5;
-    const waypoint: TreeNode = {
-      id:       nextNodeId++,
-      position: wPos,
-      radius:   rMid,
-      parentId: a.id,
-      childIds: [b.id],
-      type:     "waypoint",
-    };
-    result.nodes.set(waypoint.id, waypoint);
-    a.childIds = a.childIds.map((id: number) => (id === b.id ? waypoint.id : id));
-    b.parentId = waypoint.id;
-
-    // ── Replace original segment with two sub-segments ───────────────────
-    const segA: TreeSegment = {
-      id:          nextSegId++,
-      startNodeId: a.id,
-      endNodeId:   waypoint.id,
-      radiusStart: seg.radiusStart,
-      radiusEnd:   rMid,
-    };
-    const segB: TreeSegment = {
-      id:          nextSegId++,
-      startNodeId: waypoint.id,
-      endNodeId:   b.id,
-      radiusStart: rMid,
-      radiusEnd:   seg.radiusEnd,
-    };
-    const idx = result.segments.indexOf(seg);
-    if (idx >= 0) {
-      result.segments.splice(idx, 1, segA, segB);
-    } else {
-      result.segments.push(segA, segB);
-    }
-
-    // Continue checking the second sub-segment
-    seg = segB;
+    if (!allowedContactTouch) removeSubtree(result, b.id);
   }
 }
