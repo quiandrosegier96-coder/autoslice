@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { STLExporter } from "three/examples/jsm/exporters/STLExporter.js";
 import { BoxSettings, effectiveHingeClearance, pinDiameter } from "./Presets";
 
 const encoder = new TextEncoder();
@@ -16,9 +15,22 @@ function downloadBlob(filename: string, blob: Blob) {
 }
 
 export function objectToStl(object: THREE.Object3D) {
-  const exporter = new STLExporter();
-  const result = exporter.parse(object, { binary: false });
-  return typeof result === "string" ? result : new TextDecoder().decode(result);
+  const triangles = collectTriangles(object);
+  const lines = ["solid AutoSlice_Hinged_Box"];
+  triangles.forEach(([a, b, c]) => {
+    const normal = new THREE.Vector3()
+      .crossVectors(new THREE.Vector3().subVectors(b, a), new THREE.Vector3().subVectors(c, a))
+      .normalize();
+    lines.push(`  facet normal ${fmt(normal.x)} ${fmt(normal.y)} ${fmt(normal.z)}`);
+    lines.push("    outer loop");
+    lines.push(`      vertex ${fmt(a.x)} ${fmt(a.y)} ${fmt(a.z)}`);
+    lines.push(`      vertex ${fmt(b.x)} ${fmt(b.y)} ${fmt(b.z)}`);
+    lines.push(`      vertex ${fmt(c.x)} ${fmt(c.y)} ${fmt(c.z)}`);
+    lines.push("    endloop");
+    lines.push("  endfacet");
+  });
+  lines.push("endsolid AutoSlice_Hinged_Box");
+  return lines.join("\n");
 }
 
 export function exportStl(filename: string, object: THREE.Object3D) {
@@ -180,10 +192,28 @@ ${build}
 }
 
 function objectToThreeMfMesh(object: THREE.Object3D) {
-  object.updateMatrixWorld(true);
+  const faces = collectTriangles(object);
   const vertices: string[] = [];
   const triangles: string[] = [];
   let vertexOffset = 0;
+
+  faces.forEach(([a, b, c]) => {
+    [a, b, c].forEach((vertex) => {
+      vertices.push(`          <vertex x="${fmt(vertex.x)}" y="${fmt(vertex.y)}" z="${fmt(vertex.z)}" />`);
+    });
+    triangles.push(`          <triangle v1="${vertexOffset}" v2="${vertexOffset + 1}" v3="${vertexOffset + 2}" />`);
+    vertexOffset += 3;
+  });
+
+  return {
+    vertices: vertices.join("\n"),
+    triangles: triangles.join("\n"),
+  };
+}
+
+function collectTriangles(object: THREE.Object3D) {
+  object.updateMatrixWorld(true);
+  const triangles: Array<[THREE.Vector3, THREE.Vector3, THREE.Vector3]> = [];
 
   object.traverse((child) => {
     const mesh = child as THREE.Mesh;
@@ -191,7 +221,6 @@ function objectToThreeMfMesh(object: THREE.Object3D) {
 
     const geometry = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone();
     const position = geometry.getAttribute("position");
-    const normal = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
     const a = new THREE.Vector3();
     const b = new THREE.Vector3();
     const c = new THREE.Vector3();
@@ -201,24 +230,19 @@ function objectToThreeMfMesh(object: THREE.Object3D) {
       b.fromBufferAttribute(position, i + 1).applyMatrix4(mesh.matrixWorld);
       c.fromBufferAttribute(position, i + 2).applyMatrix4(mesh.matrixWorld);
 
-      const ab = new THREE.Vector3().subVectors(b, a);
-      const ac = new THREE.Vector3().subVectors(c, a);
-      const cross = new THREE.Vector3().crossVectors(ab, ac).applyMatrix3(normal);
-      const order = cross.lengthSq() > 0 && cross.y < 0 ? [a, c, b] : [a, b, c];
-
-      order.forEach((vertex) => {
-        vertices.push(`          <vertex x="${fmt(vertex.x)}" y="${fmt(vertex.y)}" z="${fmt(vertex.z)}" />`);
-      });
-      triangles.push(`          <triangle v1="${vertexOffset}" v2="${vertexOffset + 1}" v3="${vertexOffset + 2}" />`);
-      vertexOffset += 3;
+      const av = toSlicerCoordinates(a);
+      const bv = toSlicerCoordinates(b);
+      const cv = toSlicerCoordinates(c);
+      triangles.push([av, bv, cv]);
     }
     geometry.dispose();
   });
 
-  return {
-    vertices: vertices.join("\n"),
-    triangles: triangles.join("\n"),
-  };
+  return triangles;
+}
+
+function toSlicerCoordinates(vertex: THREE.Vector3) {
+  return new THREE.Vector3(vertex.x, -vertex.z, vertex.y);
 }
 
 function fmt(value: number) {
