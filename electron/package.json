@@ -60,8 +60,6 @@
         }
       ],
       "icon": "assets/icon.ico",
-      "sign": null,
-      "signingHashAlgorithms": null,
       "forceCodeSigning": false
     },
     "nsis": {
@@ -80,8 +78,8 @@
     ]
   },
   "devDependencies": {
-    "electron": "^33.0.0",
-    "electron-builder": "^24.13.3"
+    "electron": "43.1.1",
+    "electron-builder": "26.15.3"
   },
   "dependencies": {
     "electron-updater": "^6.8.3"
