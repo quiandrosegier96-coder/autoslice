@@ -1,6 +1,6 @@
 "use client";
 
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { useMemo, useRef, useState } from "react";
 import * as THREE from "three";
@@ -48,15 +48,36 @@ function Preview({ box, lid, spacing }: { box: THREE.Group; lid: THREE.Group; sp
   return <primitive object={preview} />;
 }
 
-function Plate({ x, label }: { x: number; label: string }) {
+function PreviewCamera({ spacing, plateSize, maxPartHeight }: { spacing: number; plateSize: number; maxPartHeight: number }) {
+  const { camera, controls } = useThree();
+
+  useMemo(() => {
+    const cam = camera as THREE.PerspectiveCamera;
+    const target = new THREE.Vector3(0, maxPartHeight * 0.35, 0);
+    const distance = Math.max(spacing * 0.95, plateSize * 1.25, 260);
+    cam.position.set(0, distance * 0.62, distance * 0.86);
+    cam.lookAt(target);
+    cam.near = 0.1;
+    cam.far = distance * 5;
+    cam.fov = 38;
+    cam.updateProjectionMatrix();
+    const orbit = controls as { target?: THREE.Vector3; update?: () => void } | undefined;
+    orbit?.target?.copy(target);
+    orbit?.update?.();
+  }, [camera, controls, spacing, plateSize, maxPartHeight]);
+
+  return null;
+}
+
+function Plate({ x, label, size }: { x: number; label: string; size: number }) {
   return (
     <group position={[x, 0, 0]}>
-      <gridHelper args={[180, 18, "#1d2550", "#141a36"]} position={[0, -0.05, 0]} />
+      <gridHelper args={[size, Math.max(12, Math.round(size / 10)), "#1d2550", "#141a36"]} position={[0, -0.05, 0]} />
       <mesh position={[0, -0.08, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[180, 180]} />
+        <planeGeometry args={[size, size]} />
         <meshStandardMaterial color="#080a12" transparent opacity={0.34} />
       </mesh>
-      <sprite position={[-72, 0.5, -78]} scale={[28, 8, 1]}>
+      <sprite position={[-size * 0.38, 0.5, -size * 0.43]} scale={[28, 8, 1]}>
         <spriteMaterial map={makeLabelTexture(label)} transparent />
       </sprite>
     </group>
@@ -170,6 +191,8 @@ export default function HingedBoxGenerator() {
     return { box: box.group, lid: lid.group, boxExport: boxGroup, lidExport: lidGroup };
   }, [settings]);
   const plateSpacing = Math.max(220, Math.max(settings.length, settings.width) * 1.45);
+  const plateSize = Math.max(190, Math.max(settings.length, settings.width) * 1.45);
+  const maxPartHeight = Math.max(settings.height, settings.lidThickness + settings.lidLipHeight + settings.hingeDiameter);
 
   const issues = useMemo(() => validateSettings(settings), [settings]);
 
@@ -340,16 +363,17 @@ export default function HingedBoxGenerator() {
 
           <div className="relative h-[520px] border-b border-white/[0.06]">
             <div className="pointer-events-none absolute z-10 flex w-full justify-center gap-16 pt-4 text-[11px] font-black uppercase tracking-[0.22em] text-zinc-500">
-              <span className="rounded-md border border-white/[0.08] bg-black/45 px-3 py-1">Printplaat 1 · Box</span>
-              <span className="rounded-md border border-white/[0.08] bg-black/45 px-3 py-1">Printplaat 2 · Lid</span>
+              <span className="rounded-md border border-white/[0.08] bg-black/45 px-3 py-1">Printplaat 1 - Box</span>
+              <span className="rounded-md border border-white/[0.08] bg-black/45 px-3 py-1">Printplaat 2 - Lid</span>
             </div>
-            <Canvas camera={{ position: [130, 90, 150], fov: 42 }} gl={{ antialias: true }} shadows>
+            <Canvas camera={{ position: [0, 180, 250], fov: 38 }} gl={{ antialias: true }} shadows>
               <color attach="background" args={["#111113"]} />
               <ambientLight intensity={0.45} />
               <directionalLight position={[100, 160, 80]} intensity={1.45} castShadow />
               <directionalLight position={[-80, 50, -70]} intensity={0.32} />
-              <Plate x={-plateSpacing / 2} label="BOX" />
-              <Plate x={plateSpacing / 2} label="LID" />
+              <PreviewCamera spacing={plateSpacing} plateSize={plateSize} maxPartHeight={maxPartHeight} />
+              <Plate x={-plateSpacing / 2} label="BOX" size={plateSize} />
+              <Plate x={plateSpacing / 2} label="LID" size={plateSize} />
               <Preview box={built.box} lid={built.lid} spacing={plateSpacing} />
               <OrbitControls makeDefault enableDamping />
             </Canvas>
