@@ -46,6 +46,17 @@ function IconGear() {
   );
 }
 
+function IconTools() {
+  return (
+    <svg className="w-[17px] h-[17px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M14.7 6.3a3 3 0 01-4.2 4.2l-5.8 5.8a2 2 0 102.8 2.8l5.8-5.8a3 3 0 014.2-4.2l2-2-2.8-2.8-2 2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M4 4l4 4m9 9l3 3" />
+    </svg>
+  );
+}
+
 function IconShield() {
   return (
     <svg className="w-[17px] h-[17px] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -334,6 +345,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/convert",   label: t("nav_convert"),   icon: <IconBolt />,   show: true },
     { href: "/history",   label: t("nav_history"),   icon: <IconClock />,  show: siteCfg === null || siteCfg.nav_history },
     { href: "/community", label: t("nav_community"), icon: <IconUsers />,  show: siteCfg === null || siteCfg.nav_community },
+    { href: "/tools/hinged-box", label: "Tools",      icon: <IconTools />,  show: true },
     { href: "/settings",  label: "Instellingen",     icon: <IconGear />,   show: siteCfg === null || siteCfg.nav_settings },
     ...(admin ? [{ href: "/admin", label: t("nav_admin"), icon: <IconShield />, show: true }] : []),
   ];
