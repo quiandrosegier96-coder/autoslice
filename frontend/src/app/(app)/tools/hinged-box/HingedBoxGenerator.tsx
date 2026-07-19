@@ -338,7 +338,11 @@ export default function HingedBoxGenerator() {
             </div>
           </div>
 
-          <div className="h-[520px] border-b border-white/[0.06]">
+          <div className="relative h-[520px] border-b border-white/[0.06]">
+            <div className="pointer-events-none absolute z-10 flex w-full justify-center gap-16 pt-4 text-[11px] font-black uppercase tracking-[0.22em] text-zinc-500">
+              <span className="rounded-md border border-white/[0.08] bg-black/45 px-3 py-1">Printplaat 1 · Box</span>
+              <span className="rounded-md border border-white/[0.08] bg-black/45 px-3 py-1">Printplaat 2 · Lid</span>
+            </div>
             <Canvas camera={{ position: [130, 90, 150], fov: 42 }} gl={{ antialias: true }} shadows>
               <color attach="background" args={["#111113"]} />
               <ambientLight intensity={0.45} />
