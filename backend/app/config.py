@@ -4,8 +4,10 @@ AutoSlice — Application configuration.
 
 import os
 import sys
+from typing import Annotated, Any
 from pathlib import Path
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 # When frozen with PyInstaller sys.executable is the .exe itself;
@@ -27,7 +29,11 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 200
 
     # CORS
-    allowed_origins: list[str] = ["http://localhost:3000"]
+    allowed_origins: Annotated[list[str], NoDecode] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+    coolify_fqdn: str | None = None
 
     # Data — override with AUTOSLICE_DATA_DIR when running from installer
     @property
@@ -59,6 +65,42 @@ class Settings(BaseSettings):
     from_email: str = "admin@autoslice.be"
     from_name: str = "Autoslice"
     app_base_url: str = "http://localhost:3000"
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def parse_allowed_origins(cls, value: Any) -> Any:
+        if not isinstance(value, str):
+            return value
+        value = value.strip()
+        if not value:
+            return []
+        if value.startswith("["):
+            import json
+
+            return json.loads(value)
+        return [origin.strip() for origin in value.split(",") if origin.strip()]
+
+    @property
+    def cors_origins(self) -> list[str]:
+        origins = list(self.allowed_origins)
+        if self.coolify_fqdn:
+            origins.extend(self._origins_from_fqdn(self.coolify_fqdn))
+        return list(dict.fromkeys(self._normalize_origin(origin) for origin in origins if origin))
+
+    @staticmethod
+    def _origins_from_fqdn(value: str) -> list[str]:
+        return [part.strip() for part in value.split(",") if part.strip()]
+
+    @staticmethod
+    def _normalize_origin(origin: str) -> str:
+        origin = origin.strip().strip('"').strip("'").rstrip("/")
+        if not origin:
+            return origin
+        if origin.startswith("http://") or origin.startswith("https://"):
+            return origin
+        if origin.startswith("localhost") or origin.startswith("127.0.0.1"):
+            return f"http://{origin}"
+        return f"https://{origin}"
 
     @property
     def max_upload_bytes(self) -> int:
