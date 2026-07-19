@@ -26,26 +26,65 @@ type HistoryState = {
   future: BoxSettings[];
 };
 
-function Preview({ box, lid }: { box: THREE.Group; lid: THREE.Group }) {
+function alignToPlate(object: THREE.Object3D) {
+  object.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(object);
+  object.position.y -= box.min.y;
+}
+
+function Preview({ box, lid, spacing }: { box: THREE.Group; lid: THREE.Group; spacing: number }) {
   const preview = useMemo(() => {
     const group = new THREE.Group();
     const boxClone = box.clone(true);
     const lidClone = lid.clone(true);
-    boxClone.position.x = -8;
-    lidClone.position.x = 8;
-    lidClone.position.y = 18;
-    lidClone.rotation.x = -0.65;
+    boxClone.position.x = -spacing / 2;
+    lidClone.position.x = spacing / 2;
+    alignToPlate(boxClone);
+    alignToPlate(lidClone);
     group.add(boxClone, lidClone);
     return group;
-  }, [box, lid]);
+  }, [box, lid, spacing]);
 
   return <primitive object={preview} />;
 }
 
-function Plate() {
+function Plate({ x, label }: { x: number; label: string }) {
   return (
-    <gridHelper args={[260, 26, "#1d2550", "#141a36"]} position={[0, -0.05, 0]} />
+    <group position={[x, 0, 0]}>
+      <gridHelper args={[180, 18, "#1d2550", "#141a36"]} position={[0, -0.05, 0]} />
+      <mesh position={[0, -0.08, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[180, 180]} />
+        <meshStandardMaterial color="#080a12" transparent opacity={0.34} />
+      </mesh>
+      <sprite position={[-72, 0.5, -78]} scale={[28, 8, 1]}>
+        <spriteMaterial map={makeLabelTexture(label)} transparent />
+      </sprite>
+    </group>
   );
+}
+
+const labelTextureCache = new Map<string, THREE.CanvasTexture>();
+
+function makeLabelTexture(label: string) {
+  const cached = labelTextureCache.get(label);
+  if (cached) return cached;
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "rgba(10,12,20,0.86)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "rgba(255,255,255,0.16)";
+    ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+    ctx.fillStyle = "#e4e4e7";
+    ctx.font = "700 42px Arial";
+    ctx.fillText(label, 34, 78);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  labelTextureCache.set(label, texture);
+  return texture;
 }
 
 function Field({
@@ -130,6 +169,7 @@ export default function HingedBoxGenerator() {
     lidRef.current = lidGroup;
     return { box: box.group, lid: lid.group, boxExport: boxGroup, lidExport: lidGroup };
   }, [settings]);
+  const plateSpacing = Math.max(220, Math.max(settings.length, settings.width) * 1.45);
 
   const issues = useMemo(() => validateSettings(settings), [settings]);
 
@@ -304,8 +344,9 @@ export default function HingedBoxGenerator() {
               <ambientLight intensity={0.45} />
               <directionalLight position={[100, 160, 80]} intensity={1.45} castShadow />
               <directionalLight position={[-80, 50, -70]} intensity={0.32} />
-              <Plate />
-              <Preview box={built.box} lid={built.lid} />
+              <Plate x={-plateSpacing / 2} label="BOX" />
+              <Plate x={plateSpacing / 2} label="LID" />
+              <Preview box={built.box} lid={built.lid} spacing={plateSpacing} />
               <OrbitControls makeDefault enableDamping />
             </Canvas>
           </div>
