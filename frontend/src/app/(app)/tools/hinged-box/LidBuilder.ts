@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { LID_MATERIAL, MeshBuild, addBox } from "./GeometryUtils";
+import { LID_MATERIAL, MeshBuild, addBox, addRing } from "./GeometryUtils";
 import { BoxSettings } from "./Presets";
 import { buildHinges } from "./HingeBuilder";
 import { buildLatch } from "./LatchBuilder";
@@ -19,10 +19,16 @@ export function buildLid(settings: BoxSettings): MeshBuild {
   if (lipHeight > 0) {
     const lipL = settings.length - settings.wall * 2 - settings.tolerance * 2;
     const lipW = settings.width - settings.wall * 2 - settings.tolerance * 2;
-    addBox(group, meshes, [lipL, lipHeight, settings.wall], [0, -lipHeight / 2, lipW / 2], LID_MATERIAL, "lid-back-lip", Math.min(settings.radius, settings.wall));
-    addBox(group, meshes, [lipL, lipHeight, settings.wall], [0, -lipHeight / 2, -lipW / 2], LID_MATERIAL, "lid-front-lip", Math.min(settings.radius, settings.wall));
-    addBox(group, meshes, [settings.wall, lipHeight, lipW], [-lipL / 2, -lipHeight / 2, 0], LID_MATERIAL, "lid-left-lip", Math.min(settings.radius, settings.wall));
-    addBox(group, meshes, [settings.wall, lipHeight, lipW], [lipL / 2, -lipHeight / 2, 0], LID_MATERIAL, "lid-right-lip", Math.min(settings.radius, settings.wall));
+    addRing(
+      group,
+      meshes,
+      [lipL + settings.wall * 2, lipHeight, lipW + settings.wall * 2],
+      settings.wall,
+      [0, -lipHeight, 0],
+      LID_MATERIAL,
+      "lid-lip-shell",
+      Math.max(0, settings.radius - settings.wall),
+    );
   }
 
   if (settings.ribs) {

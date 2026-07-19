@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { RED_MATERIAL, MeshBuild, addBox } from "./GeometryUtils";
+import { RED_MATERIAL, MeshBuild, addBox, addRing } from "./GeometryUtils";
 import { BoxSettings } from "./Presets";
 import { buildDividers } from "./DividerBuilder";
 import { buildHinges } from "./HingeBuilder";
@@ -10,15 +10,19 @@ export function buildBox(settings: BoxSettings): MeshBuild {
   group.name = "Box";
   const meshes: THREE.Mesh[] = [];
   const wall = settings.wall;
-  const innerL = settings.length - wall * 2;
-  const innerW = settings.width - wall * 2;
   const bodyH = settings.height;
 
   addBox(group, meshes, [settings.length, settings.bottom, settings.width], [0, settings.bottom / 2, 0], RED_MATERIAL, "box-bottom", settings.radius);
-  addBox(group, meshes, [settings.length, bodyH, wall], [0, bodyH / 2, settings.width / 2 - wall / 2], RED_MATERIAL, "box-back-wall", Math.min(settings.radius, wall));
-  addBox(group, meshes, [settings.length, bodyH, wall], [0, bodyH / 2, -settings.width / 2 + wall / 2], RED_MATERIAL, "box-front-wall", Math.min(settings.radius, wall));
-  addBox(group, meshes, [wall, bodyH, innerW], [-settings.length / 2 + wall / 2, bodyH / 2, 0], RED_MATERIAL, "box-left-wall", Math.min(settings.radius, wall));
-  addBox(group, meshes, [wall, bodyH, innerW], [settings.length / 2 - wall / 2, bodyH / 2, 0], RED_MATERIAL, "box-right-wall", Math.min(settings.radius, wall));
+  addRing(
+    group,
+    meshes,
+    [settings.length, Math.max(wall, bodyH - settings.bottom), settings.width],
+    wall,
+    [0, settings.bottom, 0],
+    RED_MATERIAL,
+    "box-wall-shell",
+    settings.radius,
+  );
 
   if (settings.feet) {
     const foot = Math.max(6, settings.radius * 0.9);

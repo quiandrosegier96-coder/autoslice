@@ -42,6 +42,24 @@ export function roundedBoxGeometry(width: number, height: number, depth: number,
   return geometry;
 }
 
+export function roundedRingGeometry(width: number, height: number, depth: number, wall: number, radius: number, segments = 8) {
+  const outer = roundedRectShape(width, depth, Math.min(radius, width / 2 - 0.1, depth / 2 - 0.1));
+  const innerWidth = Math.max(1, width - wall * 2);
+  const innerDepth = Math.max(1, depth - wall * 2);
+  const innerRadius = Math.max(0, Math.min(radius - wall, innerWidth / 2 - 0.1, innerDepth / 2 - 0.1));
+  const hole = roundedRectShape(innerWidth, innerDepth, innerRadius);
+  outer.holes.push(hole);
+  const geometry = new THREE.ExtrudeGeometry(outer, {
+    depth: height,
+    bevelEnabled: false,
+    curveSegments: segments,
+  });
+  geometry.rotateX(Math.PI / 2);
+  geometry.translate(0, height / 2, 0);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 export function roundedRectShape(width: number, depth: number, radius: number) {
   const x = -width / 2;
   const y = -depth / 2;
@@ -97,6 +115,24 @@ export function addBox(
   const geometry = radius > 0
     ? roundedBoxGeometry(size[0], size[1], size[2], radius)
     : new THREE.BoxGeometry(size[0], size[1], size[2]);
+  const mesh = makeMesh(geometry, material, name);
+  mesh.position.set(position[0], position[1], position[2]);
+  group.add(mesh);
+  meshes.push(mesh);
+  return mesh;
+}
+
+export function addRing(
+  group: THREE.Group,
+  meshes: THREE.Mesh[],
+  size: [number, number, number],
+  wall: number,
+  position: [number, number, number],
+  material: THREE.Material,
+  name: string,
+  radius = 0,
+) {
+  const geometry = roundedRingGeometry(size[0], size[1], size[2], wall, radius);
   const mesh = makeMesh(geometry, material, name);
   mesh.position.set(position[0], position[1], position[2]);
   group.add(mesh);
