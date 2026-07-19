@@ -1,12 +1,12 @@
 {
   "name": "autoslice-frontend",
-  "version": "1.5.53",
+  "version": "1.5.54",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next typegen && tsc --noEmit",
+    "lint": "tsc -p tsconfig.lint.json --noEmit --incremental false",
     "build:mobile": "cross-env NEXT_PUBLIC_API_BASE=http://178.117.208.226:8000 NEXT_MOBILE=1 next build",
     "cap:sync": "npx cap sync android",
     "cap:open": "npx cap open android"

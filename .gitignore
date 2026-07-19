@@ -17,6 +17,7 @@ backend/output/
 node_modules/
 .next/
 frontend/.next/
+*.tsbuildinfo
 
 # OS
 .DS_Store
