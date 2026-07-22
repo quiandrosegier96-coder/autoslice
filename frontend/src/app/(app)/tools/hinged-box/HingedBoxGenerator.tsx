@@ -376,7 +376,7 @@ export default function HingedBoxGenerator() {
           <div className="flex flex-col gap-3 border-b border-white/[0.06] p-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-zinc-300">Live preview</h2>
-              <p className="mt-1 text-xs text-zinc-500">Box en lid worden apart getoond, inclusief passende scharnierdelen.</p>
+              <p className="mt-1 text-xs text-zinc-500">Box en lid staan in twee aparte printplaat-viewers met passende scharnierdelen.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button onClick={exportBox} className="h-9 rounded-lg border border-white/[0.08] px-3 text-sm font-semibold text-zinc-200">Export Box STL</button>

@@ -20,6 +20,14 @@ const nextConfig: NextConfig = {
         async headers() {
           return [
             {
+              source: "/tools/hinged-box",
+              headers: [
+                { key: "Cache-Control", value: "no-store, no-cache, must-revalidate" },
+                { key: "Pragma", value: "no-cache" },
+                { key: "Expires", value: "0" },
+              ],
+            },
+            {
               source: "/(login|register|forgot-password|reset-password)",
               headers: [
                 { key: "Cache-Control", value: "no-store, no-cache, must-revalidate" },
