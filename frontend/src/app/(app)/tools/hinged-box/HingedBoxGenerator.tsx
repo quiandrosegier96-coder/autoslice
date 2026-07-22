@@ -49,13 +49,13 @@ function PartCamera({
     const footprint = Math.max(partSize.x, partSize.z);
     const target = new THREE.Vector3(partCenter.x, Math.max(6, partSize.y * 0.22), partCenter.z);
     const distance = Math.max(320, plateSize * 2.25, footprint * 2.35);
-    const worldWidth = Math.max(plateSize * 1.35, partSize.x * 1.85, partSize.z * 1.85);
-    const worldHeight = Math.max(plateSize * 1.12, (partSize.x + partSize.z) * 0.88 + partSize.y * 2.15);
+    const worldWidth = Math.max(plateSize * 1.52, partSize.x * 2.15, partSize.z * 2.15);
+    const worldHeight = Math.max(plateSize * 1.3, (partSize.x + partSize.z) * 1.05 + partSize.y * 2.35);
     cam.position.set(distance * 0.58, distance * 0.62, distance * 0.78);
     cam.lookAt(target);
     cam.near = 0.1;
     cam.far = 2000;
-    cam.zoom = THREE.MathUtils.clamp(Math.min(size.width / worldWidth, size.height / worldHeight) * 0.76, 0.35, 3.2);
+    cam.zoom = THREE.MathUtils.clamp(Math.min(size.width / worldWidth, size.height / worldHeight) * 0.68, 0.28, 2.8);
     cam.updateProjectionMatrix();
     const orbit = controls as { target?: THREE.Vector3; update?: () => void } | undefined;
     orbit?.target?.copy(target);
@@ -393,7 +393,7 @@ export default function HingedBoxGenerator() {
             </div>
           </div>
 
-          <div className="grid h-[520px] gap-3 border-b border-white/[0.06] p-3 lg:grid-cols-2">
+          <div className="grid h-[520px] gap-3 border-b border-white/[0.06] p-3 md:grid-cols-2">
             <PartViewport
               title="Printplaat 1 - Box"
               object={built.box}

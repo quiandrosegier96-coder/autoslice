@@ -9,7 +9,9 @@ export function buildDividers(settings: BoxSettings): MeshBuild {
 
   const innerLength = settings.length - settings.wall * 2 - settings.tolerance;
   const innerWidth = settings.width - settings.wall * 2 - settings.tolerance;
-  const h = Math.max(4, settings.height - settings.bottom - settings.wall * 1.5);
+  const topClearance = Math.max(settings.wall * 3.5, settings.lidLipHeight + settings.tolerance + settings.nozzle + 2, 8);
+  const dividerTop = Math.max(settings.bottom + 4, settings.height - topClearance);
+  const h = Math.max(4, dividerTop - settings.bottom);
   const y = settings.bottom + h / 2;
   const t = settings.dividerThickness;
 
