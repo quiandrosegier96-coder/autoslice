@@ -32,25 +32,35 @@ function alignToPlate(object: THREE.Object3D) {
   object.position.y -= box.min.y;
 }
 
-function PartCamera({ plateSize, maxPartHeight }: { plateSize: number; maxPartHeight: number }) {
+function PartCamera({
+  object,
+  plateSize,
+}: {
+  object: THREE.Group;
+  plateSize: number;
+}) {
   const { camera, controls, size } = useThree();
 
   useEffect(() => {
     const cam = camera as THREE.OrthographicCamera;
-    const target = new THREE.Vector3(0, maxPartHeight * 0.22, 0);
-    const distance = Math.max(260, plateSize * 1.8);
-    const worldWidth = plateSize * 1.08;
-    const worldHeight = plateSize * 0.92 + maxPartHeight * 1.25;
+    const bounds = new THREE.Box3().setFromObject(object);
+    const partSize = bounds.getSize(new THREE.Vector3());
+    const partCenter = bounds.getCenter(new THREE.Vector3());
+    const footprint = Math.max(partSize.x, partSize.z);
+    const target = new THREE.Vector3(partCenter.x, Math.max(6, partSize.y * 0.22), partCenter.z);
+    const distance = Math.max(320, plateSize * 2.25, footprint * 2.35);
+    const worldWidth = Math.max(plateSize * 1.35, partSize.x * 1.85, partSize.z * 1.85);
+    const worldHeight = Math.max(plateSize * 1.12, (partSize.x + partSize.z) * 0.88 + partSize.y * 2.15);
     cam.position.set(distance * 0.58, distance * 0.62, distance * 0.78);
     cam.lookAt(target);
     cam.near = 0.1;
     cam.far = 2000;
-    cam.zoom = Math.max(1.4, Math.min(size.width / worldWidth, size.height / worldHeight) * 0.95);
+    cam.zoom = THREE.MathUtils.clamp(Math.min(size.width / worldWidth, size.height / worldHeight) * 0.76, 0.35, 3.2);
     cam.updateProjectionMatrix();
     const orbit = controls as { target?: THREE.Vector3; update?: () => void } | undefined;
     orbit?.target?.copy(target);
     orbit?.update?.();
-  }, [camera, controls, size.width, size.height, plateSize, maxPartHeight]);
+  }, [camera, controls, object, size.width, size.height, plateSize]);
 
   return null;
 }
@@ -84,12 +94,10 @@ function PartViewport({
   title,
   object,
   plateSize,
-  maxPartHeight,
 }: {
   title: string;
   object: THREE.Group;
   plateSize: number;
-  maxPartHeight: number;
 }) {
   return (
     <div className="relative min-h-0 overflow-hidden rounded-xl border border-white/[0.07] bg-[#0d0d10]">
@@ -101,10 +109,10 @@ function PartViewport({
         <ambientLight intensity={0.48} />
         <directionalLight position={[100, 160, 80]} intensity={1.45} castShadow />
         <directionalLight position={[-80, 50, -70]} intensity={0.32} />
-        <PartCamera plateSize={plateSize} maxPartHeight={maxPartHeight} />
+        <PartCamera object={object} plateSize={plateSize} />
         <Plate label={title.includes("Box") ? "BOX" : "LID"} size={plateSize} />
         <PartModel object={object} />
-        <OrbitControls makeDefault enableDamping enablePan={false} minZoom={1.1} maxZoom={8} />
+        <OrbitControls makeDefault enableDamping enablePan={false} minZoom={0.35} maxZoom={8} />
       </Canvas>
     </div>
   );
@@ -216,8 +224,7 @@ export default function HingedBoxGenerator() {
     lidRef.current = lidGroup;
     return { box: box.group, lid: lid.group, boxExport: boxGroup, lidExport: lidGroup };
   }, [settings]);
-  const plateSize = Math.max(190, Math.max(settings.length, settings.width) * 1.45);
-  const maxPartHeight = Math.max(settings.height, settings.lidThickness + settings.lidLipHeight + settings.hingeDiameter);
+  const plateSize = Math.max(230, Math.max(settings.length, settings.width) * 1.8);
 
   const issues = useMemo(() => validateSettings(settings), [settings]);
 
@@ -391,13 +398,11 @@ export default function HingedBoxGenerator() {
               title="Printplaat 1 - Box"
               object={built.box}
               plateSize={plateSize}
-              maxPartHeight={settings.height}
             />
             <PartViewport
               title="Printplaat 2 - Lid"
               object={built.lid}
               plateSize={plateSize}
-              maxPartHeight={maxPartHeight}
             />
           </div>
 
