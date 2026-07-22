@@ -2,7 +2,7 @@
 
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { buildBox } from "./BoxBuilder";
 import { buildLid } from "./LidBuilder";
@@ -32,48 +32,32 @@ function alignToPlate(object: THREE.Object3D) {
   object.position.y -= box.min.y;
 }
 
-function Preview({ box, lid, spacing }: { box: THREE.Group; lid: THREE.Group; spacing: number }) {
-  const preview = useMemo(() => {
-    const group = new THREE.Group();
-    const boxClone = box.clone(true);
-    const lidClone = lid.clone(true);
-    boxClone.position.x = -spacing / 2;
-    lidClone.position.x = spacing / 2;
-    alignToPlate(boxClone);
-    alignToPlate(lidClone);
-    group.add(boxClone, lidClone);
-    return group;
-  }, [box, lid, spacing]);
-
-  return <primitive object={preview} />;
-}
-
-function PreviewCamera({ spacing, plateSize, maxPartHeight }: { spacing: number; plateSize: number; maxPartHeight: number }) {
+function PartCamera({ plateSize, maxPartHeight }: { plateSize: number; maxPartHeight: number }) {
   const { camera, controls, size } = useThree();
 
-  useMemo(() => {
+  useEffect(() => {
     const cam = camera as THREE.OrthographicCamera;
     const target = new THREE.Vector3(0, maxPartHeight * 0.22, 0);
-    const distance = 420;
-    const worldWidth = spacing + plateSize * 1.18;
-    const worldHeight = plateSize * 1.08 + maxPartHeight * 1.2;
-    cam.position.set(0, distance * 0.68, distance * 0.78);
+    const distance = Math.max(260, plateSize * 1.8);
+    const worldWidth = plateSize * 1.08;
+    const worldHeight = plateSize * 0.92 + maxPartHeight * 1.25;
+    cam.position.set(distance * 0.58, distance * 0.62, distance * 0.78);
     cam.lookAt(target);
     cam.near = 0.1;
     cam.far = 2000;
-    cam.zoom = Math.max(1.2, Math.min(size.width / worldWidth, size.height / worldHeight) * 0.86);
+    cam.zoom = Math.max(1.4, Math.min(size.width / worldWidth, size.height / worldHeight) * 0.95);
     cam.updateProjectionMatrix();
     const orbit = controls as { target?: THREE.Vector3; update?: () => void } | undefined;
     orbit?.target?.copy(target);
     orbit?.update?.();
-  }, [camera, controls, size.width, size.height, spacing, plateSize, maxPartHeight]);
+  }, [camera, controls, size.width, size.height, plateSize, maxPartHeight]);
 
   return null;
 }
 
-function Plate({ x, label, size }: { x: number; label: string; size: number }) {
+function Plate({ label, size }: { label: string; size: number }) {
   return (
-    <group position={[x, 0, 0]}>
+    <group>
       <gridHelper args={[size, Math.max(12, Math.round(size / 10)), "#1d2550", "#141a36"]} position={[0, -0.05, 0]} />
       <mesh position={[0, -0.08, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[size, size]} />
@@ -83,6 +67,46 @@ function Plate({ x, label, size }: { x: number; label: string; size: number }) {
         <spriteMaterial map={makeLabelTexture(label)} transparent />
       </sprite>
     </group>
+  );
+}
+
+function PartModel({ object }: { object: THREE.Group }) {
+  const clone = useMemo(() => {
+    const next = object.clone(true);
+    alignToPlate(next);
+    return next;
+  }, [object]);
+
+  return <primitive object={clone} />;
+}
+
+function PartViewport({
+  title,
+  object,
+  plateSize,
+  maxPartHeight,
+}: {
+  title: string;
+  object: THREE.Group;
+  plateSize: number;
+  maxPartHeight: number;
+}) {
+  return (
+    <div className="relative min-h-0 overflow-hidden rounded-xl border border-white/[0.07] bg-[#0d0d10]">
+      <div className="pointer-events-none absolute left-4 top-4 z-10 rounded-md border border-white/[0.08] bg-black/55 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-400">
+        {title}
+      </div>
+      <Canvas orthographic camera={{ position: [180, 170, 220], zoom: 2.4 }} gl={{ antialias: true }} shadows>
+        <color attach="background" args={["#111113"]} />
+        <ambientLight intensity={0.48} />
+        <directionalLight position={[100, 160, 80]} intensity={1.45} castShadow />
+        <directionalLight position={[-80, 50, -70]} intensity={0.32} />
+        <PartCamera plateSize={plateSize} maxPartHeight={maxPartHeight} />
+        <Plate label={title.includes("Box") ? "BOX" : "LID"} size={plateSize} />
+        <PartModel object={object} />
+        <OrbitControls makeDefault enableDamping enablePan={false} minZoom={1.1} maxZoom={8} />
+      </Canvas>
+    </div>
   );
 }
 
@@ -192,7 +216,6 @@ export default function HingedBoxGenerator() {
     lidRef.current = lidGroup;
     return { box: box.group, lid: lid.group, boxExport: boxGroup, lidExport: lidGroup };
   }, [settings]);
-  const plateSpacing = Math.max(220, Math.max(settings.length, settings.width) * 1.45);
   const plateSize = Math.max(190, Math.max(settings.length, settings.width) * 1.45);
   const maxPartHeight = Math.max(settings.height, settings.lidThickness + settings.lidLipHeight + settings.hingeDiameter);
 
@@ -363,22 +386,19 @@ export default function HingedBoxGenerator() {
             </div>
           </div>
 
-          <div className="relative h-[520px] border-b border-white/[0.06]">
-            <div className="pointer-events-none absolute z-10 flex w-full justify-center gap-16 pt-4 text-[11px] font-black uppercase tracking-[0.22em] text-zinc-500">
-              <span className="rounded-md border border-white/[0.08] bg-black/45 px-3 py-1">Printplaat 1 - Box</span>
-              <span className="rounded-md border border-white/[0.08] bg-black/45 px-3 py-1">Printplaat 2 - Lid</span>
-            </div>
-            <Canvas orthographic camera={{ position: [0, 285, 328], zoom: 2.4 }} gl={{ antialias: true }} shadows>
-              <color attach="background" args={["#111113"]} />
-              <ambientLight intensity={0.45} />
-              <directionalLight position={[100, 160, 80]} intensity={1.45} castShadow />
-              <directionalLight position={[-80, 50, -70]} intensity={0.32} />
-              <PreviewCamera spacing={plateSpacing} plateSize={plateSize} maxPartHeight={maxPartHeight} />
-              <Plate x={-plateSpacing / 2} label="BOX" size={plateSize} />
-              <Plate x={plateSpacing / 2} label="LID" size={plateSize} />
-              <Preview box={built.box} lid={built.lid} spacing={plateSpacing} />
-              <OrbitControls makeDefault enableDamping enablePan={false} minZoom={1.1} maxZoom={8} />
-            </Canvas>
+          <div className="grid h-[520px] gap-3 border-b border-white/[0.06] p-3 lg:grid-cols-2">
+            <PartViewport
+              title="Printplaat 1 - Box"
+              object={built.box}
+              plateSize={plateSize}
+              maxPartHeight={settings.height}
+            />
+            <PartViewport
+              title="Printplaat 2 - Lid"
+              object={built.lid}
+              plateSize={plateSize}
+              maxPartHeight={maxPartHeight}
+            />
           </div>
 
           <div className="grid gap-4 p-4 lg:grid-cols-[1fr_300px]">
