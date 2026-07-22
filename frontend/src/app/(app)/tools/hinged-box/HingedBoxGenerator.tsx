@@ -49,22 +49,24 @@ function Preview({ box, lid, spacing }: { box: THREE.Group; lid: THREE.Group; sp
 }
 
 function PreviewCamera({ spacing, plateSize, maxPartHeight }: { spacing: number; plateSize: number; maxPartHeight: number }) {
-  const { camera, controls } = useThree();
+  const { camera, controls, size } = useThree();
 
   useMemo(() => {
-    const cam = camera as THREE.PerspectiveCamera;
-    const target = new THREE.Vector3(0, maxPartHeight * 0.35, 0);
-    const distance = Math.max(spacing * 0.95, plateSize * 1.25, 260);
-    cam.position.set(0, distance * 0.62, distance * 0.86);
+    const cam = camera as THREE.OrthographicCamera;
+    const target = new THREE.Vector3(0, maxPartHeight * 0.22, 0);
+    const distance = 420;
+    const worldWidth = spacing + plateSize * 1.18;
+    const worldHeight = plateSize * 1.08 + maxPartHeight * 1.2;
+    cam.position.set(0, distance * 0.68, distance * 0.78);
     cam.lookAt(target);
     cam.near = 0.1;
-    cam.far = distance * 5;
-    cam.fov = 38;
+    cam.far = 2000;
+    cam.zoom = Math.max(1.2, Math.min(size.width / worldWidth, size.height / worldHeight) * 0.86);
     cam.updateProjectionMatrix();
     const orbit = controls as { target?: THREE.Vector3; update?: () => void } | undefined;
     orbit?.target?.copy(target);
     orbit?.update?.();
-  }, [camera, controls, spacing, plateSize, maxPartHeight]);
+  }, [camera, controls, size.width, size.height, spacing, plateSize, maxPartHeight]);
 
   return null;
 }
@@ -366,7 +368,7 @@ export default function HingedBoxGenerator() {
               <span className="rounded-md border border-white/[0.08] bg-black/45 px-3 py-1">Printplaat 1 - Box</span>
               <span className="rounded-md border border-white/[0.08] bg-black/45 px-3 py-1">Printplaat 2 - Lid</span>
             </div>
-            <Canvas camera={{ position: [0, 180, 250], fov: 38 }} gl={{ antialias: true }} shadows>
+            <Canvas orthographic camera={{ position: [0, 285, 328], zoom: 2.4 }} gl={{ antialias: true }} shadows>
               <color attach="background" args={["#111113"]} />
               <ambientLight intensity={0.45} />
               <directionalLight position={[100, 160, 80]} intensity={1.45} castShadow />
@@ -375,7 +377,7 @@ export default function HingedBoxGenerator() {
               <Plate x={-plateSpacing / 2} label="BOX" size={plateSize} />
               <Plate x={plateSpacing / 2} label="LID" size={plateSize} />
               <Preview box={built.box} lid={built.lid} spacing={plateSpacing} />
-              <OrbitControls makeDefault enableDamping />
+              <OrbitControls makeDefault enableDamping enablePan={false} minZoom={1.1} maxZoom={8} />
             </Canvas>
           </div>
 
