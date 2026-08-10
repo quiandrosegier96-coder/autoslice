@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     db_path: Path = Path(os.environ.get("DB_PATH", str(BASE_DIR / "autoslice.db")))
     max_upload_size_mb: int = 200
 
+    # Universal3MF rollout. Disabled until fixture/runtime acceptance is complete.
+    use_universal_3mf_engine: bool = False
+    universal_3mf_legacy_fallback: bool = False
+    universal_3mf_min_confidence: float = 0.5
+
     # CORS
     allowed_origins: Annotated[list[str], NoDecode] = [
         "http://localhost:3000",

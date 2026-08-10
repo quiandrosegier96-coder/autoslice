@@ -9,7 +9,7 @@ import dataclasses
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.ingestion.handler import find_job
 from app.ingestion.unpacker import unpack
@@ -30,6 +30,10 @@ from app.orientation.models import OrientationReport
 from app.orientation.scorer import score_orientations
 from app.geometry.nozzle_risk import assess_nozzle_risk
 from app.auth.dependencies import get_current_user
+from app.config import settings
+from app.threemf.capabilities import capabilities_for
+from app.threemf.container.reader import ThreeMFContainer
+from app.threemf.parsers import default_parser_registry
 
 router = APIRouter()
 
@@ -116,16 +120,35 @@ class NozzleRiskItemSchema(BaseModel):
 
 class NozzleRiskReportSchema(BaseModel):
     has_risks:            bool
-    risks:                list[NozzleRiskItemSchema] = []
+    risks:                list[NozzleRiskItemSchema] = Field(default_factory=list)
     recommended_z_hop_mm: float = 0.0
     recommended_combing:  str   = "off"
     recommended_flow_pct: float = 100.0
 
 
 class SourceFilamentSchema(BaseModel):
-    colors: list[str] = []
-    types:  list[str] = []
+    colors: list[str] = Field(default_factory=list)
+    types:  list[str] = Field(default_factory=list)
     count:  int       = 1
+
+
+class DetectedSourceSchema(BaseModel):
+    slicer: str
+    version: str | None = None
+    confidence: float
+    evidence: list[str] = Field(default_factory=list)
+
+
+class UniversalProjectSchema(BaseModel):
+    objects: int
+    plates: int
+    materials: int
+
+
+class CapabilityItemSchema(BaseModel):
+    feature: str
+    support: str
+    notes: str = ""
 
 
 class AnalyzeResponse(BaseModel):
@@ -138,7 +161,12 @@ class AnalyzeResponse(BaseModel):
     explanations: ExplanationReport
     orientation: OrientationReport
     nozzle_risk: NozzleRiskReportSchema
-    source_filaments: SourceFilamentSchema = SourceFilamentSchema()
+    source_filaments: SourceFilamentSchema = Field(default_factory=SourceFilamentSchema)
+    source: DetectedSourceSchema
+    project: UniversalProjectSchema
+    capabilities: list[CapabilityItemSchema] = Field(default_factory=list)
+    universal_warnings: list[str] = Field(default_factory=list)
+    universal_engine_enabled: bool = False
 
 
 # ---------- Route ----------
@@ -161,6 +189,17 @@ async def analyze(job_id: str, current_user: dict = Depends(get_current_user)) -
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
 
     loop = asyncio.get_event_loop()
+
+    try:
+        container = await loop.run_in_executor(None, ThreeMFContainer.from_path, job.archive_path)
+        universal = await loop.run_in_executor(None, default_parser_registry().parse, container)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Universal3MF analysis failed: {exc}") from exc
+
+    capability_profile = capabilities_for(universal.source.slicer)
+    universal_warnings: list[str] = []
+    if universal.source.confidence < settings.universal_3mf_min_confidence:
+        universal_warnings.append("Could not confidently identify the source slicer.")
 
     # Unpack if not already done (idempotent — zipfile just overwrites)
     archive = await loop.run_in_executor(
@@ -282,6 +321,21 @@ async def analyze(job_id: str, current_user: dict = Depends(get_current_user)) -
             types=source_filaments_raw.types,
             count=source_filaments_raw.count,
         ),
+        source=DetectedSourceSchema(
+            slicer=universal.source.slicer.value,
+            version=universal.source.version,
+            confidence=universal.source.confidence,
+            evidence=list(universal.source.detection_evidence),
+        ),
+        project=UniversalProjectSchema(
+            objects=len(universal.objects), plates=len(universal.build.plates),
+            materials=len(universal.materials),
+        ),
+        capabilities=[CapabilityItemSchema(
+            feature=item.feature, support=item.support.value, notes=item.notes,
+        ) for item in capability_profile.capabilities],
+        universal_warnings=universal_warnings,
+        universal_engine_enabled=settings.use_universal_3mf_engine,
         archive=ArchiveInfoSchema(
             filename=meta.original_filename,
             size_bytes=meta.size_bytes,

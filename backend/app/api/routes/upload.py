@@ -12,9 +12,11 @@ from pydantic import BaseModel
 
 from app.ingestion.handler import create_job, find_job
 from app.ingestion.validator import validate_3mf_upload
-from app.ingestion.unpacker import unpack
 from app.auth.dependencies import get_optional_user
 from app.database import log_job
+from app.threemf.container.opc import primary_model_path
+from app.threemf.container.reader import ThreeMFContainer
+from app.threemf.container.security import UnsafeThreeMFError
 
 router = APIRouter()
 
@@ -35,18 +37,21 @@ async def upload_file(
     current_user: dict | None = Depends(get_optional_user),
 ) -> UploadResponse:
     """
-    Accept a Bambu/MakerWorld .3mf file upload.
-    Validates, saves, and immediately unpacks the archive.
+    Accept a 3MF upload and validate it through the secure container.
+    Legacy extraction is deferred to legacy analyze/convert callers.
     Returns job_id for use in /analyze and /convert calls.
     """
     await validate_3mf_upload(file)
     job = await create_job(file)
 
-    # Unpack in a thread so we don't block the event loop
+    # Read and validate through the bounded, non-extracting package container.
     loop = asyncio.get_event_loop()
-    archive = await loop.run_in_executor(
-        None, unpack, job.archive_path, job.extract_dir
-    )
+    try:
+        container = await loop.run_in_executor(None, ThreeMFContainer.from_path, job.archive_path)
+        model_path = primary_model_path(container)
+    except (UnsafeThreeMFError, ValueError) as exc:
+        job.archive_path.unlink(missing_ok=True)
+        raise HTTPException(status_code=400, detail=f"Invalid or unsafe 3MF package: {exc}") from exc
 
     user_id = int(current_user["sub"]) if current_user else None
     log_job(job.job_id, user_id, "upload", filename=job.original_filename)
@@ -55,10 +60,10 @@ async def upload_file(
         job_id=job.job_id,
         filename=job.original_filename,
         size_bytes=job.size_bytes,
-        has_model_file=archive.model_file is not None,
-        has_thumbnail=len(archive.thumbnail_files) > 0,
-        archive_file_count=len(archive.all_files),
-        message="File uploaded and unpacked. Call /api/analyze/{job_id} to analyse.",
+        has_model_file=container.exists(model_path),
+        has_thumbnail=any(path.lower().endswith((".png", ".jpg", ".jpeg")) for path in container.paths),
+        archive_file_count=len(container.paths),
+        message="File securely validated. Call /api/analyze/{job_id} to analyse.",
     )
 
 

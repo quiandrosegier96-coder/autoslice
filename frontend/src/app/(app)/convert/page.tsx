@@ -6,7 +6,8 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { isLoggedIn, getUser } from "@/lib/auth";
 import { useLang } from "@/contexts/LangContext";
-import { apiUpload, apiAnalyze, apiConvertDownload, apiGet, apiPost } from "@/lib/api";
+import { apiUpload, apiAnalyze, apiConvertDownload, apiUniversalConvert, apiDownloadReference, apiGet, apiPost } from "@/lib/api";
+import type { UniversalConversionResult } from "@/lib/api";
 import { useToast, ToastContainer } from "@/components/Toast";
 import type { TreeSupportResult } from "@/lib/tree-support/types";
 
@@ -101,6 +102,11 @@ type AnalysisResult = {
   printability: PrintabilityScore;
   explanations: ExplanationReport;
   orientation: OrientationReport;
+  source: { slicer: string; version?: string | null; confidence: number; evidence: string[] };
+  project: { objects: number; plates: number; materials: number };
+  capabilities: { feature: string; support: string; notes: string }[];
+  universal_warnings: string[];
+  universal_engine_enabled: boolean;
 };
 
 type Printer = { id: string; display_name: string; supported_filaments: string[]; max_colors: number };
@@ -170,6 +176,7 @@ export default function ConvertPage() {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState("");
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [universalResult, setUniversalResult] = useState<UniversalConversionResult | null>(null);
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [downloadName, setDownloadName] = useState("");
@@ -352,6 +359,7 @@ export default function ConvertPage() {
     setStep("uploading");
     setAnalysis(null);
     setDownloadUrl(null);
+    setUniversalResult(null);
     setApplyOrientation(false);
     setManualEuler([]);
     try {
@@ -397,6 +405,21 @@ export default function ConvertPage() {
     if (file) handleFile(file);
   }
 
+  async function handleUniversalDownload() {
+    if (!universalResult?.validation_passed) return;
+    try {
+      const blob = await apiDownloadReference(universalResult.download_reference);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = universalResult.output_filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Download failed");
+    }
+  }
+
   async function handleConvert() {
     if (!jobId || !selectedPrinter) return;
     if (multiColorMode !== "none" && dualUnit && colorCount !== 8) {
@@ -434,6 +457,26 @@ export default function ConvertPage() {
     }, 160);
 
     try {
+      if (analysis?.universal_engine_enabled) {
+        const result = await apiUniversalConvert({
+          job_id: jobId,
+          target_slicer: "anycubic",
+          target_printer: selectedPrinter,
+          nozzle_size_mm: nozzleSize,
+          material: selectedFilament,
+          mode: "autoslice",
+        });
+        if (!result.success || !result.validation_passed) throw new Error("De conversie-uitvoer is niet gevalideerd.");
+        if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+        setProgress(100);
+        setProgressText("Klaar!");
+        setUniversalResult(result);
+        setDownloadName(result.output_filename);
+        setDownloadUrl(null);
+        setStep("done");
+        pushToast("success", "AutoSlice-conversie gevalideerd!");
+        return;
+      }
       const orientEuler =
         manualEuler.length === 3 && manualEuler.some(v => Math.abs(v) > 0.5)
           ? manualEuler
@@ -490,6 +533,7 @@ export default function ConvertPage() {
     setJobId(null);
     setAnalysis(null);
     setDownloadUrl(null);
+    setUniversalResult(null);
     setError("");
     setFeedbackSent(false);
     setFeedbackLoading(false);
@@ -1546,6 +1590,47 @@ export default function ConvertPage() {
       )}
 
       {/* ── Result panel (after done) ── */}
+      {analysis?.source && (
+        <div className="bg-surface-card border border-white/[0.07] rounded-2xl mb-4 p-4 text-xs">
+          <p className="text-[10px] tracking-[0.22em] text-zinc-600 mb-3">3MF CONVERSION</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-zinc-600">Detected source</p>
+              <p className="text-zinc-300 capitalize">{analysis.source.confidence >= 0.5 ? analysis.source.slicer : "Could not confidently identify the source slicer."}</p>
+              <p className="text-zinc-500">Confidence {Math.round(analysis.source.confidence * 100)}%</p>
+            </div>
+            <div>
+              <p className="text-zinc-600">Target slicer</p>
+              <p className="text-zinc-300">Anycubic Slicer</p>
+            </div>
+          </div>
+          {analysis.universal_warnings.map((warning, index) => <p key={index} className="text-yellow-400 mt-2">⚠ {warning}</p>)}
+        </div>
+      )}
+      {step === "done" && universalResult?.validation_passed && (
+        <div className="bg-green-500/[0.06] border border-green-500/25 rounded-2xl mb-4 p-5">
+          <p className="text-[10px] tracking-[0.22em] text-zinc-500 mb-1">AUTOSLICE — ONE FILE. ANY SLICE.</p>
+          <h2 className="text-sm font-bold text-green-400 mb-4">AUTOSLICE CONVERSION COMPLETE</h2>
+          <div className="grid grid-cols-2 gap-3 text-xs mb-4">
+            <div><p className="text-zinc-600">Source</p><p className="text-zinc-300 capitalize">{universalResult.source.slicer}</p></div>
+            <div><p className="text-zinc-600">Target</p><p className="text-zinc-300 capitalize">{universalResult.target.slicer}</p></div>
+            <div><p className="text-zinc-600">Printer</p><p className="text-zinc-300">{universalResult.target.printer}</p></div>
+            <div><p className="text-zinc-600">Compatibility</p><p className="text-zinc-300">{Math.round(universalResult.compatibility.compatibility_score)}%</p></div>
+          </div>
+          <div className="text-xs text-zinc-400 space-y-1 mb-4">
+            <p>✓ {universalResult.compatibility.translated.length} settings translated</p>
+            <p>✓ {universalResult.compatibility.preserved.length} settings preserved</p>
+            <p>⚠ {universalResult.compatibility.approximated.length} settings approximated</p>
+            <p>⚠ {universalResult.compatibility.unsupported.length} features unsupported</p>
+            {universalResult.compatibility.warnings.map((warning, index) => <p key={index} className="text-yellow-400">⚠ {warning}</p>)}
+          </div>
+          <p className="text-xs text-zinc-500 mb-3">Output: <span className="text-zinc-300">{universalResult.output_filename}</span></p>
+          <button type="button" onClick={handleUniversalDownload}
+            className="w-full h-11 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-bold transition-colors">
+            Download {universalResult.output_filename}
+          </button>
+        </div>
+      )}
       {step === "done" && downloadUrl && (
         <div className="bg-green-500/[0.06] border border-green-500/25 rounded-2xl mb-4 p-5
                         shadow-[0_4px_24px_rgba(0,0,0,0.4)]">

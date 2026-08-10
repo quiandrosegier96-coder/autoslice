@@ -19,7 +19,8 @@ async function parseResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     if (isJson) {
       const data = await res.json();
-      throw new Error(data.detail || `Request failed (${res.status})`);
+      const detail = data.detail;
+      throw new Error(typeof detail === "string" ? detail : detail?.message || data.error?.message || `Request failed (${res.status})`);
     }
     throw new Error(`Request failed (${res.status})`);
   }
@@ -75,6 +76,43 @@ export async function apiUpload(file: File): Promise<{ job_id: string; filename:
 
 export async function apiAnalyze(jobId: string) {
   return apiGet(`/analyze/${jobId}`, true);
+}
+
+export type UniversalConversionResult = {
+  success: boolean;
+  source: { slicer: string; confidence: number; evidence: string[] };
+  target: { slicer: string; printer: string | null };
+  compatibility: {
+    compatibility_score: number;
+    translated: unknown[];
+    modified: unknown[];
+    preserved: unknown[];
+    approximated: unknown[];
+    unsupported: unknown[];
+    warnings: string[];
+  };
+  output_filename: string;
+  download_reference: string;
+  validation_passed: boolean;
+  fallback_used: boolean;
+};
+
+export function apiUniversalConvert(body: {
+  job_id: string;
+  target_slicer: string;
+  target_printer: string;
+  nozzle_size_mm: number;
+  material: string;
+  mode: "autoslice" | "preserve_source";
+}): Promise<UniversalConversionResult> {
+  return apiPost<UniversalConversionResult>("/universal-convert", body, true);
+}
+
+export async function apiDownloadReference(reference: string): Promise<Blob> {
+  const path = reference.startsWith("/api/") ? reference.slice(4) : reference;
+  const res = await fetch(`${BASE}${path}`, { headers: authHeaders() });
+  if (!res.ok) throw new Error(`Download failed (${res.status})`);
+  return res.blob();
 }
 
 export type SiteConfig = {

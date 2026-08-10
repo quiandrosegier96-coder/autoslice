@@ -9,6 +9,9 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
       - MAX_UPLOAD_SIZE_MB=200
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-me-in-production}
+      - USE_UNIVERSAL_3MF_ENGINE=${USE_UNIVERSAL_3MF_ENGINE:-false}
+      - UNIVERSAL_3MF_LEGACY_FALLBACK=${UNIVERSAL_3MF_LEGACY_FALLBACK:-false}
+      - UNIVERSAL_3MF_MIN_CONFIDENCE=${UNIVERSAL_3MF_MIN_CONFIDENCE:-0.5}
     volumes:
       - db-data:/data
     networks:
