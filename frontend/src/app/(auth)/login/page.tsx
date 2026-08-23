@@ -12,44 +12,44 @@ const NOTICE_KEY = "autoslice_notice_v3_dismissed";
 
 const FEATURES = {
   nl: [
-    { icon: "⚡", title: "Snelle conversie", desc: "Zet 3MF bestanden razendsnel om naar G-code." },
+    { icon: "⚡", title: "Universele workflow", desc: "Van ondersteund 3MF-project naar de slicer die jij kiest." },
     { icon: "🛡", title: "Betrouwbaar & veilig", desc: "Je bestanden zijn beveiligd en privé." },
     { icon: "🎛", title: "Geoptimaliseerd resultaat", desc: "Consistente en hoogwaardige output." },
   ],
   en: [
-    { icon: "⚡", title: "Fast conversion", desc: "Convert 3MF files to G-code in seconds." },
+    { icon: "⚡", title: "Universal workflow", desc: "From a supported 3MF project to the slicer you choose." },
     { icon: "🛡", title: "Reliable & secure", desc: "Your files are protected and private." },
     { icon: "🎛", title: "Optimised output", desc: "Consistent and high-quality results." },
   ],
   fr: [
-    { icon: "⚡", title: "Conversion rapide", desc: "Convertissez les fichiers 3MF en G-code rapidement." },
+    { icon: "⚡", title: "Workflow universel", desc: "D’un projet 3MF pris en charge vers le slicer de votre choix." },
     { icon: "🛡", title: "Fiable & sécurisé", desc: "Vos fichiers sont protégés et privés." },
     { icon: "🎛", title: "Résultat optimisé", desc: "Sortie cohérente et de haute qualité." },
   ],
   de: [
-    { icon: "⚡", title: "Schnelle Konvertierung", desc: "3MF-Dateien blitzschnell in G-Code umwandeln." },
+    { icon: "⚡", title: "Universeller Workflow", desc: "Vom unterstützten 3MF-Projekt zum Slicer Ihrer Wahl." },
     { icon: "🛡", title: "Zuverlässig & sicher", desc: "Ihre Dateien sind geschützt und privat." },
     { icon: "🎛", title: "Optimiertes Ergebnis", desc: "Konsistente und hochwertige Ausgabe." },
   ],
   es: [
-    { icon: "⚡", title: "Conversión rápida", desc: "Convierte archivos 3MF a G-code en segundos." },
+    { icon: "⚡", title: "Flujo universal", desc: "De un proyecto 3MF compatible al slicer que elijas." },
     { icon: "🛡", title: "Fiable y seguro", desc: "Tus archivos están protegidos y son privados." },
     { icon: "🎛", title: "Resultado optimizado", desc: "Resultados consistentes y de alta calidad." },
   ],
   ko: [
-    { icon: "⚡", title: "빠른 변환", desc: "3MF 파일을 몇 초 만에 G-code로 변환합니다." },
+    { icon: "⚡", title: "범용 워크플로", desc: "지원되는 3MF 프로젝트를 원하는 슬라이서로 준비합니다." },
     { icon: "🛡", title: "안정적이고 안전", desc: "파일이 보호되고 비공개로 유지됩니다." },
     { icon: "🎛", title: "최적화된 결과", desc: "일관되고 고품질의 출력을 제공합니다." },
   ],
 };
 
 const TAGLINE = {
-  nl: "SMART 3MF → G-CODE CONVERSIE",
-  en: "SMART 3MF → G-CODE CONVERSION",
-  fr: "CONVERSION SMART 3MF → G-CODE",
-  de: "SMART 3MF → G-CODE KONVERTIERUNG",
-  es: "CONVERSIÓN SMART 3MF → G-CODE",
-  ko: "스마트 3MF → G-CODE 변환",
+  nl: "ONE FILE. ANY SLICE.",
+  en: "ONE FILE. ANY SLICE.",
+  fr: "ONE FILE. ANY SLICE.",
+  de: "ONE FILE. ANY SLICE.",
+  es: "ONE FILE. ANY SLICE.",
+  ko: "ONE FILE. ANY SLICE.",
 };
 
 const WELCOME = {

@@ -385,7 +385,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   Auto<span className="text-brand">Slice</span>
                 </p>
                 <p className="text-[9px] text-zinc-700 font-semibold tracking-[0.18em] uppercase mt-[3px]">
-                  Smart 3MF → G-Code
+                  One File. Any Slice.
                 </p>
               </div>
             </Link>

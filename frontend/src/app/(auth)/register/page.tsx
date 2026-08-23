@@ -154,7 +154,7 @@ export default function RegisterPage() {
                 Auto<span className="text-brand">Slice</span>
               </h1>
               <p className="text-[11px] font-semibold text-zinc-500 tracking-[0.18em] mt-1 uppercase">
-                SMART 3MF → G-CODE CONVERSION
+                ONE FILE. ANY SLICE.
               </p>
             </div>
           </div>

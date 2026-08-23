@@ -661,7 +661,7 @@ export default function AdminPage() {
                   {
                     heading: "Landingspagina secties",
                     items: [
-                      { key: "landing_trustbar",    label: "Compatibiliteit balk",    desc: "Balk met Bambu Lab, MakerWorld, Anycubic..." },
+                      { key: "landing_trustbar",    label: "Compatibiliteit balk",    desc: "Balk met ondersteunde slicers en 3MF-formaten." },
                       { key: "landing_features",    label: "Features sectie",          desc: "6 feature cards (conversie, AI, multicolor...)" },
                       { key: "landing_how",         label: "Hoe het werkt",            desc: "3-stappen uitleg" },
                       { key: "landing_apppreview",  label: "AI Analyse sectie",        desc: "Printbaarheidscore en analyse mockup" },
