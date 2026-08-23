@@ -180,6 +180,7 @@ class OptimizationPlan:
     geometry_changes: tuple["GeometryTransformChange", ...] = ()
     support_changes: tuple["SupportChange", ...] = ()
     placement_changes: tuple["PlacementChange", ...] = ()
+    advanced_optimization: Any | None = None
     compatibility: CompatibilityBreakdown = field(
         default_factory=lambda: CompatibilityBreakdown(100, 100, 100, 100, 100, 0, 0, 0)
     )

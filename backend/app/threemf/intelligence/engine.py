@@ -171,6 +171,49 @@ class AutoSliceDecisionEngine:
                     )
                 )
 
+        from app.threemf.intelligence.optimization import (
+            AdvancedPrintOptimizationEngine,
+            OptimizationProfile,
+        )
+
+        advanced_profile = {
+            "balanced": OptimizationProfile.BALANCED,
+            "quality_first": OptimizationProfile.QUALITY,
+            "fast_print": OptimizationProfile.FAST,
+            "material_saving": OptimizationProfile.MATERIAL_SAVING,
+        }[profile.mode.value]
+        advanced = AdvancedPrintOptimizationEngine().optimize(
+            document,
+            target,
+            advanced_profile,
+            analyze_only=mode is not ConversionMode.AUTOSLICE,
+            hard_blocked=bool(blocked),
+        )
+        if advanced.selected.viable:
+            for explanation in advanced.explanations:
+                proposed = OptimizationChange(
+                    explanation.setting,
+                    explanation.old_value,
+                    explanation.new_value,
+                    explanation.why,
+                    explanation.rule,
+                    Confidence.MEDIUM,
+                    RulePriority.PREFERENCE,
+                    advanced_profile.value,
+                )
+                if mode is ConversionMode.AUTOSLICE:
+                    candidates.append(proposed)
+                else:
+                    recommendations.append(
+                        PlanMessage(
+                            proposed.rule,
+                            proposed.reason,
+                            proposed.rule,
+                            proposed.priority,
+                            proposed.confidence,
+                        )
+                    )
+
         # Highest priority wins; ties are resolved by stable rule id, never evaluation order.
         winners: dict[str, OptimizationChange] = {}
         for change in sorted(
@@ -303,6 +346,7 @@ class AutoSliceDecisionEngine:
             geometry_changes=tuple(geometry_changes),
             support_changes=tuple(support_changes),
             placement_changes=tuple(placement_changes),
+            advanced_optimization=advanced,
             compatibility=breakdown,
         )
 

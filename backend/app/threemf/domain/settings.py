@@ -62,3 +62,4 @@ class ConversionContext:
     source_slicer: str | None = None
     preserve_source: bool = False
     optimize_for_target: bool = True
+    optimization_profile: str = "balanced"

@@ -15,7 +15,7 @@ from app.threemf.domain.metadata import SlicerType
 from app.threemf.domain.settings import ConversionContext, ConversionMode, PrintSettings
 from app.threemf.intelligence.analyzer import ProjectAnalyzer
 from app.threemf.intelligence.engine import AutoSliceDecisionEngine
-from app.threemf.intelligence.models import OptimizationPlan
+from app.threemf.intelligence.models import AutoSliceProfile, OptimizationMode, OptimizationPlan
 from app.threemf.intelligence.profiles import build_target_profile
 from app.threemf.translation.plan import TranslationPlan, build_translation_plan
 
@@ -63,8 +63,18 @@ class AutoSliceTranslationEngine:
         )
         analysis = ProjectAnalyzer().analyze(document, profile)
         optimizer = AutoSliceDecisionEngine()
-        optimization_plan = optimizer.evaluate(document, analysis, profile, context.mode)
-        optimized = optimizer.apply(document, optimization_plan, profile)
+        autoslice_profile = AutoSliceProfile(
+            mode={
+                "balanced": OptimizationMode.BALANCED,
+                "quality": OptimizationMode.QUALITY_FIRST,
+                "fast": OptimizationMode.FAST_PRINT,
+                "material_saving": OptimizationMode.MATERIAL_SAVING,
+            }.get(context.optimization_profile, OptimizationMode.BALANCED)
+        )
+        optimization_plan = optimizer.evaluate(
+            document, analysis, profile, context.mode, autoslice_profile
+        )
+        optimized = optimizer.apply(document, optimization_plan, profile, autoslice_profile)
         optimization_items = tuple(
             TranslationItem(
                 item.setting,

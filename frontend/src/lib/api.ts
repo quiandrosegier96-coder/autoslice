@@ -104,6 +104,7 @@ export function apiUniversalConvert(body: {
   nozzle_size_mm: number;
   material: string;
   mode: "autoslice" | "preserve_source";
+  optimization_profile?: "balanced" | "quality" | "fast" | "material_saving";
 }): Promise<UniversalConversionResult> {
   return apiPost<UniversalConversionResult>("/universal-convert", body, true);
 }
@@ -186,6 +187,15 @@ export type AutoSliceAnalysis = {
     confidence: string;
     applied: boolean;
     reanalysis_required: boolean;
+  };
+  optimization_preview: {
+    profile: "balanced" | "quality" | "fast" | "material_saving";
+    weights: { values: Array<[string, number]> };
+    selected: unknown;
+    candidates: unknown[];
+    explanations: unknown[];
+    analyze_only: boolean;
+    benchmark_ms: number;
   };
   dry_run: boolean;
 };

@@ -23,7 +23,7 @@ from app.threemf.domain.settings import ConversionContext, ConversionMode
 from app.threemf.intelligence.analyzer import ProjectAnalyzer
 from app.threemf.intelligence.engine import AutoSliceDecisionEngine
 from app.threemf.intelligence.geometry import GeometryAnalyzer
-from app.threemf.intelligence.models import AutoSliceProfile
+from app.threemf.intelligence.models import AutoSliceProfile, OptimizationMode
 from app.threemf.intelligence.placement import PlacementAnalyzer
 from app.threemf.intelligence.profiles import build_target_profile
 from app.threemf.intelligence.support import SupportAnalyzer
@@ -42,6 +42,7 @@ class UniversalConvertRequest(BaseModel):
     material: str = "pla"
     mode: ConversionMode = ConversionMode.AUTOSLICE
     source_slicer: str | None = None
+    optimization_profile: str = "balanced"
 
 
 class UniversalAnalyzeRequest(BaseModel):
@@ -52,6 +53,7 @@ class UniversalAnalyzeRequest(BaseModel):
     nozzle_material: str = "brass"
     material: str = "pla"
     mode: ConversionMode = ConversionMode.AUTOSLICE
+    optimization_profile: str = "balanced"
 
 
 class UniversalAnalyzeResponse(BaseModel):
@@ -63,6 +65,7 @@ class UniversalAnalyzeResponse(BaseModel):
     orientation: dict | None = None
     support_plan: dict
     placement_plan: dict
+    optimization_preview: dict
     dry_run: bool = True
 
 
@@ -90,7 +93,14 @@ async def universal_analyze(
         container = await loop.run_in_executor(None, ThreeMFContainer.from_path, job.archive_path)
         document = await loop.run_in_executor(None, default_parser_registry().parse, container)
         analysis = ProjectAnalyzer().analyze(document, target)
-        profile = AutoSliceProfile()
+        profile = AutoSliceProfile(
+            mode={
+                "balanced": OptimizationMode.BALANCED,
+                "quality": OptimizationMode.QUALITY_FIRST,
+                "fast": OptimizationMode.FAST_PRINT,
+                "material_saving": OptimizationMode.MATERIAL_SAVING,
+            }.get(request.optimization_profile, OptimizationMode.BALANCED)
+        )
         printability = GeometryAnalyzer().analyze(document, target, profile)
         plan = AutoSliceDecisionEngine().evaluate(document, analysis, target, request.mode, profile)
         support_plan = SupportAnalyzer().analyze(document, printability, target, request.mode)
@@ -116,6 +126,7 @@ async def universal_analyze(
         ),
         support_plan=dataclasses.asdict(support_plan),
         placement_plan=dataclasses.asdict(placement_plan),
+        optimization_preview=dataclasses.asdict(plan.advanced_optimization),
     )
 
 
@@ -166,6 +177,7 @@ async def universal_convert(
         material_id=request.material,
         mode=request.mode,
         source_slicer=request.source_slicer,
+        optimization_profile=request.optimization_profile,
     )
     existing = {path.name for path in job.archive_path.parent.glob("*.3mf")}
     operation = partial(
