@@ -84,6 +84,7 @@ class PrinterProfile:
     max_tools: int = 1
     defaults: tuple[tuple[str, Any], ...] = ()
     support_types: tuple[str, ...] = ("normal", "tree")
+    minimum_object_spacing_mm: float | None = None
 
 
 @dataclass(frozen=True)
@@ -178,6 +179,7 @@ class OptimizationPlan:
     recommendations: tuple[PlanMessage, ...] = ()
     geometry_changes: tuple["GeometryTransformChange", ...] = ()
     support_changes: tuple["SupportChange", ...] = ()
+    placement_changes: tuple["PlacementChange", ...] = ()
     compatibility: CompatibilityBreakdown = field(
         default_factory=lambda: CompatibilityBreakdown(100, 100, 100, 100, 100, 0, 0, 0)
     )
@@ -208,6 +210,20 @@ class SupportChange:
     setting: str
     old_value: Any
     new_value: Any
+    reason: str
+    rule: str
+    confidence: Confidence
+    applied: bool
+
+
+@dataclass(frozen=True)
+class PlacementChange:
+    item_index: int
+    object_id: str
+    old_transform: tuple[float, ...]
+    new_transform: tuple[float, ...]
+    old_position_mm: tuple[float, float, float]
+    new_position_mm: tuple[float, float, float]
     reason: str
     rule: str
     confidence: Confidence

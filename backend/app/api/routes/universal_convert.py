@@ -24,6 +24,7 @@ from app.threemf.intelligence.analyzer import ProjectAnalyzer
 from app.threemf.intelligence.engine import AutoSliceDecisionEngine
 from app.threemf.intelligence.geometry import GeometryAnalyzer
 from app.threemf.intelligence.models import AutoSliceProfile
+from app.threemf.intelligence.placement import PlacementAnalyzer
 from app.threemf.intelligence.profiles import build_target_profile
 from app.threemf.intelligence.support import SupportAnalyzer
 from app.threemf.parsers import default_parser_registry
@@ -61,6 +62,7 @@ class UniversalAnalyzeResponse(BaseModel):
     printability: dict
     orientation: dict | None = None
     support_plan: dict
+    placement_plan: dict
     dry_run: bool = True
 
 
@@ -92,6 +94,7 @@ async def universal_analyze(
         printability = GeometryAnalyzer().analyze(document, target, profile)
         plan = AutoSliceDecisionEngine().evaluate(document, analysis, target, request.mode, profile)
         support_plan = SupportAnalyzer().analyze(document, printability, target, request.mode)
+        placement_plan = PlacementAnalyzer().analyze(document, target, request.mode)
     except (ValueError, OSError) as exc:
         raise HTTPException(
             status_code=422, detail={"code": "ANALYSIS_FAILED", "message": str(exc)}
@@ -112,6 +115,7 @@ async def universal_analyze(
             else None
         ),
         support_plan=dataclasses.asdict(support_plan),
+        placement_plan=dataclasses.asdict(placement_plan),
     )
 
 

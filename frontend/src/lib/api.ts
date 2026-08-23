@@ -136,6 +136,18 @@ export type AutoSliceAnalysis = {
       confidence: string;
       applied: boolean;
     }>;
+    placement_changes: Array<{
+      item_index: number;
+      object_id: string;
+      old_transform: number[];
+      new_transform: number[];
+      old_position_mm: number[];
+      new_position_mm: number[];
+      reason: string;
+      rule: string;
+      confidence: string;
+      applied: boolean;
+    }>;
     compatibility: { final_compatibility: number };
   };
   printability: {
@@ -164,6 +176,16 @@ export type AutoSliceAnalysis = {
     diagnostics: Array<{ code: string; message: string }>;
     applied: boolean;
     preserves_source_supports: boolean;
+  };
+  placement_plan: {
+    current: unknown;
+    recommended: unknown;
+    candidates: unknown[];
+    plate_assignments: unknown[];
+    diagnostics: Array<{ code: string; message: string; object_ids: string[] }>;
+    confidence: string;
+    applied: boolean;
+    reanalysis_required: boolean;
   };
   dry_run: boolean;
 };

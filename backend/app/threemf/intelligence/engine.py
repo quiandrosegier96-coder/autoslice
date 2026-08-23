@@ -11,6 +11,7 @@ from app.threemf.intelligence.models import (
     GeometryTransformChange,
     OptimizationChange,
     OptimizationPlan,
+    PlacementChange,
     PlanMessage,
     PlanStatus,
     ProjectAnalysis,
@@ -271,6 +272,28 @@ class AutoSliceDecisionEngine:
                     ),
                 )
             )
+        from app.threemf.intelligence.placement import PlacementAnalyzer
+
+        placement_plan = PlacementAnalyzer().analyze(document, target, mode)
+        current_by_index = {item.item_index: item for item in placement_plan.current.placements}
+        placement_changes = []
+        for proposed in placement_plan.recommended.placements:
+            current = current_by_index[proposed.item_index]
+            if proposed.transform[9:12] != current.transform[9:12]:
+                placement_changes.append(
+                    PlacementChange(
+                        proposed.item_index,
+                        proposed.object_id,
+                        current.transform,
+                        proposed.transform,
+                        tuple(current.transform[9:12]),
+                        tuple(proposed.transform[9:12]),
+                        f"Deterministic {placement_plan.recommended.strategy} packing improves fit, collision avoidance, spacing, or utilization.",
+                        "BUILD_PLATE_PLACEMENT",
+                        placement_plan.confidence,
+                        placement_plan.applied,
+                    )
+                )
         return OptimizationPlan(
             changes=changes,
             unchanged=unchanged,
@@ -279,6 +302,7 @@ class AutoSliceDecisionEngine:
             recommendations=tuple(recommendations),
             geometry_changes=tuple(geometry_changes),
             support_changes=tuple(support_changes),
+            placement_changes=tuple(placement_changes),
             compatibility=breakdown,
         )
 
@@ -327,4 +351,32 @@ class AutoSliceDecisionEngine:
         }
         if support_updates:
             optimized = replace(optimized, supports=replace(optimized.supports, **support_updates))
+        placement_by_index = {
+            item.item_index: item for item in plan.placement_changes if item.applied
+        }
+        if placement_by_index:
+            from app.threemf.domain.geometry import Transform
+
+            placed_items = []
+            for index, item in enumerate(optimized.build.items):
+                change = placement_by_index.get(index)
+                if not change:
+                    placed_items.append(item)
+                    continue
+                values = list(item.transform.values)
+                values[9:12] = change.new_position_mm
+                placed_items.append(replace(item, transform=Transform(tuple(values))))
+            optimized = replace(
+                optimized, build=replace(optimized.build, items=tuple(placed_items))
+            )
+            if target:
+                from app.threemf.intelligence.placement import PlacementAnalyzer
+
+                checked = PlacementAnalyzer().analyze(optimized, target, ConversionMode.PRESERVE)
+                if (
+                    not checked.current.fits_build_volume
+                    or checked.current.collision_count
+                    or checked.current.insufficient_spacing_count
+                ):
+                    raise ValueError("Placement change rejected by mandatory re-analysis.")
         return optimized
