@@ -7,14 +7,17 @@ POST /api/convert
 import asyncio
 import dataclasses
 import json
+from shutil import rmtree
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from pydantic import BaseModel
 
 import numpy as np
 
-from app.ingestion.handler import find_job
+from app.ingestion.handler import find_owned_job
 from app.ingestion.unpacker import unpack
 from app.parser.model_parser import parse_model_files
 from app.auth.dependencies import get_current_user
@@ -57,7 +60,7 @@ async def convert(
     req: ConvertRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    job = find_job(req.job_id)
+    job = find_owned_job(req.job_id, int(current_user["sub"]))
     if job is None:
         raise HTTPException(status_code=404, detail=f"Job '{req.job_id}' not found.")
 
@@ -74,7 +77,10 @@ async def convert(
 
     loop = asyncio.get_event_loop()
 
-    archive = await loop.run_in_executor(None, unpack, job.archive_path, job.extract_dir)
+    workspace = job.archive_path.parent / f"legacy-{uuid.uuid4()}"
+    extract_dir = workspace / "extracted"
+    extract_dir.mkdir(parents=True)
+    archive = await loop.run_in_executor(None, unpack, job.archive_path, extract_dir)
     if not archive.model_files:
         raise HTTPException(status_code=422, detail="No model files found in archive.")
 
@@ -178,7 +184,7 @@ async def convert(
         print_settings.bed_temp_c = min(print_settings.bed_temp_c + 10, 130)
 
     output_filename = f"autoslice_{req.printer_id}_{req.filament_type.value}.3mf"
-    output_path = job.archive_path.parent / output_filename
+    output_path = workspace / output_filename
 
     try:
         await loop.run_in_executor(
@@ -211,4 +217,5 @@ async def convert(
         path=str(output_path),
         media_type="application/zip",
         filename=output_filename,
+        background=BackgroundTask(rmtree, workspace, ignore_errors=True),
     )

@@ -3,10 +3,11 @@ AutoSlice — 3MF unpacker.
 Extracts the ZIP archive and maps its contents to known 3MF paths.
 """
 
-import xml.etree.ElementTree as ET
-import zipfile
 from pathlib import Path
 from dataclasses import dataclass, field
+
+from app.threemf.container.reader import ThreeMFContainer
+from app.threemf.container.xml import parse_xml
 
 
 # Well-known paths inside a 3MF archive
@@ -32,8 +33,7 @@ def _parse_rels(rels_path: Path) -> str | None:
     if not rels_path.exists():
         return None
     try:
-        tree = ET.parse(rels_path)
-        root = tree.getroot()
+        root = parse_xml(rels_path.read_bytes(), str(rels_path))
         for rel in root:
             tag = rel.tag.split("}")[-1] if "}" in rel.tag else rel.tag
             if tag == "Relationship":
@@ -57,8 +57,7 @@ def _parse_object_type_map(config_path: Path) -> dict[str, str]:
     if not config_path.exists():
         return {}
     try:
-        tree = ET.parse(config_path)
-        root = tree.getroot()
+        root = parse_xml(config_path.read_bytes(), str(config_path))
         result: dict[str, str] = {}
         for obj_el in root.iter("object"):
             for part_el in obj_el.iter("part"):
@@ -88,9 +87,15 @@ def unpack(archive_path: Path, extract_dir: Path) -> UnpackedArchive:
     Extract a .3mf ZIP archive to extract_dir.
     Returns an UnpackedArchive mapping key files to their extracted paths.
     """
-    with zipfile.ZipFile(archive_path, "r") as zf:
-        zf.extractall(extract_dir)
-        all_names = zf.namelist()
+    container = ThreeMFContainer.from_path(archive_path)
+    all_names = list(container.paths)
+    resolved_root = extract_dir.resolve()
+    for name in all_names:
+        destination = (extract_dir / name).resolve()
+        if destination != resolved_root and resolved_root not in destination.parents:
+            raise ValueError(f"Unsafe extraction target: {name}")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(container.read(name))
 
     all_files = [extract_dir / name for name in all_names]
 

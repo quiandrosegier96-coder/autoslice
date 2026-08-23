@@ -15,13 +15,14 @@ from pydantic import BaseModel
 from app.auth.dependencies import get_current_user
 from app.config import settings
 from app.database import log_job
-from app.ingestion.handler import find_job
+from app.ingestion.handler import find_owned_job
 from app.threemf.container.reader import ThreeMFContainer
 from app.threemf.conversion import ConversionError, convert_3mf
 from app.threemf.conversion.schemas import ConversionReportSchema, SourceSchema, TargetSchema
 from app.threemf.domain.settings import ConversionContext, ConversionMode
 from app.threemf.parsers import default_parser_registry
 from app.threemf.pipeline.orchestrator import FullUniversal3MFPipeline
+from app.threemf.pipeline.naming import autoslice_output_filename
 from app.threemf.validation import validate_3mf
 
 logger = logging.getLogger(__name__)
@@ -70,8 +71,7 @@ async def universal_analyze(
     current_user: dict = Depends(get_current_user),
 ) -> UniversalAnalyzeResponse:
     """Analyze and plan a conversion without writing or exporting output."""
-    del current_user
-    job = find_job(request.job_id)
+    job = find_owned_job(request.job_id, int(current_user["sub"]))
     if job is None:
         raise HTTPException(
             status_code=404, detail={"code": "JOB_NOT_FOUND", "message": "Upload job not found."}
@@ -89,7 +89,17 @@ async def universal_analyze(
             optimization_profile=request.optimization_profile,
             nozzle_material=request.nozzle_material,
         )
-        snapshot = FullUniversal3MFPipeline().analyze(document, context, analyze_only=True)
+        snapshot = await asyncio.wait_for(
+            loop.run_in_executor(
+                None, partial(FullUniversal3MFPipeline().analyze, document, context, analyze_only=True)
+            ),
+            timeout=settings.analysis_timeout_seconds,
+        )
+    except TimeoutError as exc:
+        raise HTTPException(
+            status_code=504,
+            detail={"code": "ANALYSIS_TIMEOUT", "message": "Analysis exceeded the allowed processing time."},
+        ) from exc
     except (ValueError, OSError) as exc:
         raise HTTPException(
             status_code=422, detail={"code": "ANALYSIS_FAILED", "message": str(exc)}
@@ -151,7 +161,7 @@ async def universal_convert(
                 "message": "Universal3MF conversion is disabled. The explicit legacy endpoint remains available.",
             },
         )
-    job = find_job(request.job_id)
+    job = find_owned_job(request.job_id, int(current_user["sub"]))
     if job is None:
         raise HTTPException(
             status_code=404, detail={"code": "JOB_NOT_FOUND", "message": "Upload job not found."}
@@ -176,7 +186,21 @@ async def universal_convert(
         min_detection_confidence=settings.universal_3mf_min_confidence,
     )
     try:
-        result = await asyncio.get_event_loop().run_in_executor(None, operation)
+        result = await asyncio.wait_for(
+            asyncio.get_event_loop().run_in_executor(None, operation),
+            timeout=settings.conversion_timeout_seconds,
+        )
+    except TimeoutError:
+        logger.warning("Universal3MF conversion timed out", extra={"job_id": request.job_id})
+        return JSONResponse(
+            status_code=504,
+            content={
+                "success": False,
+                "error": {"code": "CONVERSION_TIMEOUT", "message": "Conversion exceeded the allowed processing time."},
+                "legacy_fallback_available": settings.universal_3mf_legacy_fallback,
+                "legacy_fallback_used": False,
+            },
+        )
     except ConversionError as exc:
         logger.error(
             "Universal3MF conversion failed",
@@ -196,18 +220,18 @@ async def universal_convert(
                 "legacy_fallback_used": False,
             },
         )
-    output_path = job.archive_path.parent / result.output_filename
-    try:
-        with output_path.open("xb") as output_file:
-            output_file.write(result.output)
-    except FileExistsError as exc:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "OUTPUT_COLLISION",
-                "message": "The generated output filename already exists; retry the conversion.",
-            },
-        ) from exc
+    while True:
+        output_path = job.archive_path.parent / result.output_filename
+        try:
+            with output_path.open("xb") as output_file:
+                output_file.write(result.output)
+            break
+        except FileExistsError:
+            existing.add(result.output_filename)
+            result = dataclasses.replace(
+                result,
+                output_filename=autoslice_output_filename(job.original_filename, existing),
+            )
     report = ConversionReportSchema.from_result(result)
     user_id = int(current_user["sub"])
     with _records_lock:

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 def send_verification_email(to_email: str, code: str, username: str) -> None:
     """Send a 6-digit email verification code via Brevo SMTP relay."""
     if not settings.smtp_user or not settings.smtp_password:
-        logger.warning("[email] SMTP not configured — verification code for %s: %s", to_email, code)
+        logger.warning("[email] SMTP not configured; verification email was not sent")
         return
 
     plain = (
@@ -57,9 +57,9 @@ def send_verification_email(to_email: str, code: str, username: str) -> None:
             smtp.starttls()
             smtp.login(settings.smtp_user, settings.smtp_password)
             smtp.send_message(msg)
-        logger.info("[email] Verification email sent to %s", to_email)
+        logger.info("[email] Verification email sent")
     except Exception:
-        logger.exception("[email] Failed to send verification email to %s", to_email)
+        logger.exception("[email] Failed to send verification email")
 
 
 def send_password_reset_email(to_email: str, reset_link: str) -> None:
@@ -68,7 +68,7 @@ def send_password_reset_email(to_email: str, reset_link: str) -> None:
     If SMTP credentials are not configured, logs the link instead (development fallback).
     """
     if not settings.smtp_user or not settings.smtp_password:
-        logger.warning("[email] SMTP credentials not set — reset link for %s: %s", to_email, reset_link)
+        logger.warning("[email] SMTP credentials not set; password reset email was not sent")
         return
 
     plain = (
@@ -111,7 +111,7 @@ def send_password_reset_email(to_email: str, reset_link: str) -> None:
             smtp.starttls()
             smtp.login(settings.smtp_user, settings.smtp_password)
             smtp.send_message(msg)
-        logger.info("[email] Password reset email sent to %s", to_email)
+        logger.info("[email] Password reset email sent")
     except Exception:
-        logger.exception("[email] Failed to send reset email to %s", to_email)
+        logger.exception("[email] Failed to send reset email")
         # Do not raise — never reveal delivery failure to the caller

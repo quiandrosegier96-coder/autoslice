@@ -15,6 +15,7 @@ const { app, BrowserWindow, dialog, shell, ipcMain, nativeImage } = require("ele
 const { autoUpdater } = require("electron-updater");
 const path   = require("path");
 const http   = require("http");
+const crypto = require("crypto");
 const { spawn } = require("child_process");
 
 // ── Resource paths ─────────────────────────────────────────────────────────
@@ -53,6 +54,18 @@ function openLog(name) {
   }
 }
 
+function localJwtSecret(userDataDir) {
+  const secretPath = path.join(userDataDir, ".jwt-secret");
+  try {
+    if (fs.existsSync(secretPath)) return fs.readFileSync(secretPath, "utf8").trim();
+    const secret = crypto.randomBytes(48).toString("base64url");
+    fs.writeFileSync(secretPath, secret, { encoding: "utf8", mode: 0o600, flag: "wx" });
+    return secret;
+  } catch (error) {
+    throw new Error(`Unable to initialize local authentication storage: ${error.message}`);
+  }
+}
+
 // ── Spawn servers ──────────────────────────────────────────────────────────
 
 function startServers() {
@@ -67,6 +80,7 @@ function startServers() {
     AUTOSLICE_DATA_DIR: dataDir,
     UPLOAD_DIR:         uploadDir,
     DB_PATH:            dbPath,
+    JWT_SECRET_KEY:     localJwtSecret(userDataDir),
   });
 
   // ── Backend ──────────────────────────────────────────────────────────────

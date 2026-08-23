@@ -11,7 +11,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.ingestion.handler import find_job
+from app.ingestion.handler import find_owned_job
 from app.ingestion.unpacker import unpack
 from app.parser.model_parser import parse_model_files
 from app.parser.metadata_extractor import extract_archive_metadata, extract_source_filaments
@@ -184,7 +184,7 @@ async def analyze(job_id: str, current_user: dict = Depends(get_current_user)) -
       5. Normalize to ModelIntent
       6. Return structured JSON
     """
-    job = find_job(job_id)
+    job = find_owned_job(job_id, int(current_user["sub"]))
     if job is None:
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
 
@@ -438,7 +438,7 @@ async def support_preview(job_id: str, debug: bool = False, current_user: dict =
         )
     # ─────────────────────────────────────────────────────────────────────────
 
-    job = find_job(job_id)
+    job = find_owned_job(job_id, int(current_user["sub"]))
     if job is None:
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
 

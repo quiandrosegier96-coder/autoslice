@@ -169,7 +169,6 @@ class ConversionService:
             "3MF conversion completed",
             extra={
                 "conversion_id": conversion_id,
-                "output_filename": output_filename,
                 "compatibility": report.compatibility_score,
             },
         )

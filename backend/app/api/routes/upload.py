@@ -10,9 +10,9 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from app.ingestion.handler import create_job, find_job
+from app.ingestion.handler import create_job, find_owned_job, remove_job
 from app.ingestion.validator import validate_3mf_upload
-from app.auth.dependencies import get_optional_user
+from app.auth.dependencies import get_current_user
 from app.database import log_job
 from app.threemf.container.opc import primary_model_path, validate_relationships
 from app.threemf.container.reader import ThreeMFContainer
@@ -34,7 +34,7 @@ class UploadResponse(BaseModel):
 @router.post("/upload", response_model=UploadResponse)
 async def upload_file(
     file: UploadFile = File(...),
-    current_user: dict | None = Depends(get_optional_user),
+    current_user: dict = Depends(get_current_user),
 ) -> UploadResponse:
     """
     Accept a 3MF upload and validate it through the secure container.
@@ -51,10 +51,10 @@ async def upload_file(
         validate_relationships(container)
         model_path = primary_model_path(container)
     except (UnsafeThreeMFError, ValueError) as exc:
-        job.archive_path.unlink(missing_ok=True)
+        remove_job(job.job_id)
         raise HTTPException(status_code=400, detail=f"Invalid or unsafe 3MF package: {exc}") from exc
 
-    user_id = int(current_user["sub"]) if current_user else None
+    user_id = int(current_user["sub"])
     log_job(job.job_id, user_id, "upload", filename=job.original_filename)
 
     return UploadResponse(
@@ -69,14 +69,13 @@ async def upload_file(
 
 
 @router.get("/upload/{job_id}/file")
-async def get_upload_file(job_id: str):
+async def get_upload_file(job_id: str, current_user: dict = Depends(get_current_user)):
     """Serve the original .3mf archive so the frontend viewer can load it."""
-    job = find_job(job_id)
+    job = find_owned_job(job_id, int(current_user["sub"]))
     if job is None:
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
     return FileResponse(
         path=str(job.archive_path),
         media_type="model/3mf",
         filename=job.original_filename,
-        headers={"Access-Control-Allow-Origin": "*"},
     )

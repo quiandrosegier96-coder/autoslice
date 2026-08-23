@@ -32,7 +32,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.auth.dependencies import get_current_user
-from app.ingestion.handler import find_job
+from app.ingestion.handler import find_owned_job
 from app.ingestion.unpacker import unpack
 from app.geometry.mesh_loader import merge_meshes
 from app.parser.model_parser import parse_model_files
@@ -81,9 +81,9 @@ def _build_config(
 
 # ── Mesh loader helper ────────────────────────────────────────────────────────
 
-async def _load_mesh(job_id: str):
+async def _load_mesh(job_id: str, user_id: int):
     """Load and merge all mesh parts from a 3MF job."""
-    job = find_job(job_id)
+    job = find_owned_job(job_id, user_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id!r} not found.")
 
@@ -127,7 +127,7 @@ async def get_tree_support_engine(
 
     Returns complete support graph (nodes, segments, clusters, contacts, stats).
     """
-    mesh   = await _load_mesh(job_id)
+    mesh   = await _load_mesh(job_id, int(current_user["sub"]))
     config = _build_config(
         overhang_angle, branch_angle, merge_l1, merge_l2, merge_l3,
         cluster_cell, z_distance, tip_radius, collision, verify_unsupported,
@@ -163,7 +163,7 @@ async def get_tree_support_skeleton(
     Fast skeleton response — segments + stats only.
     Suitable for initial preview before full result loads.
     """
-    mesh   = await _load_mesh(job_id)
+    mesh   = await _load_mesh(job_id, int(current_user["sub"]))
     config = _build_config(
         overhang_angle, branch_angle, merge_l1, merge_l2, merge_l3,
         cluster_cell, z_distance, tip_radius, collision, verify_unsupported,
@@ -194,7 +194,7 @@ async def get_debug_tags(
       "internal"  → RED    (sample point inside mesh)
       "too_close" → YELLOW (clearance violated)
     """
-    mesh = await _load_mesh(job_id)
+    mesh = await _load_mesh(job_id, int(current_user["sub"]))
     config = EngineConfig(overhang_angle_deg=overhang_angle)
 
     try:
@@ -251,7 +251,7 @@ async def get_support_decision(
     from app.support.engine           import classify_support_type_refined
     import numpy as np
 
-    mesh   = await _load_mesh(job_id)
+    mesh   = await _load_mesh(job_id, int(current_user["sub"]))
     config = EngineConfig(overhang_angle_deg=overhang_angle, verify_unsupported=False)
 
     vertices = np.asarray(mesh.vertices, dtype=np.float64)

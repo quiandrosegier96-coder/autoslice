@@ -30,7 +30,7 @@ from app.ai.schemas import (
     OrientationRequest,
     OrientationSuggestion,
 )
-from app.ingestion.handler import find_job
+from app.ingestion.handler import find_owned_job
 from app.ingestion.unpacker import unpack
 from app.parser.model_parser import parse_model_files
 from app.geometry.analyzer import analyze_mesh
@@ -92,7 +92,7 @@ async def auto_settings_for_job(
     The caller only needs to supply print intent (filament, nozzle, quality) —
     all geometry measurements are derived automatically from the uploaded file.
     """
-    job = find_job(job_id)
+    job = find_owned_job(job_id, int(current_user["sub"]))
     if job is None:
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
 

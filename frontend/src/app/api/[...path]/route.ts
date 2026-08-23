@@ -36,13 +36,16 @@ async function proxy(req: NextRequest, context: RouteContext) {
   });
 
   const hasBody = !["GET", "HEAD"].includes(req.method);
-  const upstream = await fetch(target, {
+  const requestInit: RequestInit & { duplex?: "half" } = {
     method: req.method,
     headers,
-    body: hasBody ? await req.arrayBuffer() : undefined,
+    body: hasBody ? req.body : undefined,
     redirect: "manual",
     cache: "no-store",
-  });
+    signal: AbortSignal.timeout(130_000),
+  };
+  if (hasBody) requestInit.duplex = "half";
+  const upstream = await fetch(target, requestInit);
 
   const responseHeaders = new Headers();
   upstream.headers.forEach((value, key) => {

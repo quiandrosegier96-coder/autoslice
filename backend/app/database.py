@@ -238,6 +238,16 @@ def log_job(job_id: str, user_id: int | None, action: str,
         conn.commit()
 
 
+def job_belongs_to_user(job_id: str, user_id: int) -> bool:
+    """Return whether the authenticated user owns the upload that created a job."""
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM jobs WHERE job_id = ? AND user_id = ? AND action = 'upload' LIMIT 1",
+            (job_id, user_id),
+        ).fetchone()
+    return row is not None
+
+
 def log_generation(
     job_id: str,
     printer_id: str,

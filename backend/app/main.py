@@ -14,12 +14,14 @@ from app.ai import router as ai_router
 from app.reviews import router as reviews_router
 from app.config import settings
 from app.database import init_db, seed_admin_users
+from app.ingestion.cleanup import cleanup_stale_jobs
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     seed_admin_users()
+    cleanup_stale_jobs()
     yield
 
 

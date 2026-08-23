@@ -27,10 +27,13 @@ class Settings(BaseSettings):
     # Database — explicit path so it never moves on restart
     db_path: Path = Path(os.environ.get("DB_PATH", str(BASE_DIR / "autoslice.db")))
     max_upload_size_mb: int = 200
+    analysis_timeout_seconds: float = 60.0
+    conversion_timeout_seconds: float = 120.0
+    job_retention_hours: int = 24
 
     # Universal3MF rollout. Disabled until fixture/runtime acceptance is complete.
     use_universal_3mf_engine: bool = False
-    universal_3mf_legacy_fallback: bool = False
+    universal_3mf_legacy_fallback: bool = True
     universal_3mf_min_confidence: float = 0.5
 
     # CORS

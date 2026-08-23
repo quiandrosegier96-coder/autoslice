@@ -8,7 +8,8 @@ import os
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from jose import jwt, JWTError
+import jwt
+from jwt.exceptions import InvalidTokenError
 
 from app.config import settings, get_jwt_secret
 from app.database import get_connection
@@ -59,7 +60,7 @@ def create_access_token(user_id: int, email: str, remember: bool = False) -> str
 def decode_token(token: str) -> dict:
     try:
         return jwt.decode(token, get_jwt_secret(), algorithms=[settings.jwt_algorithm])
-    except JWTError:
+    except InvalidTokenError:
         return {}
 
 

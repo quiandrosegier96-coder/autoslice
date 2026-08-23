@@ -14,9 +14,6 @@ const nextConfig: NextConfig = {
       }
     : {
         // Electron / web server build
-        experimental: {
-          serverActions: { bodySizeLimit: "500mb" },
-        },
         async headers() {
           return [
             {

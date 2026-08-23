@@ -12,9 +12,10 @@ import asyncio
 import dataclasses
 import json
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
-from app.ingestion.handler import find_job
+from app.auth.dependencies import get_current_user
+from app.ingestion.handler import find_owned_job
 from app.ingestion.unpacker import unpack
 from app.parser.model_parser import parse_model_files
 from app.geometry.analyzer import analyze_mesh
@@ -33,7 +34,9 @@ router = APIRouter()
 
 
 @router.get("/scoring/report/{job_id}", response_model=GenerationReport)
-async def scoring_report(job_id: str) -> GenerationReport:
+async def scoring_report(
+    job_id: str, current_user: dict = Depends(get_current_user)
+) -> GenerationReport:
     """
     Full scoring report for a previously uploaded 3MF file.
 
@@ -48,7 +51,7 @@ async def scoring_report(job_id: str) -> GenerationReport:
     The report is stateless — it can be called any number of times
     and will re-derive scores from the raw geometry each time.
     """
-    job = find_job(job_id)
+    job = find_owned_job(job_id, int(current_user["sub"]))
     if job is None:
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found.")
 
