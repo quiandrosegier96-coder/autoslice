@@ -1,6 +1,6 @@
 """Translation orchestration with a separate deterministic optimization plan."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from app.models.print_settings import PrintSettings as LegacyPrintSettings
 from app.models.printer import FilamentType, PrinterProfile
@@ -13,10 +13,8 @@ from app.threemf.domain.diagnostics import (
 from app.threemf.domain.document import Universal3MFDocument
 from app.threemf.domain.metadata import SlicerType
 from app.threemf.domain.settings import ConversionContext, ConversionMode, PrintSettings
-from app.threemf.intelligence.analyzer import ProjectAnalyzer
-from app.threemf.intelligence.engine import AutoSliceDecisionEngine
-from app.threemf.intelligence.models import AutoSliceProfile, OptimizationMode, OptimizationPlan
-from app.threemf.intelligence.profiles import build_target_profile
+from app.threemf.intelligence.models import OptimizationPlan
+from app.threemf.pipeline.orchestrator import FullUniversal3MFPipeline, PipelineSnapshot
 from app.threemf.translation.plan import TranslationPlan, build_translation_plan
 
 
@@ -34,6 +32,7 @@ class TranslationOutcome:
     target_artifacts: TargetArtifacts
     plan: TranslationPlan | None = None
     optimization_plan: OptimizationPlan | None = None
+    pipeline_snapshot: PipelineSnapshot | None = None
 
 
 class AutoSliceTranslationEngine:
@@ -42,60 +41,28 @@ class AutoSliceTranslationEngine:
     ) -> TranslationOutcome:
         target = SlicerType(context.target_slicer)
         translation_plan = build_translation_plan(document, target)
-        if (
-            context.mode is not ConversionMode.AUTOSLICE
-            or context.preserve_source
-            or not context.optimize_for_target
-        ):
+        if not context.target_printer_id:
             return TranslationOutcome(
                 document,
                 translation_plan.report,
                 TargetArtifacts(None, None, None),
                 translation_plan,
             )
-        if not context.target_printer_id:
-            raise ValueError("AutoSlice conversion requires a target printer profile.")
-        profile = build_target_profile(
-            context.target_slicer,
-            context.target_printer_id,
-            context.nozzle_size_mm or 0.4,
-            context.material_id or "pla",
+        effective_context = (
+            replace(context, mode=ConversionMode.PRESERVE)
+            if context.preserve_source or not context.optimize_for_target
+            else context
         )
-        analysis = ProjectAnalyzer().analyze(document, profile)
-        optimizer = AutoSliceDecisionEngine()
-        autoslice_profile = AutoSliceProfile(
-            mode={
-                "balanced": OptimizationMode.BALANCED,
-                "quality": OptimizationMode.QUALITY_FIRST,
-                "fast": OptimizationMode.FAST_PRINT,
-                "material_saving": OptimizationMode.MATERIAL_SAVING,
-            }.get(context.optimization_profile, OptimizationMode.BALANCED)
+        snapshot = FullUniversal3MFPipeline().analyze(
+            document, effective_context, analyze_only=False
         )
-        optimization_plan = optimizer.evaluate(
-            document, analysis, profile, context.mode, autoslice_profile
-        )
-        optimized = optimizer.apply(document, optimization_plan, profile, autoslice_profile)
-        optimization_items = tuple(
-            TranslationItem(
-                item.setting,
-                TranslationStatus.APPROXIMATED,
-                Severity.MEDIUM,
-                source_value=str(item.old_value),
-                universal_value=str(item.new_value),
-                target_value=str(item.new_value),
-                reason=f"{item.reason} Rule={item.rule}; confidence={item.confidence.value}.",
-            )
-            for item in optimization_plan.changes
-        )
-        combined = TranslationReport(
-            translation_plan.operations + optimization_items
-        ).with_weighted_score()
         return TranslationOutcome(
-            optimized,
-            combined,
+            snapshot.optimized_document,
+            snapshot.translation_report,
             TargetArtifacts(None, None, None),
-            translation_plan,
-            optimization_plan,
+            snapshot.translation_plan,
+            snapshot.optimization_plan,
+            snapshot,
         )
 
 

@@ -20,14 +20,8 @@ from app.threemf.container.reader import ThreeMFContainer
 from app.threemf.conversion import ConversionError, convert_3mf
 from app.threemf.conversion.schemas import ConversionReportSchema, SourceSchema, TargetSchema
 from app.threemf.domain.settings import ConversionContext, ConversionMode
-from app.threemf.intelligence.analyzer import ProjectAnalyzer
-from app.threemf.intelligence.engine import AutoSliceDecisionEngine
-from app.threemf.intelligence.geometry import GeometryAnalyzer
-from app.threemf.intelligence.models import AutoSliceProfile, OptimizationMode
-from app.threemf.intelligence.placement import PlacementAnalyzer
-from app.threemf.intelligence.profiles import build_target_profile
-from app.threemf.intelligence.support import SupportAnalyzer
 from app.threemf.parsers import default_parser_registry
+from app.threemf.pipeline.orchestrator import FullUniversal3MFPipeline
 from app.threemf.validation import validate_3mf
 
 logger = logging.getLogger(__name__)
@@ -43,6 +37,7 @@ class UniversalConvertRequest(BaseModel):
     mode: ConversionMode = ConversionMode.AUTOSLICE
     source_slicer: str | None = None
     optimization_profile: str = "balanced"
+    nozzle_material: str = "brass"
 
 
 class UniversalAnalyzeRequest(BaseModel):
@@ -82,29 +77,19 @@ async def universal_analyze(
             status_code=404, detail={"code": "JOB_NOT_FOUND", "message": "Upload job not found."}
         )
     try:
-        target = build_target_profile(
+        loop = asyncio.get_event_loop()
+        container = await loop.run_in_executor(None, ThreeMFContainer.from_path, job.archive_path)
+        document = await loop.run_in_executor(None, default_parser_registry().parse, container)
+        context = ConversionContext(
             request.target_slicer,
             request.target_printer,
             request.nozzle_size_mm,
             request.material,
-            request.nozzle_material,
+            request.mode,
+            optimization_profile=request.optimization_profile,
+            nozzle_material=request.nozzle_material,
         )
-        loop = asyncio.get_event_loop()
-        container = await loop.run_in_executor(None, ThreeMFContainer.from_path, job.archive_path)
-        document = await loop.run_in_executor(None, default_parser_registry().parse, container)
-        analysis = ProjectAnalyzer().analyze(document, target)
-        profile = AutoSliceProfile(
-            mode={
-                "balanced": OptimizationMode.BALANCED,
-                "quality": OptimizationMode.QUALITY_FIRST,
-                "fast": OptimizationMode.FAST_PRINT,
-                "material_saving": OptimizationMode.MATERIAL_SAVING,
-            }.get(request.optimization_profile, OptimizationMode.BALANCED)
-        )
-        printability = GeometryAnalyzer().analyze(document, target, profile)
-        plan = AutoSliceDecisionEngine().evaluate(document, analysis, target, request.mode, profile)
-        support_plan = SupportAnalyzer().analyze(document, printability, target, request.mode)
-        placement_plan = PlacementAnalyzer().analyze(document, target, request.mode)
+        snapshot = FullUniversal3MFPipeline().analyze(document, context, analyze_only=True)
     except (ValueError, OSError) as exc:
         raise HTTPException(
             status_code=422, detail={"code": "ANALYSIS_FAILED", "message": str(exc)}
@@ -115,18 +100,19 @@ async def universal_analyze(
             "confidence": document.source.confidence,
             "version": document.source.version,
         },
-        project=dataclasses.asdict(analysis),
-        target=dataclasses.asdict(target),
-        optimization_plan=dataclasses.asdict(plan),
-        printability=dataclasses.asdict(printability),
+        project=dataclasses.asdict(snapshot.project),
+        target=dataclasses.asdict(snapshot.target),
+        optimization_plan=dataclasses.asdict(snapshot.optimization_plan),
+        printability=dataclasses.asdict(snapshot.printability),
         orientation=(
-            dataclasses.asdict(printability.objects[0].orientation)
-            if len(printability.objects) == 1 and printability.objects[0].orientation
+            dataclasses.asdict(snapshot.printability.objects[0].orientation)
+            if len(snapshot.printability.objects) == 1
+            and snapshot.printability.objects[0].orientation
             else None
         ),
-        support_plan=dataclasses.asdict(support_plan),
-        placement_plan=dataclasses.asdict(placement_plan),
-        optimization_preview=dataclasses.asdict(plan.advanced_optimization),
+        support_plan=dataclasses.asdict(snapshot.support_plan),
+        placement_plan=dataclasses.asdict(snapshot.placement_plan),
+        optimization_preview=dataclasses.asdict(snapshot.optimization_plan.advanced_optimization),
     )
 
 
@@ -178,6 +164,7 @@ async def universal_convert(
         mode=request.mode,
         source_slicer=request.source_slicer,
         optimization_profile=request.optimization_profile,
+        nozzle_material=request.nozzle_material,
     )
     existing = {path.name for path in job.archive_path.parent.glob("*.3mf")}
     operation = partial(

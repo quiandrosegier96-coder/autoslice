@@ -1,9 +1,9 @@
 """Central secure Universal3MF conversion orchestration service."""
 
 import logging
+import uuid
 from pathlib import Path
 from time import perf_counter
-import uuid
 
 from app.threemf.container.reader import ThreeMFContainer
 from app.threemf.conversion.errors import ConversionError, ConversionErrorCode
@@ -13,12 +13,14 @@ from app.threemf.domain.diagnostics import TranslationReport
 from app.threemf.domain.metadata import SlicerType
 from app.threemf.domain.settings import ConversionContext
 from app.threemf.exporters.registry import ExporterRegistry, default_exporter_registry
-from app.threemf.pipeline.naming import autoslice_output_filename
 from app.threemf.parsers.registry import ParserRegistry, default_parser_registry
+from app.threemf.pipeline.naming import autoslice_output_filename
 from app.threemf.translation.engine import AutoSliceTranslationEngine
 from app.threemf.validation import TargetValidatorRegistry, default_target_validator_registry
 
 logger = logging.getLogger(__name__)
+
+
 class ConversionService:
     def __init__(
         self,
@@ -54,7 +56,10 @@ class ConversionService:
             raise ConversionError(ConversionErrorCode.INVALID_3MF, str(exc), cause=exc) from exc
         detection = detect_3mf(container)
         if detection.slicer is SlicerType.UNKNOWN:
-            raise ConversionError(ConversionErrorCode.UNSUPPORTED_SLICER, "The source 3MF format could not be identified.")
+            raise ConversionError(
+                ConversionErrorCode.UNSUPPORTED_SLICER,
+                "The source 3MF format could not be identified.",
+            )
         if detection.confidence < self._min_detection_confidence:
             raise ConversionError(
                 ConversionErrorCode.LOW_DETECTION_CONFIDENCE,
@@ -65,47 +70,88 @@ class ConversionService:
                 ConversionErrorCode.UNSUPPORTED_SLICER,
                 f"Detected source '{detection.slicer.value}' does not match requested source '{context.source_slicer}'.",
             )
-        logger.info("3MF source detected", extra={"conversion_id": conversion_id, "source_slicer": detection.slicer.value, "confidence": detection.confidence})
+        logger.info(
+            "3MF source detected",
+            extra={
+                "conversion_id": conversion_id,
+                "source_slicer": detection.slicer.value,
+                "confidence": detection.confidence,
+            },
+        )
         try:
             document = self._parsers.parse(container)
         except Exception as exc:
-            raise ConversionError(ConversionErrorCode.PARSER_ERROR, f"Failed to parse source 3MF: {exc}", cause=exc) from exc
+            raise ConversionError(
+                ConversionErrorCode.PARSER_ERROR, f"Failed to parse source 3MF: {exc}", cause=exc
+            ) from exc
         parse_done = perf_counter()
-        logger.info("3MF parsed", extra={"conversion_id": conversion_id, "object_count": len(document.objects)})
+        logger.info(
+            "3MF parsed",
+            extra={"conversion_id": conversion_id, "object_count": len(document.objects)},
+        )
         try:
             target = SlicerType(context.target_slicer)
             self._exporters.get_exporter(target)
         except ValueError as exc:
-            raise ConversionError(ConversionErrorCode.UNSUPPORTED_SLICER, f"Unsupported target slicer: {context.target_slicer}", cause=exc) from exc
+            raise ConversionError(
+                ConversionErrorCode.UNSUPPORTED_SLICER,
+                f"Unsupported target slicer: {context.target_slicer}",
+                cause=exc,
+            ) from exc
         try:
             outcome = self._translator.translate(document, context)
         except Exception as exc:
-            raise ConversionError(ConversionErrorCode.TRANSLATION_ERROR, f"AutoSlice translation failed: {exc}", cause=exc) from exc
+            raise ConversionError(
+                ConversionErrorCode.TRANSLATION_ERROR,
+                f"AutoSlice translation failed: {exc}",
+                cause=exc,
+            ) from exc
         translation_done = perf_counter()
-        logger.info("3MF translated and optimized", extra={"conversion_id": conversion_id, "compatibility": outcome.report.compatibility_score})
+        logger.info(
+            "3MF translated and optimized",
+            extra={
+                "conversion_id": conversion_id,
+                "compatibility": outcome.report.compatibility_score,
+            },
+        )
         try:
             exported = self._exporters.export(target, outcome.document, context)
         except ConversionError:
             raise
         except Exception as exc:
-            raise ConversionError(ConversionErrorCode.EXPORT_ERROR, f"Target export failed: {exc}", cause=exc) from exc
+            raise ConversionError(
+                ConversionErrorCode.EXPORT_ERROR, f"Target export failed: {exc}", cause=exc
+            ) from exc
         export_done = perf_counter()
-        logger.info("3MF exported", extra={"conversion_id": conversion_id, "output_size": len(exported.payload)})
+        logger.info(
+            "3MF exported",
+            extra={"conversion_id": conversion_id, "output_size": len(exported.payload)},
+        )
         try:
             validation = self._target_validators.validate(target, exported.payload)
         except Exception as exc:
-            raise ConversionError(ConversionErrorCode.VALIDATION_ERROR, f"Target validation failed: {exc}", cause=exc) from exc
+            raise ConversionError(
+                ConversionErrorCode.VALIDATION_ERROR, f"Target validation failed: {exc}", cause=exc
+            ) from exc
         if not validation.valid:
             detail = "; ".join(item.message for item in validation.diagnostics)
-            raise ConversionError(ConversionErrorCode.VALIDATION_ERROR, f"Generated 3MF failed validation: {detail}")
+            raise ConversionError(
+                ConversionErrorCode.VALIDATION_ERROR, f"Generated 3MF failed validation: {detail}"
+            )
         try:
-            reparsed = self._parsers.parse(ThreeMFContainer.from_bytes(exported.payload, "output.3mf"))
+            reparsed = self._parsers.parse(
+                ThreeMFContainer.from_bytes(exported.payload, "output.3mf")
+            )
             if reparsed.source.slicer.value != context.target_slicer:
                 raise ValueError(
                     f"Generated package identifies as {reparsed.source.slicer.value}, expected {context.target_slicer}."
                 )
         except Exception as exc:
-            raise ConversionError(ConversionErrorCode.VALIDATION_ERROR, f"Generated 3MF could not be reparsed: {exc}", cause=exc) from exc
+            raise ConversionError(
+                ConversionErrorCode.VALIDATION_ERROR,
+                f"Generated 3MF could not be reparsed: {exc}",
+                cause=exc,
+            ) from exc
         validation_done = perf_counter()
         logger.info("3MF validation completed", extra={"conversion_id": conversion_id})
         items = outcome.report.items + exported.report.items
@@ -119,17 +165,39 @@ class ConversionService:
             validation_ms=(validation_done - export_done) * 1000,
             total_ms=(validation_done - started) * 1000,
         )
-        logger.info("3MF conversion completed", extra={"conversion_id": conversion_id, "output_filename": output_filename, "compatibility": report.compatibility_score})
+        logger.info(
+            "3MF conversion completed",
+            extra={
+                "conversion_id": conversion_id,
+                "output_filename": output_filename,
+                "compatibility": report.compatibility_score,
+            },
+        )
         return ConversionResult(
-            conversion_id, exported.payload, output_filename, document.source,
-            context.target_slicer, context.target_printer_id, report, timings,
-            len(raw), len(exported.payload),
+            conversion_id,
+            exported.payload,
+            output_filename,
+            document.source,
+            context.target_slicer,
+            context.target_printer_id,
+            report,
+            timings,
+            len(raw),
+            len(exported.payload),
+            tuple(
+                (stage.name, stage.duration_ms, stage.status)
+                for stage in outcome.pipeline_snapshot.stages
+            )
+            if outcome.pipeline_snapshot
+            else (),
         )
 
 
 def create_conversion_service(min_detection_confidence: float = 0.5) -> ConversionService:
     return ConversionService(
-        default_parser_registry(), AutoSliceTranslationEngine(), default_exporter_registry(),
+        default_parser_registry(),
+        AutoSliceTranslationEngine(),
+        default_exporter_registry(),
         min_detection_confidence=min_detection_confidence,
     )
 

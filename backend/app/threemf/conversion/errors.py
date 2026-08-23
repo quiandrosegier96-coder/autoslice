@@ -15,7 +15,9 @@ class ConversionErrorCode(str, Enum):
 
 
 class ConversionError(RuntimeError):
-    def __init__(self, code: ConversionErrorCode, message: str, *, cause: Exception | None = None) -> None:
+    def __init__(
+        self, code: ConversionErrorCode, message: str, *, cause: Exception | None = None
+    ) -> None:
         super().__init__(message)
         self.code = code
         self.cause = cause

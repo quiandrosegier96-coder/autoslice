@@ -42,6 +42,7 @@ class AutoSliceDecisionEngine:
         target: TargetProfile,
         mode: ConversionMode = ConversionMode.AUTOSLICE,
         profile: AutoSliceProfile | None = None,
+        analyze_only: bool = False,
     ) -> OptimizationPlan:
         profile = profile or AutoSliceProfile()
         warnings: list[PlanMessage] = []
@@ -186,7 +187,7 @@ class AutoSliceDecisionEngine:
             document,
             target,
             advanced_profile,
-            analyze_only=mode is not ConversionMode.AUTOSLICE,
+            analyze_only=analyze_only or mode is not ConversionMode.AUTOSLICE,
             hard_blocked=bool(blocked),
         )
         if advanced.selected.viable:

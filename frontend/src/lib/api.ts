@@ -90,6 +90,7 @@ export type UniversalConversionResult = {
     approximated: unknown[];
     unsupported: unknown[];
     warnings: string[];
+    pipeline_stages: Array<{ name: string; duration_ms: number; status: string }>;
   };
   output_filename: string;
   download_reference: string;
@@ -105,6 +106,7 @@ export function apiUniversalConvert(body: {
   material: string;
   mode: "autoslice" | "preserve_source";
   optimization_profile?: "balanced" | "quality" | "fast" | "material_saving";
+  nozzle_material?: string;
 }): Promise<UniversalConversionResult> {
   return apiPost<UniversalConversionResult>("/universal-convert", body, true);
 }

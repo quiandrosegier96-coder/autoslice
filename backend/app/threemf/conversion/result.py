@@ -28,3 +28,4 @@ class ConversionResult:
     timings: ConversionTimings
     input_size_bytes: int
     output_size_bytes: int
+    pipeline_stages: tuple[tuple[str, float, str], ...] = ()

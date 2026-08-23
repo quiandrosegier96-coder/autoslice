@@ -63,3 +63,4 @@ class ConversionContext:
     preserve_source: bool = False
     optimize_for_target: bool = True
     optimization_profile: str = "balanced"
+    nozzle_material: str = "brass"
