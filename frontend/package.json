@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "tsc -p tsconfig.lint.json --noEmit --incremental false",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
     "build:mobile": "cross-env NEXT_PUBLIC_API_BASE=http://178.117.208.226:8000 NEXT_MOBILE=1 next build",
     "cap:sync": "npx cap sync android",
     "cap:open": "npx cap open android"

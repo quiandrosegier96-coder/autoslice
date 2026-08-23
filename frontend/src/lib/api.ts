@@ -1,6 +1,8 @@
 // In the Electron/web app API calls go through the Next.js rewrite proxy (/api → backend).
 // In the Android app there is no proxy — calls go directly to the backend server.
 // NEXT_PUBLIC_API_BASE is set at build time for the mobile export.
+import type { AnalysisResult, ConversionResult } from "./autoslice-types";
+
 const BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "") + "/api";
 
 function getToken(): string | null {
@@ -78,25 +80,7 @@ export async function apiAnalyze(jobId: string) {
   return apiGet(`/analyze/${jobId}`, true);
 }
 
-export type UniversalConversionResult = {
-  success: boolean;
-  source: { slicer: string; confidence: number; evidence: string[] };
-  target: { slicer: string; printer: string | null };
-  compatibility: {
-    compatibility_score: number;
-    translated: unknown[];
-    modified: unknown[];
-    preserved: unknown[];
-    approximated: unknown[];
-    unsupported: unknown[];
-    warnings: string[];
-    pipeline_stages: Array<{ name: string; duration_ms: number; status: string }>;
-  };
-  output_filename: string;
-  download_reference: string;
-  validation_passed: boolean;
-  fallback_used: boolean;
-};
+export type UniversalConversionResult = ConversionResult;
 
 export function apiUniversalConvert(body: {
   job_id: string;
@@ -111,96 +95,7 @@ export function apiUniversalConvert(body: {
   return apiPost<UniversalConversionResult>("/universal-convert", body, true);
 }
 
-export type AutoSliceAnalysis = {
-  source: { slicer: string; confidence: number; version?: string | null };
-  project: { dimensions_mm: number[]; build_volume_status: string; object_count: number };
-  target: { slicer: string; printer: { display_name: string }; nozzle: { diameter_mm: number }; filament: { material_id: string } };
-  optimization_plan: {
-    changes: Array<{ setting: string; old_value: unknown; new_value: unknown; reason: string; rule: string; confidence: string }>;
-    unchanged: string[];
-    warnings: Array<{ code: string; message: string }>;
-    blocked: Array<{ code: string; message: string }>;
-    geometry_changes: Array<{
-      object_id: string;
-      current_transform: number[];
-      recommended_transform: number[];
-      rotation_degrees: number[];
-      reason: string;
-      confidence: string;
-      score_improvement: number;
-      applied: boolean;
-    }>;
-    support_changes: Array<{
-      setting: string;
-      old_value: unknown;
-      new_value: unknown;
-      reason: string;
-      rule: string;
-      confidence: string;
-      applied: boolean;
-    }>;
-    placement_changes: Array<{
-      item_index: number;
-      object_id: string;
-      old_transform: number[];
-      new_transform: number[];
-      old_position_mm: number[];
-      new_position_mm: number[];
-      reason: string;
-      rule: string;
-      confidence: string;
-      applied: boolean;
-    }>;
-    compatibility: { final_compatibility: number };
-  };
-  printability: {
-    status: "good" | "warning" | "blocked" | "unknown";
-    project_build_volume: string;
-    collisions: Array<{ first_object_id: string; second_object_id: string; kind: string }>;
-    support_recommendations: string[];
-    debug: unknown[];
-  };
-  orientation: {
-    recommended_transform: number[];
-    rotation_degrees: number[];
-    score: number;
-    current_score: number;
-    confidence: string;
-    estimated_support_reduction_percent: number;
-    candidates: unknown[];
-  } | null;
-  support_plan: {
-    strategy: "none" | "build_plate_only" | "normal" | "tree" | "organic" | "auto";
-    required_regions: unknown[];
-    optional_regions: unknown[];
-    blocked_regions: unknown[];
-    estimated_support_volume_mm3: number | null;
-    confidence: string;
-    diagnostics: Array<{ code: string; message: string }>;
-    applied: boolean;
-    preserves_source_supports: boolean;
-  };
-  placement_plan: {
-    current: unknown;
-    recommended: unknown;
-    candidates: unknown[];
-    plate_assignments: unknown[];
-    diagnostics: Array<{ code: string; message: string; object_ids: string[] }>;
-    confidence: string;
-    applied: boolean;
-    reanalysis_required: boolean;
-  };
-  optimization_preview: {
-    profile: "balanced" | "quality" | "fast" | "material_saving";
-    weights: { values: Array<[string, number]> };
-    selected: unknown;
-    candidates: unknown[];
-    explanations: unknown[];
-    analyze_only: boolean;
-    benchmark_ms: number;
-  };
-  dry_run: boolean;
-};
+export type AutoSliceAnalysis = AnalysisResult;
 
 export function apiUniversalAnalyze(body: {
   job_id: string;

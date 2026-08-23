@@ -345,7 +345,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/convert",   label: t("nav_convert"),   icon: <IconBolt />,   show: true },
     { href: "/history",   label: t("nav_history"),   icon: <IconClock />,  show: siteCfg === null || siteCfg.nav_history },
     { href: "/community", label: t("nav_community"), icon: <IconUsers />,  show: siteCfg === null || siteCfg.nav_community },
-    { href: "/tools/hinged-box", label: "Tools",      icon: <IconTools />,  show: true },
+    { href: "/tools",   label: "Tools",              icon: <IconTools />,  show: true },
     { href: "/settings",  label: "Instellingen",     icon: <IconGear />,   show: siteCfg === null || siteCfg.nav_settings },
     ...(admin ? [{ href: "/admin", label: t("nav_admin"), icon: <IconShield />, show: true }] : []),
   ];
