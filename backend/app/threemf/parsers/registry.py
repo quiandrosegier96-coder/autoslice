@@ -26,7 +26,8 @@ def default_parser_registry() -> ParserRegistry:
     from app.threemf.parsers.anycubic import AnycubicParser
     from app.threemf.parsers.bambu import BambuParser
     from app.threemf.parsers.core import CoreThreeMFParser
+    from app.threemf.parsers.cura import CuraParser
     from app.threemf.parsers.orca import OrcaParser
     from app.threemf.parsers.prusa import PrusaParser
 
-    return ParserRegistry((AnycubicParser(), OrcaParser(), PrusaParser(), BambuParser(), CoreThreeMFParser()))
+    return ParserRegistry((AnycubicParser(), OrcaParser(), PrusaParser(), CuraParser(), BambuParser(), CoreThreeMFParser()))

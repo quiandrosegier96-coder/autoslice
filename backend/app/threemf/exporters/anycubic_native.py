@@ -8,6 +8,7 @@ import zipfile
 from app.export.xml_builder import build_content_types_xml, build_rels_xml, build_settings_configs
 from app.models.print_settings import PrintSettings as TargetPrintSettings
 from app.models.printer import FilamentType, PrinterProfile
+from app.rules.printer_loader import load_printer_profile
 from app.threemf.domain.diagnostics import Severity, TranslationItem, TranslationReport, TranslationStatus
 from app.threemf.domain.document import Universal3MFDocument
 from app.threemf.domain.metadata import SlicerType
@@ -20,7 +21,7 @@ CORE_NS = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02"
 
 
 class NativeAnycubicExporter(ThreeMFExporter):
-    def __init__(self, settings: TargetPrintSettings, printer: PrinterProfile, filament: FilamentType) -> None:
+    def __init__(self, settings: TargetPrintSettings | None = None, printer: PrinterProfile | None = None, filament: FilamentType | None = None) -> None:
         self._settings = settings
         self._printer = printer
         self._filament = filament
@@ -31,8 +32,9 @@ class NativeAnycubicExporter(ThreeMFExporter):
     def export(self, document: Universal3MFDocument, context: ConversionContext) -> ExportResult:
         if context.target_slicer != SlicerType.ANYCUBIC.value:
             raise ValueError("NativeAnycubicExporter requires an Anycubic conversion context.")
+        settings, printer, filament = self._target_configuration(document, context)
         model_xml, object_ids, material_items = _build_model(document)
-        configs = build_settings_configs(self._settings, self._printer, self._filament)
+        configs = build_settings_configs(settings, printer, filament)
         model_settings = _build_explicit_model_settings(document, object_ids)
         output = BytesIO()
         with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as package:
@@ -54,6 +56,42 @@ class NativeAnycubicExporter(ThreeMFExporter):
         validate_3mf(payload).require_valid()
         report = _native_report(document, material_items).with_weighted_score()
         return ExportResult(payload, SlicerType.ANYCUBIC, report)
+
+    def _target_configuration(self, document: Universal3MFDocument, context: ConversionContext):
+        if self._settings is not None and self._printer is not None and self._filament is not None:
+            return self._settings, self._printer, self._filament
+        if not context.target_printer_id:
+            raise ValueError("Anycubic export requires a target printer.")
+        printer = load_printer_profile(context.target_printer_id)
+        filament = FilamentType(context.material_id or "pla")
+        process = document.process
+        nozzle = context.nozzle_size_mm or printer.nozzle_diameter_mm
+        settings = TargetPrintSettings(
+            layer_height_mm=process.layer_height_mm or 0.2,
+            first_layer_height_mm=process.first_layer_height_mm or 0.25,
+            wall_count=process.wall_count or 3, top_layers=process.top_layers or 4,
+            bottom_layers=process.bottom_layers or 4,
+            infill_percent=round(process.infill_density_percent or 15),
+            infill_pattern=process.infill_pattern or "gyroid",
+            supports_enabled=document.supports.enabled is True,
+            support_type="normal", support_density_percent=15,
+            support_angle_threshold_deg=50,
+            brim_enabled=(process.adhesion.brim_width_mm or 0) > 0,
+            brim_width_mm=process.adhesion.brim_width_mm or 0,
+            skirt_loops=process.adhesion.skirt_loops or 0,
+            nozzle_temp_c=process.nozzle_temperature_c or 210,
+            bed_temp_c=process.bed_temperature_c or 60,
+            print_speed_mm_s=round(process.print_speed_mm_s or 100),
+            first_layer_speed_mm_s=round(process.first_layer_speed_mm_s or 30),
+            retract_length_mm=process.retraction.length_mm or 0.8,
+            retract_speed_mm_s=round(process.retraction.speed_mm_s or 45),
+            z_hop_mm=process.retraction.z_hop_mm or 0.2,
+            line_width_mm=process.extrusion_width_mm or nozzle,
+            fan_speed_percent=process.fan_speed_percent if process.fan_speed_percent is not None else 100,
+            ironing_enabled=process.ironing_enabled or False,
+            seam_position=process.seam_position or "aligned", nozzle_size_mm=nozzle,
+        )
+        return settings, printer, filament
 
 
 def _build_model(document: Universal3MFDocument) -> tuple[bytes, dict[str, str], int]:

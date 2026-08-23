@@ -11,8 +11,17 @@ class ExporterRegistry:
     def register(self, exporter: ThreeMFExporter) -> None:
         self._exporters.append(exporter)
 
-    def export(self, target: SlicerType, document: Universal3MFDocument, context: ConversionContext) -> ExportResult:
+    def get_exporter(self, target: SlicerType) -> ThreeMFExporter:
         exporter = next((item for item in self._exporters if item.can_export(target)), None)
         if exporter is None:
             raise ValueError(f"No exporter registered for target '{target.value}'.")
-        return exporter.export(document, context)
+        return exporter
+
+    def export(self, target: SlicerType, document: Universal3MFDocument, context: ConversionContext) -> ExportResult:
+        return self.get_exporter(target).export(document, context)
+
+
+def default_exporter_registry() -> ExporterRegistry:
+    from app.threemf.exporters.anycubic_native import NativeAnycubicExporter
+
+    return ExporterRegistry((NativeAnycubicExporter(),))

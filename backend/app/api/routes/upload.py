@@ -14,7 +14,7 @@ from app.ingestion.handler import create_job, find_job
 from app.ingestion.validator import validate_3mf_upload
 from app.auth.dependencies import get_optional_user
 from app.database import log_job
-from app.threemf.container.opc import primary_model_path
+from app.threemf.container.opc import primary_model_path, validate_relationships
 from app.threemf.container.reader import ThreeMFContainer
 from app.threemf.container.security import UnsafeThreeMFError
 
@@ -48,6 +48,7 @@ async def upload_file(
     loop = asyncio.get_event_loop()
     try:
         container = await loop.run_in_executor(None, ThreeMFContainer.from_path, job.archive_path)
+        validate_relationships(container)
         model_path = primary_model_path(container)
     except (UnsafeThreeMFError, ValueError) as exc:
         job.archive_path.unlink(missing_ok=True)

@@ -6,8 +6,8 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { isLoggedIn, getUser } from "@/lib/auth";
 import { useLang } from "@/contexts/LangContext";
-import { apiUpload, apiAnalyze, apiConvertDownload, apiUniversalConvert, apiDownloadReference, apiGet, apiPost } from "@/lib/api";
-import type { UniversalConversionResult } from "@/lib/api";
+import { apiUpload, apiAnalyze, apiConvertDownload, apiUniversalAnalyze, apiUniversalConvert, apiDownloadReference, apiGet, apiPost } from "@/lib/api";
+import type { AutoSliceAnalysis, UniversalConversionResult } from "@/lib/api";
 import { useToast, ToastContainer } from "@/components/Toast";
 import type { TreeSupportResult } from "@/lib/tree-support/types";
 
@@ -177,6 +177,7 @@ export default function ConvertPage() {
   const [error, setError] = useState("");
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [universalResult, setUniversalResult] = useState<UniversalConversionResult | null>(null);
+  const [autoSliceAnalysis, setAutoSliceAnalysis] = useState<AutoSliceAnalysis | null>(null);
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [downloadName, setDownloadName] = useState("");
@@ -250,6 +251,18 @@ export default function ConvertPage() {
   useEffect(() => {
     setTreeResult(null);
   }, [jobId, showSupports, manualEuler]);
+
+  useEffect(() => {
+    if (!jobId || !selectedPrinter || !analysis?.universal_engine_enabled) return;
+    let active = true;
+    apiUniversalAnalyze({
+      job_id: jobId, target_slicer: "anycubic", target_printer: selectedPrinter,
+      nozzle_size_mm: nozzleSize, nozzle_material: nozzleType,
+      material: selectedFilament, mode: "autoslice",
+    }).then(result => { if (active) setAutoSliceAnalysis(result); })
+      .catch(() => { if (active) setAutoSliceAnalysis(null); });
+    return () => { active = false; };
+  }, [jobId, selectedPrinter, nozzleSize, nozzleType, selectedFilament, analysis?.universal_engine_enabled]);
 
   // ── Keyboard shortcuts ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -360,6 +373,7 @@ export default function ConvertPage() {
     setAnalysis(null);
     setDownloadUrl(null);
     setUniversalResult(null);
+    setAutoSliceAnalysis(null);
     setApplyOrientation(false);
     setManualEuler([]);
     try {
@@ -1605,6 +1619,21 @@ export default function ConvertPage() {
             </div>
           </div>
           {analysis.universal_warnings.map((warning, index) => <p key={index} className="text-yellow-400 mt-2">⚠ {warning}</p>)}
+        </div>
+      )}
+      {autoSliceAnalysis && (
+        <div className="bg-surface-card border border-white/[0.07] rounded-2xl mb-4 p-4 text-xs">
+          <p className="text-[10px] tracking-[0.22em] text-zinc-600 mb-3">AUTOSLICE ANALYSIS</p>
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <div><p className="text-zinc-600">Target</p><p className="text-zinc-300">{autoSliceAnalysis.target.printer.display_name}</p></div>
+            <div><p className="text-zinc-600">Compatibility</p><p className="text-zinc-300">{Math.round(autoSliceAnalysis.optimization_plan.compatibility.final_compatibility)}%</p></div>
+          </div>
+          {autoSliceAnalysis.optimization_plan.changes.map(change => (
+            <p key={change.setting} className="text-green-400">✓ {change.setting}: {String(change.old_value)} → {String(change.new_value)} <span className="text-zinc-600">({change.rule})</span></p>
+          ))}
+          {autoSliceAnalysis.optimization_plan.unchanged.length > 0 && <p className="text-zinc-500 mt-2">No change: {autoSliceAnalysis.optimization_plan.unchanged.join(", ")}</p>}
+          {autoSliceAnalysis.optimization_plan.warnings.map(item => <p key={item.code} className="text-yellow-400 mt-2">⚠ {item.message}</p>)}
+          {autoSliceAnalysis.optimization_plan.blocked.map(item => <p key={item.code} className="text-red-400 mt-2">✕ {item.message}</p>)}
         </div>
       )}
       {step === "done" && universalResult?.validation_passed && (

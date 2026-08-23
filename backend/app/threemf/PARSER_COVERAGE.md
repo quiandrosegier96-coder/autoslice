@@ -40,3 +40,7 @@ No real PrusaSlicer fixture is present. `PrusaParser` requires multiple independ
 | Modifiers | Role only | Role only | Role only | Target limitations reported |
 | Variable layer height | Flag only | Flag only | Flag only | Target limitations reported |
 | Textures | Core resources | Core resources | Core resources | Core resources preserved where supported |
+
+## Ultimaker Cura
+
+No real Cura-generated project fixture is present. `CuraParser` therefore requires multiple independent Cura signals. It delegates geometry, components, build items, transforms and core resources to `CoreThreeMFParser`; recognized Cura settings, support flags, mesh roles and explicit extruder numbers are enriched semantically. Unknown Cura package parts remain source-only opaque. Cura target export is not implemented because a generic 3MF is not sufficient evidence of a Cura project.

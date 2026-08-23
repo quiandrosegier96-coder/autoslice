@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from app.threemf.container.opc import primary_model_path
+from app.threemf.container.opc import primary_model_path, validate_relationships
 from app.threemf.container.reader import ThreeMFContainer
 from app.threemf.container.xml import parse_xml
 from app.threemf.domain.diagnostics import Diagnostic, Severity
@@ -36,6 +36,7 @@ def validate_3mf(value: bytes | ThreeMFContainer) -> ValidationResult:
     if not container.exists("_rels/.rels"):
         diagnostics.append(Diagnostic("package.relationships_missing", "_rels/.rels is missing.", Severity.CRITICAL))
     try:
+        validate_relationships(container)
         model_path = primary_model_path(container)
         parse_xml(container.read(model_path), model_path)
         document = CoreThreeMFParser().parse(container)

@@ -108,6 +108,32 @@ export function apiUniversalConvert(body: {
   return apiPost<UniversalConversionResult>("/universal-convert", body, true);
 }
 
+export type AutoSliceAnalysis = {
+  source: { slicer: string; confidence: number; version?: string | null };
+  project: { dimensions_mm: number[]; build_volume_status: string; object_count: number };
+  target: { slicer: string; printer: { display_name: string }; nozzle: { diameter_mm: number }; filament: { material_id: string } };
+  optimization_plan: {
+    changes: Array<{ setting: string; old_value: unknown; new_value: unknown; reason: string; rule: string; confidence: string }>;
+    unchanged: string[];
+    warnings: Array<{ code: string; message: string }>;
+    blocked: Array<{ code: string; message: string }>;
+    compatibility: { final_compatibility: number };
+  };
+  dry_run: boolean;
+};
+
+export function apiUniversalAnalyze(body: {
+  job_id: string;
+  target_slicer: string;
+  target_printer: string;
+  nozzle_size_mm: number;
+  nozzle_material: string;
+  material: string;
+  mode: "autoslice" | "preserve_source";
+}): Promise<AutoSliceAnalysis> {
+  return apiPost<AutoSliceAnalysis>("/universal-analyze", body, true);
+}
+
 export async function apiDownloadReference(reference: string): Promise<Blob> {
   const path = reference.startsWith("/api/") ? reference.slice(4) : reference;
   const res = await fetch(`${BASE}${path}`, { headers: authHeaders() });

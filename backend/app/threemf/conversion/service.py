@@ -1,6 +1,5 @@
 """Central secure Universal3MF conversion orchestration service."""
 
-from collections.abc import Callable
 import logging
 from pathlib import Path
 from time import perf_counter
@@ -13,28 +12,26 @@ from app.threemf.detection import detect_3mf
 from app.threemf.domain.diagnostics import TranslationReport
 from app.threemf.domain.metadata import SlicerType
 from app.threemf.domain.settings import ConversionContext
-from app.threemf.exporters.base import ExportResult
-from app.threemf.exporters.registry import ExporterRegistry
+from app.threemf.exporters.registry import ExporterRegistry, default_exporter_registry
 from app.threemf.pipeline.naming import autoslice_output_filename
 from app.threemf.parsers.registry import ParserRegistry, default_parser_registry
-from app.threemf.translation.engine import AutoSliceTranslationEngine, TranslationOutcome
-from app.threemf.validation import validate_3mf
+from app.threemf.translation.engine import AutoSliceTranslationEngine
+from app.threemf.validation import TargetValidatorRegistry, default_target_validator_registry
 
 logger = logging.getLogger(__name__)
-ExportResolver = Callable[[TranslationOutcome, ConversionContext], ExportResult]
-
-
 class ConversionService:
     def __init__(
         self,
         parser_registry: ParserRegistry,
         translator: AutoSliceTranslationEngine,
-        export_resolver: ExportResolver,
+        exporter_registry: ExporterRegistry,
+        target_validators: TargetValidatorRegistry | None = None,
         min_detection_confidence: float = 0.5,
     ) -> None:
         self._parsers = parser_registry
         self._translator = translator
-        self._export = export_resolver
+        self._exporters = exporter_registry
+        self._target_validators = target_validators or default_target_validator_registry()
         self._min_detection_confidence = min_detection_confidence
 
     def convert_3mf(
@@ -76,20 +73,28 @@ class ConversionService:
         parse_done = perf_counter()
         logger.info("3MF parsed", extra={"conversion_id": conversion_id, "object_count": len(document.objects)})
         try:
+            target = SlicerType(context.target_slicer)
+            self._exporters.get_exporter(target)
+        except ValueError as exc:
+            raise ConversionError(ConversionErrorCode.UNSUPPORTED_SLICER, f"Unsupported target slicer: {context.target_slicer}", cause=exc) from exc
+        try:
             outcome = self._translator.translate(document, context)
         except Exception as exc:
             raise ConversionError(ConversionErrorCode.TRANSLATION_ERROR, f"AutoSlice translation failed: {exc}", cause=exc) from exc
         translation_done = perf_counter()
         logger.info("3MF translated and optimized", extra={"conversion_id": conversion_id, "compatibility": outcome.report.compatibility_score})
         try:
-            exported = self._export(outcome, context)
+            exported = self._exporters.export(target, outcome.document, context)
         except ConversionError:
             raise
         except Exception as exc:
             raise ConversionError(ConversionErrorCode.EXPORT_ERROR, f"Target export failed: {exc}", cause=exc) from exc
         export_done = perf_counter()
         logger.info("3MF exported", extra={"conversion_id": conversion_id, "output_size": len(exported.payload)})
-        validation = validate_3mf(exported.payload)
+        try:
+            validation = self._target_validators.validate(target, exported.payload)
+        except Exception as exc:
+            raise ConversionError(ConversionErrorCode.VALIDATION_ERROR, f"Target validation failed: {exc}", cause=exc) from exc
         if not validation.valid:
             detail = "; ".join(item.message for item in validation.diagnostics)
             raise ConversionError(ConversionErrorCode.VALIDATION_ERROR, f"Generated 3MF failed validation: {detail}")
@@ -122,24 +127,16 @@ class ConversionService:
         )
 
 
-def create_anycubic_conversion_service(min_detection_confidence: float = 0.5) -> ConversionService:
-    from app.threemf.exporters.anycubic_native import NativeAnycubicExporter
-
-    def resolve(outcome: TranslationOutcome, context: ConversionContext) -> ExportResult:
-        artifacts = outcome.target_artifacts
-        registry = ExporterRegistry((NativeAnycubicExporter(artifacts.settings, artifacts.printer, artifacts.filament),))
-        try:
-            target = SlicerType(context.target_slicer)
-        except ValueError as exc:
-            raise ConversionError(ConversionErrorCode.UNSUPPORTED_SLICER, f"Unsupported target slicer: {context.target_slicer}", cause=exc) from exc
-        if target is not SlicerType.ANYCUBIC:
-            raise ConversionError(ConversionErrorCode.UNSUPPORTED_SLICER, f"No production exporter is available for {target.value}.")
-        return registry.export(target, outcome.document, context)
-
+def create_conversion_service(min_detection_confidence: float = 0.5) -> ConversionService:
     return ConversionService(
-        default_parser_registry(), AutoSliceTranslationEngine(), resolve,
+        default_parser_registry(), AutoSliceTranslationEngine(), default_exporter_registry(),
         min_detection_confidence=min_detection_confidence,
     )
+
+
+def create_anycubic_conversion_service(min_detection_confidence: float = 0.5) -> ConversionService:
+    """Backward-compatible name for the now target-neutral production service."""
+    return create_conversion_service(min_detection_confidence)
 
 
 def convert_3mf(
@@ -150,4 +147,4 @@ def convert_3mf(
     **kwargs,
 ) -> ConversionResult:
     """Default production-neutral entrypoint; no legacy fallback is automatic."""
-    return create_anycubic_conversion_service(min_detection_confidence).convert_3mf(value, context, **kwargs)
+    return create_conversion_service(min_detection_confidence).convert_3mf(value, context, **kwargs)

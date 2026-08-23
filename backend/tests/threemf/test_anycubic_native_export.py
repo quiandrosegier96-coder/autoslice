@@ -49,3 +49,13 @@ def test_native_anycubic_export_never_creates_round_robin_mapping(three_mf_facto
     )
     container = ThreeMFContainer.from_bytes(result.payload)
     assert not container.exists("Metadata/model_settings.config")
+
+
+def test_registered_anycubic_exporter_resolves_target_from_context(three_mf_factory):
+    source = three_mf_factory({"Metadata/BambuStudio.config": b"{}"})
+    document = BambuParser().parse(ThreeMFContainer.from_bytes(source))
+    result = NativeAnycubicExporter().export(
+        document, ConversionContext("anycubic", target_printer_id="kobra_s1", material_id="pla"),
+    )
+    assert validate_3mf(result.payload).valid
+    assert AnycubicParser().parse(ThreeMFContainer.from_bytes(result.payload)).objects

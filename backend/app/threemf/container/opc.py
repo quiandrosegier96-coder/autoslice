@@ -7,6 +7,17 @@ from app.threemf.container.xml import local_name, parse_xml
 THREEMF_RELATIONSHIP = "http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"
 
 
+def validate_relationships(container: ThreeMFContainer) -> None:
+    """Reject externally resolved relationship payloads across the whole OPC package."""
+    for path in container.files_with_suffix(".rels"):
+        root = parse_xml(container.read(path), path)
+        for relationship in root:
+            if local_name(relationship.tag) != "Relationship":
+                continue
+            if relationship.attrib.get("TargetMode", "Internal").lower() == "external":
+                raise UnsafeThreeMFError(f"External package relationships are not allowed: {path}")
+
+
 def primary_model_path(container: ThreeMFContainer) -> str:
     if container.exists("_rels/.rels"):
         root = parse_xml(container.read("_rels/.rels"), "_rels/.rels")

@@ -7,6 +7,8 @@ from app.threemf.domain.diagnostics import TranslationReport
 from app.threemf.domain.metadata import SlicerType
 from app.threemf.domain.settings import ConversionContext
 from app.threemf.exporters.base import ExportResult
+from app.threemf.exporters.base import ThreeMFExporter
+from app.threemf.exporters.registry import ExporterRegistry
 from app.threemf.parsers import default_parser_registry
 from app.threemf.translation.engine import TargetArtifacts, TranslationOutcome
 
@@ -16,11 +18,22 @@ class PassthroughTranslator:
         return TranslationOutcome(document, TranslationReport(), TargetArtifacts(None, None, None))
 
 
+class StaticExporter(ThreeMFExporter):
+    def __init__(self, payload):
+        self.payload = payload
+
+    def can_export(self, target):
+        return target is SlicerType.ANYCUBIC
+
+    def export(self, document, context):
+        return ExportResult(self.payload, SlicerType.ANYCUBIC, TranslationReport())
+
+
 def test_conversion_service_runs_secure_parse_export_validate_reparse(three_mf_factory):
     target_payload = three_mf_factory({"Metadata/AnycubicSlicer.config": b"{}"})
     service = ConversionService(
         default_parser_registry(), PassthroughTranslator(),
-        lambda outcome, context: ExportResult(target_payload, SlicerType.ANYCUBIC, TranslationReport()),
+        ExporterRegistry((StaticExporter(target_payload),)),
     )
     source = three_mf_factory({"Metadata/BambuStudio.config": b"{}"})
     result = service.convert_3mf(
@@ -40,7 +53,7 @@ def test_conversion_service_runs_secure_parse_export_validate_reparse(three_mf_f
 def test_conversion_service_rejects_invalid_export(three_mf_factory):
     service = ConversionService(
         default_parser_registry(), PassthroughTranslator(),
-        lambda outcome, context: ExportResult(b"not-a-zip", SlicerType.ANYCUBIC, TranslationReport()),
+        ExporterRegistry((StaticExporter(b"not-a-zip"),)),
     )
     source = three_mf_factory({"Metadata/BambuStudio.config": b"{}"})
     with pytest.raises(ConversionError) as caught:

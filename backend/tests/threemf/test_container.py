@@ -2,7 +2,7 @@ from io import BytesIO
 import zipfile
 import pytest
 from app.threemf.container.reader import ContainerLimits, ThreeMFContainer
-from app.threemf.container.opc import primary_model_path
+from app.threemf.container.opc import primary_model_path, validate_relationships
 from app.threemf.container.security import UnsafeThreeMFError
 from app.threemf.container.xml import MAX_XML_BYTES, parse_xml
 
@@ -46,3 +46,12 @@ def test_primary_model_rejects_external_relationship():
     container = ThreeMFContainer.from_bytes(output.getvalue())
     with pytest.raises(UnsafeThreeMFError, match="External"):
         primary_model_path(container)
+
+
+def test_all_package_relationships_reject_external_targets():
+    output = BytesIO()
+    relationships = b'''<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Target="https://evil.example/settings" TargetMode="External" Id="r1" Type="https://schemas.example/cura"/></Relationships>'''
+    with zipfile.ZipFile(output, "w") as archive:
+        archive.writestr("3D/_rels/3dmodel.model.rels", relationships)
+    with pytest.raises(UnsafeThreeMFError, match="External package"):
+        validate_relationships(ThreeMFContainer.from_bytes(output.getvalue()))
