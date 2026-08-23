@@ -127,6 +127,15 @@ export type AutoSliceAnalysis = {
       score_improvement: number;
       applied: boolean;
     }>;
+    support_changes: Array<{
+      setting: string;
+      old_value: unknown;
+      new_value: unknown;
+      reason: string;
+      rule: string;
+      confidence: string;
+      applied: boolean;
+    }>;
     compatibility: { final_compatibility: number };
   };
   printability: {
@@ -145,6 +154,17 @@ export type AutoSliceAnalysis = {
     estimated_support_reduction_percent: number;
     candidates: unknown[];
   } | null;
+  support_plan: {
+    strategy: "none" | "build_plate_only" | "normal" | "tree" | "organic" | "auto";
+    required_regions: unknown[];
+    optional_regions: unknown[];
+    blocked_regions: unknown[];
+    estimated_support_volume_mm3: number | null;
+    confidence: string;
+    diagnostics: Array<{ code: string; message: string }>;
+    applied: boolean;
+    preserves_source_supports: boolean;
+  };
   dry_run: boolean;
 };
 

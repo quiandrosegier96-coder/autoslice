@@ -25,6 +25,7 @@ from app.threemf.intelligence.engine import AutoSliceDecisionEngine
 from app.threemf.intelligence.geometry import GeometryAnalyzer
 from app.threemf.intelligence.models import AutoSliceProfile
 from app.threemf.intelligence.profiles import build_target_profile
+from app.threemf.intelligence.support import SupportAnalyzer
 from app.threemf.parsers import default_parser_registry
 from app.threemf.validation import validate_3mf
 
@@ -59,6 +60,7 @@ class UniversalAnalyzeResponse(BaseModel):
     optimization_plan: dict
     printability: dict
     orientation: dict | None = None
+    support_plan: dict
     dry_run: bool = True
 
 
@@ -89,6 +91,7 @@ async def universal_analyze(
         profile = AutoSliceProfile()
         printability = GeometryAnalyzer().analyze(document, target, profile)
         plan = AutoSliceDecisionEngine().evaluate(document, analysis, target, request.mode, profile)
+        support_plan = SupportAnalyzer().analyze(document, printability, target, request.mode)
     except (ValueError, OSError) as exc:
         raise HTTPException(
             status_code=422, detail={"code": "ANALYSIS_FAILED", "message": str(exc)}
@@ -108,6 +111,7 @@ async def universal_analyze(
             if len(printability.objects) == 1 and printability.objects[0].orientation
             else None
         ),
+        support_plan=dataclasses.asdict(support_plan),
     )
 
 

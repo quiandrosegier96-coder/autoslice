@@ -15,6 +15,7 @@ from app.threemf.intelligence.models import (
     PlanStatus,
     ProjectAnalysis,
     RulePriority,
+    SupportChange,
     TargetProfile,
 )
 
@@ -243,14 +244,42 @@ class AutoSliceDecisionEngine:
                 )
         for item in geometry.diagnostics:
             warnings.append(PlanMessage(item.code, item.message, item.code, RulePriority.QUALITY))
+        from app.threemf.intelligence.support import SupportAnalyzer, SupportStrategy
+
+        support_plan = SupportAnalyzer().analyze(document, geometry, target, mode)
+        support_changes = []
+        if support_plan.strategy is not SupportStrategy.NONE:
+            support_changes.extend(
+                (
+                    SupportChange(
+                        "supports.enabled",
+                        document.supports.enabled,
+                        True,
+                        f"{len(support_plan.required_regions)} required and {len(support_plan.optional_regions)} optional support regions.",
+                        "SUPPORT_REGION_PLAN",
+                        support_plan.confidence,
+                        support_plan.applied,
+                    ),
+                    SupportChange(
+                        "supports.support_type",
+                        document.supports.support_type,
+                        support_plan.strategy.value,
+                        "Target-supported strategy selected from analyzed regions.",
+                        "SUPPORT_STRATEGY",
+                        support_plan.confidence,
+                        support_plan.applied,
+                    ),
+                )
+            )
         return OptimizationPlan(
-            changes,
-            unchanged,
-            tuple(warnings),
-            tuple(blocked),
-            tuple(recommendations),
-            tuple(geometry_changes),
-            breakdown,
+            changes=changes,
+            unchanged=unchanged,
+            warnings=tuple(warnings),
+            blocked=tuple(blocked),
+            recommendations=tuple(recommendations),
+            geometry_changes=tuple(geometry_changes),
+            support_changes=tuple(support_changes),
+            compatibility=breakdown,
         )
 
     def apply(
@@ -291,4 +320,11 @@ class AutoSliceDecisionEngine:
                 )
                 if checked.status is PrintabilityStatus.BLOCKED or checked.collisions:
                     raise ValueError("Geometry transform rejected by mandatory re-analysis.")
+        support_updates = {
+            item.setting.split(".", 1)[1]: item.new_value
+            for item in plan.support_changes
+            if item.applied
+        }
+        if support_updates:
+            optimized = replace(optimized, supports=replace(optimized.supports, **support_updates))
         return optimized

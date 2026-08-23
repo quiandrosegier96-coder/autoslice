@@ -3,7 +3,6 @@
 from app.threemf.capabilities.model import Capability, FeatureSupport, SlicerCapabilities
 from app.threemf.domain.metadata import SlicerType
 
-
 BAMBU_CAPABILITIES = SlicerCapabilities(SlicerType.BAMBU, (
     Capability("core_objects", FeatureSupport.SUPPORTED),
     Capability("components_and_transforms", FeatureSupport.SUPPORTED),
@@ -68,6 +67,10 @@ ANYCUBIC_TARGET_CAPABILITIES = SlicerCapabilities(SlicerType.ANYCUBIC, (
     Capability("multiple_plates", FeatureSupport.UNSUPPORTED, notes="Multi-plate target behavior lacks a real fixture."),
     Capability("modifiers", FeatureSupport.UNSUPPORTED),
     Capability("support_painting", FeatureSupport.UNSUPPORTED),
+    Capability("support_generation", FeatureSupport.SUPPORTED_WITH_LIMITS, notes="AutoSlice plans normal/tree support settings; no support mesh is embedded."),
+    Capability("support_types", FeatureSupport.SUPPORTED_WITH_LIMITS, limits=(("types", "normal,tree"),)),
+    Capability("support_blockers", FeatureSupport.PRESERVED_OPAQUE),
+    Capability("support_enforcers", FeatureSupport.PRESERVED_OPAQUE),
     Capability("color_painting", FeatureSupport.UNSUPPORTED),
     Capability("variable_layer_height", FeatureSupport.UNSUPPORTED),
 ))

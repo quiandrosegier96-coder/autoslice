@@ -83,6 +83,7 @@ class PrinterProfile:
     capabilities: tuple[str, ...]
     max_tools: int = 1
     defaults: tuple[tuple[str, Any], ...] = ()
+    support_types: tuple[str, ...] = ("normal", "tree")
 
 
 @dataclass(frozen=True)
@@ -176,6 +177,7 @@ class OptimizationPlan:
     blocked: tuple[PlanMessage, ...] = ()
     recommendations: tuple[PlanMessage, ...] = ()
     geometry_changes: tuple["GeometryTransformChange", ...] = ()
+    support_changes: tuple["SupportChange", ...] = ()
     compatibility: CompatibilityBreakdown = field(
         default_factory=lambda: CompatibilityBreakdown(100, 100, 100, 100, 100, 0, 0, 0)
     )
@@ -198,4 +200,15 @@ class GeometryTransformChange:
     rule: str
     confidence: Confidence
     score_improvement: float
+    applied: bool
+
+
+@dataclass(frozen=True)
+class SupportChange:
+    setting: str
+    old_value: Any
+    new_value: Any
+    reason: str
+    rule: str
+    confidence: Confidence
     applied: bool
