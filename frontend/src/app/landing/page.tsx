@@ -15,11 +15,12 @@ const BRAND   = "#e02424";
 const LANDING_T = {
   nl: {
     nav_features:"Features", nav_how:"Hoe het werkt", nav_pricing:"Prijzen", nav_reviews:"Reviews", nav_blog:"Blog", nav_download:"Download", nav_login:"Inloggen", nav_cta:"Gratis starten",
-    hero_badge:"Windows app — nu beschikbaar", hero_h1a:"ONE FILE.", hero_h1b:"",
-    hero_sub:"Upload een ondersteund 3MF-project. AutoSlice detecteert de bron, analyseert het model en maakt het klaar voor de gekozen slicer en printer.",
+    hero_badge:"AUTOSLICE", hero_h1a:"ONE FILE.", hero_h1b:"",
+    hero_tagline:"No matter the slicer. No matter the printer.",
+    hero_sub:"Upload een 3MF en laat AutoSlice het detecteren, analyseren en voorbereiden voor je gekozen slicer en printer.",
     hero_dl:"Downloaden voor Windows", hero_feat_btn:"Bekijk features",
     hero_free:"Gratis te gebruiken · Geen creditcard vereist · Automatische updates",
-    hero_soon:"Linux & iOS — binnenkort beschikbaar", hero_based:"Gebaseerd op 128+ reviews",
+    hero_soon:"Linux & iOS — binnenkort beschikbaar",
     trust:"Compatibel met",
     feat_badge:"Features", feat_h2:"Alles wat je nodig hebt", feat_sub:"Van bronherkenning tot gevalideerde export — één slimme workflow voor 3D-printprojecten.",
     feat1_t:"Universele 3MF workflow", feat1_d:"Upload een 3MF uit een ondersteunde slicer, kies je doel en laat AutoSlice de compatibele output voorbereiden.",
@@ -68,11 +69,12 @@ const LANDING_T = {
   },
   en: {
     nav_features:"Features", nav_how:"How it works", nav_pricing:"Pricing", nav_reviews:"Reviews", nav_blog:"Blog", nav_download:"Download", nav_login:"Log in", nav_cta:"Start for free",
-    hero_badge:"Windows app — now available", hero_h1a:"ONE FILE.", hero_h1b:"",
-    hero_sub:"Upload a supported 3MF project. AutoSlice detects the source, analyzes the model and prepares it for your chosen slicer and printer.",
+    hero_badge:"AUTOSLICE", hero_h1a:"ONE FILE.", hero_h1b:"",
+    hero_tagline:"No matter the slicer. No matter the printer.",
+    hero_sub:"Upload a 3MF and let AutoSlice detect, analyze and prepare it for your chosen slicer and printer.",
     hero_dl:"Download for Windows", hero_feat_btn:"View features",
     hero_free:"Free to use · No credit card required · Automatic updates",
-    hero_soon:"Linux & iOS — coming soon", hero_based:"Based on 128+ reviews",
+    hero_soon:"Linux & iOS — coming soon",
     trust:"Compatible with",
     feat_badge:"Features", feat_h2:"Everything you need", feat_sub:"From source detection to validated export — one intelligent workflow for 3D print projects.",
     feat1_t:"Universal 3MF workflow", feat1_d:"Upload a 3MF from a supported slicer, choose your target and let AutoSlice prepare compatible output.",
@@ -121,11 +123,12 @@ const LANDING_T = {
   },
   fr: {
     nav_features:"Fonctionnalités", nav_how:"Comment ça marche", nav_pricing:"Tarifs", nav_reviews:"Avis", nav_blog:"Blog", nav_download:"Télécharger", nav_login:"Se connecter", nav_cta:"Commencer gratuitement",
-    hero_badge:"Application Windows — disponible maintenant", hero_h1a:"ONE FILE.", hero_h1b:"",
-    hero_sub:"Téléversez un projet 3MF pris en charge. AutoSlice détecte la source, analyse le modèle et le prépare pour le slicer et l’imprimante choisis.",
+    hero_badge:"AUTOSLICE", hero_h1a:"ONE FILE.", hero_h1b:"",
+    hero_tagline:"No matter the slicer. No matter the printer.",
+    hero_sub:"Téléversez un 3MF et laissez AutoSlice le détecter, l’analyser et le préparer pour le slicer et l’imprimante choisis.",
     hero_dl:"Télécharger pour Windows", hero_feat_btn:"Voir les fonctionnalités",
     hero_free:"Gratuit · Aucune carte de crédit · Mises à jour automatiques",
-    hero_soon:"Linux & iOS — bientôt disponible", hero_based:"Basé sur 128+ avis",
+    hero_soon:"Linux & iOS — bientôt disponible",
     trust:"Compatible avec",
     feat_badge:"Fonctionnalités", feat_h2:"Tout ce dont vous avez besoin", feat_sub:"De la conversion à l'analyse IA — AutoSlice couvre l'intégralité du flux d'impression 3D.",
     feat1_t:"Workflow 3MF universel", feat1_d:"Téléversez un 3MF issu d’un slicer pris en charge, choisissez votre cible et laissez AutoSlice préparer une sortie compatible.",
@@ -174,11 +177,12 @@ const LANDING_T = {
   },
   de: {
     nav_features:"Funktionen", nav_how:"So funktioniert es", nav_pricing:"Preise", nav_reviews:"Bewertungen", nav_blog:"Blog", nav_download:"Download", nav_login:"Anmelden", nav_cta:"Kostenlos starten",
-    hero_badge:"Windows-App — jetzt verfügbar", hero_h1a:"ONE FILE.", hero_h1b:"",
-    hero_sub:"Laden Sie ein unterstütztes 3MF-Projekt hoch. AutoSlice erkennt die Quelle, analysiert das Modell und bereitet es für den gewählten Slicer und Drucker vor.",
+    hero_badge:"AUTOSLICE", hero_h1a:"ONE FILE.", hero_h1b:"",
+    hero_tagline:"No matter the slicer. No matter the printer.",
+    hero_sub:"Laden Sie ein 3MF hoch und lassen Sie AutoSlice es für den gewählten Slicer und Drucker erkennen, analysieren und vorbereiten.",
     hero_dl:"Für Windows herunterladen", hero_feat_btn:"Funktionen ansehen",
     hero_free:"Kostenlos · Keine Kreditkarte · Automatische Updates",
-    hero_soon:"Linux & iOS — demnächst verfügbar", hero_based:"Basierend auf 128+ Bewertungen",
+    hero_soon:"Linux & iOS — demnächst verfügbar",
     trust:"Kompatibel mit",
     feat_badge:"Funktionen", feat_h2:"Alles, was Sie brauchen", feat_sub:"Von der Konvertierung bis zur KI-Analyse — AutoSlice deckt den gesamten 3D-Druck-Workflow ab.",
     feat1_t:"Universeller 3MF-Workflow", feat1_d:"Laden Sie ein 3MF aus einem unterstützten Slicer hoch, wählen Sie Ihr Ziel und lassen Sie AutoSlice kompatible Ausgaben vorbereiten.",
@@ -227,11 +231,12 @@ const LANDING_T = {
   },
   es: {
     nav_features:"Características", nav_how:"Cómo funciona", nav_pricing:"Precios", nav_reviews:"Reseñas", nav_blog:"Blog", nav_download:"Descargar", nav_login:"Iniciar sesión", nav_cta:"Empezar gratis",
-    hero_badge:"Aplicación Windows — ya disponible", hero_h1a:"ONE FILE.", hero_h1b:"",
-    hero_sub:"Sube un proyecto 3MF compatible. AutoSlice detecta el origen, analiza el modelo y lo prepara para el slicer y la impresora elegidos.",
+    hero_badge:"AUTOSLICE", hero_h1a:"ONE FILE.", hero_h1b:"",
+    hero_tagline:"No matter the slicer. No matter the printer.",
+    hero_sub:"Sube un 3MF y deja que AutoSlice lo detecte, analice y prepare para el slicer y la impresora que elijas.",
     hero_dl:"Descargar para Windows", hero_feat_btn:"Ver características",
     hero_free:"Gratis · Sin tarjeta de crédito · Actualizaciones automáticas",
-    hero_soon:"Linux & iOS — próximamente", hero_based:"Basado en 128+ reseñas",
+    hero_soon:"Linux & iOS — próximamente",
     trust:"Compatible con",
     feat_badge:"Características", feat_h2:"Todo lo que necesitas", feat_sub:"De la conversión al análisis IA — AutoSlice cubre todo el flujo de trabajo de impresión 3D.",
     feat1_t:"Flujo 3MF universal", feat1_d:"Sube un 3MF desde un slicer compatible, elige tu destino y deja que AutoSlice prepare una salida compatible.",
@@ -280,11 +285,12 @@ const LANDING_T = {
   },
   ko: {
     nav_features:"기능", nav_how:"사용 방법", nav_pricing:"가격", nav_reviews:"리뷰", nav_blog:"블로그", nav_download:"다운로드", nav_login:"로그인", nav_cta:"무료로 시작",
-    hero_badge:"Windows 앱 — 지금 사용 가능", hero_h1a:"ONE FILE.", hero_h1b:"",
-    hero_sub:"지원되는 3MF 프로젝트를 업로드하세요. AutoSlice가 원본을 감지하고 모델을 분석해 선택한 슬라이서와 프린터에 맞게 준비합니다.",
+    hero_badge:"AUTOSLICE", hero_h1a:"ONE FILE.", hero_h1b:"",
+    hero_tagline:"No matter the slicer. No matter the printer.",
+    hero_sub:"3MF를 업로드하면 AutoSlice가 감지하고 분석하여 선택한 슬라이서와 프린터에 맞게 준비합니다.",
     hero_dl:"Windows용 다운로드", hero_feat_btn:"기능 보기",
     hero_free:"무료 사용 · 신용카드 불필요 · 자동 업데이트",
-    hero_soon:"Linux & iOS — 곧 출시", hero_based:"128개 이상의 리뷰 기반",
+    hero_soon:"Linux & iOS — 곧 출시",
     trust:"호환 가능",
     feat_badge:"기능", feat_h2:"필요한 모든 것", feat_sub:"변환부터 AI 분석까지 — AutoSlice가 전체 3D 프린팅 워크플로우를 다룹니다.",
     feat1_t:"범용 3MF 워크플로", feat1_d:"지원되는 슬라이서의 3MF를 업로드하고 대상을 선택하면 AutoSlice가 호환 출력을 준비합니다.",
@@ -616,7 +622,7 @@ function Hero() {
               </Badge>
             </div>
 
-            <h1 className="text-5xl lg:text-[62px] font-extrabold text-white leading-[1.05] tracking-tight mb-6">
+            <h1 className="text-5xl lg:text-[62px] font-extrabold text-white leading-[1.05] tracking-tight mb-4">
               {lt.hero_h1a}{" "}
               <span className="relative">
                 <span style={{ color: BRAND }}>ANY SLICE.</span>
@@ -627,7 +633,11 @@ function Hero() {
               {" "}{lt.hero_h1b}
             </h1>
 
-            <p className="text-lg text-zinc-400 leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
+            <p className="text-base sm:text-lg font-medium text-zinc-300 leading-snug mb-4 max-w-lg mx-auto lg:mx-0">
+              {lt.hero_tagline}
+            </p>
+
+            <p className="text-base sm:text-lg text-zinc-400 leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
               {lt.hero_sub}
             </p>
 
@@ -651,12 +661,6 @@ function Hero() {
             <p className="mt-3 text-xs text-zinc-600">{lt.hero_free}</p>
             <p className="mt-1 text-xs text-zinc-700">{lt.hero_soon}</p>
 
-            {/* Mini star rating */}
-            <div className="mt-5 flex items-center gap-2.5 justify-center lg:justify-start">
-              <StarRating rating={5} size="sm" />
-              <span className="text-sm font-bold text-white">4,3/5</span>
-              <span className="text-xs text-zinc-500">{lt.hero_based}</span>
-            </div>
           </div>
 
           {/* Right: App window mockup */}
