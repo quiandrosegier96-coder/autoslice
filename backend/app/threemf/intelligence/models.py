@@ -33,9 +33,19 @@ class OptimizationMode(str, Enum):
     MATERIAL_SAVING = "material_saving"
 
 
+class OrientationMode(str, Enum):
+    AUTO = "auto"
+    PRESERVE = "preserve"
+    MANUAL = "manual"
+
+
 @dataclass(frozen=True)
 class AutoSliceProfile:
     mode: OptimizationMode = OptimizationMode.BALANCED
+    orientation_mode: OrientationMode = OrientationMode.AUTO
+    orientation_confidence_threshold: Confidence = Confidence.HIGH
+    orientation_improvement_threshold: float = 10.0
+    overhang_threshold_degrees: float = 45.0
 
 
 @dataclass(frozen=True)
@@ -165,6 +175,7 @@ class OptimizationPlan:
     warnings: tuple[PlanMessage, ...] = ()
     blocked: tuple[PlanMessage, ...] = ()
     recommendations: tuple[PlanMessage, ...] = ()
+    geometry_changes: tuple["GeometryTransformChange", ...] = ()
     compatibility: CompatibilityBreakdown = field(
         default_factory=lambda: CompatibilityBreakdown(100, 100, 100, 100, 100, 0, 0, 0)
     )
@@ -175,3 +186,16 @@ class OptimizationPlan:
 
     def change_for(self, setting: str) -> OptimizationChange | None:
         return next((change for change in self.changes if change.setting == setting), None)
+
+
+@dataclass(frozen=True)
+class GeometryTransformChange:
+    object_id: str
+    current_transform: tuple[float, ...]
+    recommended_transform: tuple[float, ...]
+    rotation_degrees: tuple[float, float, float]
+    reason: str
+    rule: str
+    confidence: Confidence
+    score_improvement: float
+    applied: bool

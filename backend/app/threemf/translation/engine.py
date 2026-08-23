@@ -64,7 +64,7 @@ class AutoSliceTranslationEngine:
         analysis = ProjectAnalyzer().analyze(document, profile)
         optimizer = AutoSliceDecisionEngine()
         optimization_plan = optimizer.evaluate(document, analysis, profile, context.mode)
-        optimized = optimizer.apply(document, optimization_plan)
+        optimized = optimizer.apply(document, optimization_plan, profile)
         optimization_items = tuple(
             TranslationItem(
                 item.setting,

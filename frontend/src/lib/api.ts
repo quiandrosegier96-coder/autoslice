@@ -117,8 +117,34 @@ export type AutoSliceAnalysis = {
     unchanged: string[];
     warnings: Array<{ code: string; message: string }>;
     blocked: Array<{ code: string; message: string }>;
+    geometry_changes: Array<{
+      object_id: string;
+      current_transform: number[];
+      recommended_transform: number[];
+      rotation_degrees: number[];
+      reason: string;
+      confidence: string;
+      score_improvement: number;
+      applied: boolean;
+    }>;
     compatibility: { final_compatibility: number };
   };
+  printability: {
+    status: "good" | "warning" | "blocked" | "unknown";
+    project_build_volume: string;
+    collisions: Array<{ first_object_id: string; second_object_id: string; kind: string }>;
+    support_recommendations: string[];
+    debug: unknown[];
+  };
+  orientation: {
+    recommended_transform: number[];
+    rotation_degrees: number[];
+    score: number;
+    current_score: number;
+    confidence: string;
+    estimated_support_reduction_percent: number;
+    candidates: unknown[];
+  } | null;
   dry_run: boolean;
 };
 

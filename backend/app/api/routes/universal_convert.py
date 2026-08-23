@@ -22,6 +22,8 @@ from app.threemf.conversion.schemas import ConversionReportSchema, SourceSchema,
 from app.threemf.domain.settings import ConversionContext, ConversionMode
 from app.threemf.intelligence.analyzer import ProjectAnalyzer
 from app.threemf.intelligence.engine import AutoSliceDecisionEngine
+from app.threemf.intelligence.geometry import GeometryAnalyzer
+from app.threemf.intelligence.models import AutoSliceProfile
 from app.threemf.intelligence.profiles import build_target_profile
 from app.threemf.parsers import default_parser_registry
 from app.threemf.validation import validate_3mf
@@ -55,6 +57,8 @@ class UniversalAnalyzeResponse(BaseModel):
     project: dict
     target: dict
     optimization_plan: dict
+    printability: dict
+    orientation: dict | None = None
     dry_run: bool = True
 
 
@@ -82,7 +86,9 @@ async def universal_analyze(
         container = await loop.run_in_executor(None, ThreeMFContainer.from_path, job.archive_path)
         document = await loop.run_in_executor(None, default_parser_registry().parse, container)
         analysis = ProjectAnalyzer().analyze(document, target)
-        plan = AutoSliceDecisionEngine().evaluate(document, analysis, target, request.mode)
+        profile = AutoSliceProfile()
+        printability = GeometryAnalyzer().analyze(document, target, profile)
+        plan = AutoSliceDecisionEngine().evaluate(document, analysis, target, request.mode, profile)
     except (ValueError, OSError) as exc:
         raise HTTPException(
             status_code=422, detail={"code": "ANALYSIS_FAILED", "message": str(exc)}
@@ -96,6 +102,12 @@ async def universal_analyze(
         project=dataclasses.asdict(analysis),
         target=dataclasses.asdict(target),
         optimization_plan=dataclasses.asdict(plan),
+        printability=dataclasses.asdict(printability),
+        orientation=(
+            dataclasses.asdict(printability.objects[0].orientation)
+            if len(printability.objects) == 1 and printability.objects[0].orientation
+            else None
+        ),
     )
 
 

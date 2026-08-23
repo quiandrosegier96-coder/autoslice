@@ -8,6 +8,7 @@ from app.threemf.intelligence.models import (
     AutoSliceProfile,
     CompatibilityBreakdown,
     Confidence,
+    GeometryTransformChange,
     OptimizationChange,
     OptimizationPlan,
     PlanMessage,
@@ -41,7 +42,6 @@ class AutoSliceDecisionEngine:
         profile: AutoSliceProfile | None = None,
     ) -> OptimizationPlan:
         profile = profile or AutoSliceProfile()
-        del profile  # Reserved for future deterministic category-specific rules.
         warnings: list[PlanMessage] = []
         blocked: list[PlanMessage] = []
         recommendations: list[PlanMessage] = []
@@ -208,11 +208,58 @@ class AutoSliceDecisionEngine:
             round(100 * len(recommendations) / total, 2),
             round(100 * len(blocked) / total, 2),
         )
+        from app.threemf.intelligence.geometry import GeometryAnalyzer
+
+        geometry = GeometryAnalyzer().analyze(document, target, profile)
+        geometry_changes = []
+        if len(geometry.objects) == 1 and geometry.objects[0].orientation:
+            rec = geometry.objects[0].orientation
+            if rec.rotation_degrees != (0.0, 0.0, 0.0):
+                applied = (
+                    mode is ConversionMode.AUTOSLICE
+                    and not blocked
+                    and profile.orientation_mode.value == "auto"
+                    and rec.apply_automatically
+                    and {Confidence.LOW: 1, Confidence.MEDIUM: 2, Confidence.HIGH: 3}[
+                        rec.confidence
+                    ]
+                    >= {Confidence.LOW: 1, Confidence.MEDIUM: 2, Confidence.HIGH: 3}[
+                        profile.orientation_confidence_threshold
+                    ]
+                    and rec.score - rec.current_score >= profile.orientation_improvement_threshold
+                )
+                geometry_changes.append(
+                    GeometryTransformChange(
+                        geometry.objects[0].object_id,
+                        rec.current_transform,
+                        rec.recommended_transform,
+                        rec.rotation_degrees,
+                        rec.reason,
+                        "ORIENTATION_SCORE",
+                        rec.confidence,
+                        round(rec.score - rec.current_score, 2),
+                        applied,
+                    )
+                )
+        for item in geometry.diagnostics:
+            warnings.append(PlanMessage(item.code, item.message, item.code, RulePriority.QUALITY))
         return OptimizationPlan(
-            changes, unchanged, tuple(warnings), tuple(blocked), tuple(recommendations), breakdown
+            changes,
+            unchanged,
+            tuple(warnings),
+            tuple(blocked),
+            tuple(recommendations),
+            tuple(geometry_changes),
+            breakdown,
         )
 
-    def apply(self, document: Universal3MFDocument, plan: OptimizationPlan) -> Universal3MFDocument:
+    def apply(
+        self,
+        document: Universal3MFDocument,
+        plan: OptimizationPlan,
+        target: TargetProfile | None = None,
+        profile: AutoSliceProfile | None = None,
+    ) -> Universal3MFDocument:
         if not plan.can_convert:
             raise ValueError(
                 "Optimization plan is blocked: " + "; ".join(item.message for item in plan.blocked)
@@ -222,6 +269,26 @@ class AutoSliceDecisionEngine:
             for item in plan.changes
             if item.setting in AUTOMATIC_SETTING_ALLOWLIST
         }
-        return (
+        optimized = (
             replace(document, process=replace(document.process, **updates)) if updates else document
         )
+        applied = {item.object_id: item for item in plan.geometry_changes if item.applied}
+        if applied:
+            from app.threemf.domain.geometry import Transform
+
+            items = tuple(
+                replace(item, transform=Transform(applied[item.object_id].recommended_transform))
+                if item.object_id in applied
+                else item
+                for item in optimized.build.items
+            )
+            optimized = replace(optimized, build=replace(optimized.build, items=items))
+            if target:
+                from app.threemf.intelligence.geometry import GeometryAnalyzer, PrintabilityStatus
+
+                checked = GeometryAnalyzer().analyze(
+                    optimized, target, profile or AutoSliceProfile()
+                )
+                if checked.status is PrintabilityStatus.BLOCKED or checked.collisions:
+                    raise ValueError("Geometry transform rejected by mandatory re-analysis.")
+        return optimized
